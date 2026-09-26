@@ -559,7 +559,7 @@ function drawStoatFrame(c, s, phase, aggressive) {
   const legLift2 = Math.sin(phase * 2 + Math.PI) * 0.05;
 
   // quick little legs, high-frequency scurry
-  c.fillStyle = "#c9c4b6";
+  c.fillStyle = "#e8e4d8";
   c.beginPath(); c.ellipse(s * 0.34, s * (0.87 + legLift1), s * 0.05, s * 0.035, 0, 0, Math.PI * 2); c.fill();
   c.beginPath(); c.ellipse(s * 0.66, s * (0.87 + legLift2), s * 0.05, s * 0.035, 0, 0, Math.PI * 2); c.fill();
   c.beginPath(); c.ellipse(s * 0.42, s * (0.91 + legLift2), s * 0.045, s * 0.03, 0, 0, Math.PI * 2); c.fill();
@@ -567,15 +567,15 @@ function drawStoatFrame(c, s, phase, aggressive) {
 
   // tail, curled up behind it — white like the rest of its winter coat, but
   // keeping the black tip real ermines have even after they turn white.
-  c.strokeStyle = "#eeece4"; c.lineWidth = s * 0.075; c.lineCap = "round";
+  c.strokeStyle = "#f6f5ef"; c.lineWidth = s * 0.075; c.lineCap = "round";
   c.beginPath(); c.moveTo(s * 0.80, s * 0.76); c.quadraticCurveTo(s * 0.97, s * 0.70, s * 0.93, s * 0.50); c.stroke();
   c.fillStyle = "#181410";
   c.beginPath(); c.ellipse(s * 0.935, s * 0.485, s * 0.05, s * 0.06, 0.3, 0, Math.PI * 2); c.fill();
 
   // body: long, low barrel — white winter coat over a slightly brighter belly
   const bodyGrad = c.createLinearGradient(s * 0.5, s * 0.54, s * 0.5, s * 0.84);
-  bodyGrad.addColorStop(0, "#f7f6f0");
-  bodyGrad.addColorStop(1, "#d6d2c4");
+  bodyGrad.addColorStop(0, "#fbfaf5");
+  bodyGrad.addColorStop(1, "#e6e3d6");
   c.fillStyle = bodyGrad;
   c.beginPath(); c.ellipse(s * 0.52, s * 0.70, s * 0.34, s * 0.18, 0, 0, Math.PI * 2); c.fill();
   c.fillStyle = "#ffffff";
@@ -583,12 +583,12 @@ function drawStoatFrame(c, s, phase, aggressive) {
 
   // head: small and narrow-snouted, alert
   const headGrad = c.createRadialGradient(s * 0.24, s * 0.48, s * 0.02, s * 0.27, s * 0.52, s * 0.16);
-  headGrad.addColorStop(0, "#fbfaf6");
-  headGrad.addColorStop(1, "#dcd8ca");
+  headGrad.addColorStop(0, "#fdfcf9");
+  headGrad.addColorStop(1, "#eae7da");
   c.fillStyle = headGrad;
   c.beginPath(); c.ellipse(s * 0.28, s * 0.52, s * 0.16, s * 0.125, -0.15, 0, Math.PI * 2); c.fill();
   // ears
-  c.fillStyle = "#d6d2c4";
+  c.fillStyle = "#eae7da";
   c.beginPath(); c.ellipse(s * 0.22, s * 0.42, s * 0.032, s * 0.032, 0, 0, Math.PI * 2); c.fill();
   c.beginPath(); c.ellipse(s * 0.33, s * 0.40, s * 0.032, s * 0.032, 0, 0, Math.PI * 2); c.fill();
   // snout tip / nose
@@ -1647,11 +1647,16 @@ function projectSprite(e, stats, invDet) {
   if (transformY <= 0.15) return null;
 
   const spriteScreenX = Math.floor((SCREEN_W / 2) * (1 + transformX / transformY));
-  const spriteHeight = Math.abs(Math.floor(SCREEN_H / transformY)) * 0.9 * stats.scale;
+  // Full-height reference (a scale-1 sprite would span floor to ceiling,
+  // same as a wall slab at this distance) — used only to find the floor
+  // row, so the anchor doesn't move with a creature's own scale.
+  const fullHeight = Math.abs(Math.floor(SCREEN_H / transformY)) * 0.9;
+  const spriteHeight = fullHeight * stats.scale;
   const spriteWidth = spriteHeight;
   const horizon = SCREEN_H / 2 + pitch;
-  const drawStartY = Math.max(0, -spriteHeight / 2 + horizon);
-  const drawEndY = Math.min(SCREEN_H, spriteHeight / 2 + horizon);
+  const floorY = horizon + fullHeight / 2;
+  const drawStartY = Math.max(0, floorY - spriteHeight);
+  const drawEndY = Math.min(SCREEN_H, floorY);
   const drawStartX = Math.floor(-spriteWidth / 2 + spriteScreenX);
   const drawEndX = Math.floor(spriteWidth / 2 + spriteScreenX);
 
