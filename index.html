@@ -49,6 +49,11 @@
     position: fixed; inset: 0; z-index: 6; display: none;
     padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
     box-sizing: border-box;
+    /* The container spans the full screen so buttons can sit at its edges,
+       but it must not swallow touches meant for the canvas underneath (that
+       was blocking drag-to-look) — only the individual .touchBtn widgets
+       opt back in to receiving touches. */
+    pointer-events: none;
   }
   #mobileControls.active { display: block; }
   .touchBtn { pointer-events: auto; -webkit-tap-highlight-color: transparent; user-select: none; touch-action: none; }
@@ -568,6 +573,199 @@ function buildLevelAssets() {
 }
 buildLevelAssets();
 
+// ---------------------------------------------------------------------------
+// Audio: sound effects and music are synthesized with the Web Audio API
+// (oscillators + generated noise) instead of loaded from files, so the game
+// stays a single self-contained HTML page. Everything is created lazily on
+// the first user gesture (ensureAudio, called from newGame) since browsers
+// block audio until then.
+// ---------------------------------------------------------------------------
+let audioCtx = null, musicGain = null, sfxGain = null;
+let flameNoiseGain = null, flameFilter = null;
+
+function noiseBuffer(duration) {
+  const n = Math.max(1, Math.floor(audioCtx.sampleRate * duration));
+  const buf = audioCtx.createBuffer(1, n, audioCtx.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < n; i++) data[i] = Math.random() * 2 - 1;
+  return buf;
+}
+
+function playTone({ freq, endFreq = null, type = "sine", duration = 0.15, gain = 0.5, delay = 0 }) {
+  const t0 = audioCtx.currentTime + delay;
+  const osc = audioCtx.createOscillator();
+  osc.type = type;
+  osc.frequency.setValueAtTime(freq, t0);
+  if (endFreq !== null) osc.frequency.exponentialRampToValueAtTime(Math.max(1, endFreq), t0 + duration);
+  const g = audioCtx.createGain();
+  g.gain.setValueAtTime(gain, t0);
+  g.gain.exponentialRampToValueAtTime(0.0005, t0 + duration);
+  osc.connect(g); g.connect(sfxGain);
+  osc.start(t0); osc.stop(t0 + duration + 0.02);
+}
+
+function playNoise({ duration = 0.2, gain = 0.4, filterFreq = 1200, filterType = "lowpass", delay = 0 }) {
+  const t0 = audioCtx.currentTime + delay;
+  const src = audioCtx.createBufferSource();
+  src.buffer = noiseBuffer(duration);
+  const filt = audioCtx.createBiquadFilter();
+  filt.type = filterType; filt.frequency.value = filterFreq;
+  const g = audioCtx.createGain();
+  g.gain.setValueAtTime(gain, t0);
+  g.gain.exponentialRampToValueAtTime(0.0005, t0 + duration);
+  src.connect(filt); filt.connect(g); g.connect(sfxGain);
+  src.start(t0); src.stop(t0 + duration + 0.02);
+}
+
+function sfxClick() { playTone({ freq: 900, endFreq: 700, type: "square", duration: 0.05, gain: 0.15 }); }
+function sfxBlaster() { playTone({ freq: 950, endFreq: 220, type: "square", duration: 0.09, gain: 0.22 }); }
+function sfxHarpoon() {
+  playTone({ freq: 190, endFreq: 60, type: "sawtooth", duration: 0.22, gain: 0.3 });
+  playNoise({ duration: 0.06, gain: 0.15, filterFreq: 2600, filterType: "highpass" });
+}
+function sfxHit(enemyType) {
+  playTone({ freq: enemyType === "polarbear" ? 320 : 520, endFreq: 180, type: "triangle", duration: 0.08, gain: 0.22 });
+}
+function sfxKill(enemyType) {
+  if (enemyType === "polarbear") {
+    playTone({ freq: 200, endFreq: 55, type: "sawtooth", duration: 0.45, gain: 0.3 });
+  } else {
+    playTone({ freq: 640, endFreq: 900, type: "sine", duration: 0.12, gain: 0.25 });
+    playTone({ freq: 480, endFreq: 120, type: "triangle", duration: 0.28, gain: 0.2, delay: 0.05 });
+  }
+}
+function sfxPlayerHurt() {
+  playNoise({ duration: 0.16, gain: 0.35, filterFreq: 700, filterType: "lowpass" });
+  playTone({ freq: 140, endFreq: 60, type: "sawtooth", duration: 0.2, gain: 0.25 });
+}
+function sfxLevelClear() {
+  [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => playTone({ freq: f, type: "triangle", duration: 0.5, gain: 0.22, delay: i * 0.11 }));
+}
+function sfxWin() {
+  [392.0, 523.25, 659.25, 783.99, 1046.5, 1318.5].forEach((f, i) => playTone({ freq: f, type: "triangle", duration: 0.6, gain: 0.22, delay: i * 0.13 }));
+}
+function sfxGameOver() {
+  [440, 392, 349.23, 293.66].forEach((f, i) => playTone({ freq: f, type: "sawtooth", duration: 0.5, gain: 0.22, delay: i * 0.18 }));
+}
+
+// Continuous flamethrower hiss: one looping noise source whose gain is
+// ramped up/down each frame instead of retriggered, so it doesn't crackle.
+function initFlameLoop() {
+  const src = audioCtx.createBufferSource();
+  src.buffer = noiseBuffer(2);
+  src.loop = true;
+  flameFilter = audioCtx.createBiquadFilter();
+  flameFilter.type = "bandpass";
+  flameFilter.frequency.value = 900;
+  flameFilter.Q.value = 0.6;
+  flameNoiseGain = audioCtx.createGain();
+  flameNoiseGain.gain.value = 0;
+  src.connect(flameFilter); flameFilter.connect(flameNoiseGain); flameNoiseGain.connect(sfxGain);
+  src.start();
+}
+function flameLoopSetActive(active) {
+  if (!flameNoiseGain) return;
+  const t = audioCtx.currentTime;
+  if (active) {
+    flameNoiseGain.gain.setTargetAtTime(0.28, t, 0.03);
+    flameFilter.frequency.setTargetAtTime(650 + Math.random() * 500, t, 0.05);
+  } else {
+    flameNoiseGain.gain.setTargetAtTime(0, t, 0.08);
+  }
+}
+
+// Wintry background music: a slow, sparse bell melody over an icy pad drone
+// and a thin layer of wind noise, all generated rather than loaded from a file.
+const MUSIC_SCALE = [220.0, 261.63, 293.66, 329.63, 392.0, 440.0]; // A minor pentatonic
+const MUSIC_PATTERN = [
+  0, null, 2, null, 4, 3, null, 2, null, 0, null, 3, 2, null, null, null,
+  5, null, 4, null, 3, 2, null, 4, null, 5, null, 3, 2, null, null, null,
+];
+const MUSIC_STEP_MS = 460;
+let musicStep = 0;
+
+function playBell(freq) {
+  const t0 = audioCtx.currentTime;
+  const osc = audioCtx.createOscillator();
+  osc.type = "sine";
+  osc.frequency.setValueAtTime(freq, t0);
+  const shimmer = audioCtx.createOscillator();
+  shimmer.type = "sine";
+  shimmer.frequency.setValueAtTime(freq * 2.01, t0);
+  const g = audioCtx.createGain();
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.exponentialRampToValueAtTime(0.18, t0 + 0.02);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + 1.6);
+  const g2 = audioCtx.createGain();
+  g2.gain.setValueAtTime(0.0001, t0);
+  g2.gain.exponentialRampToValueAtTime(0.05, t0 + 0.02);
+  g2.gain.exponentialRampToValueAtTime(0.0001, t0 + 1.0);
+  osc.connect(g); g.connect(musicGain);
+  shimmer.connect(g2); g2.connect(musicGain);
+  osc.start(t0); osc.stop(t0 + 1.7);
+  shimmer.start(t0); shimmer.stop(t0 + 1.1);
+}
+
+function startMusic() {
+  // Icy pad drone: two sines a fifth apart under a slowly breathing lowpass filter.
+  const padOsc1 = audioCtx.createOscillator();
+  const padOsc2 = audioCtx.createOscillator();
+  padOsc1.type = "sine"; padOsc2.type = "sine";
+  padOsc1.frequency.value = 110; // A2
+  padOsc2.frequency.value = 110 * Math.pow(2, 7 / 12); // E3
+  const padFilter = audioCtx.createBiquadFilter();
+  padFilter.type = "lowpass";
+  padFilter.frequency.value = 800;
+  const padGain = audioCtx.createGain();
+  padGain.gain.value = 0.05;
+  padOsc1.connect(padFilter); padOsc2.connect(padFilter);
+  padFilter.connect(padGain); padGain.connect(musicGain);
+  padOsc1.start(); padOsc2.start();
+
+  const lfo = audioCtx.createOscillator();
+  lfo.type = "sine"; lfo.frequency.value = 0.05;
+  const lfoGain = audioCtx.createGain();
+  lfoGain.gain.value = 250;
+  lfo.connect(lfoGain); lfoGain.connect(padFilter.frequency);
+  lfo.start();
+
+  // Thin wind layer.
+  const windSrc = audioCtx.createBufferSource();
+  windSrc.buffer = noiseBuffer(4);
+  windSrc.loop = true;
+  const windFilter = audioCtx.createBiquadFilter();
+  windFilter.type = "bandpass";
+  windFilter.frequency.value = 500;
+  windFilter.Q.value = 0.5;
+  const windGain = audioCtx.createGain();
+  windGain.gain.value = 0.02;
+  windSrc.connect(windFilter); windFilter.connect(windGain); windGain.connect(musicGain);
+  windSrc.start();
+
+  // Sparse bell melody, looped by re-triggering on an interval.
+  musicStep = 0;
+  const playStep = () => {
+    const degree = MUSIC_PATTERN[musicStep % MUSIC_PATTERN.length];
+    musicStep++;
+    if (degree !== null) playBell(MUSIC_SCALE[degree]);
+  };
+  playStep();
+  setInterval(playStep, MUSIC_STEP_MS);
+}
+
+function ensureAudio() {
+  if (audioCtx) { if (audioCtx.state === "suspended") audioCtx.resume(); return; }
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  musicGain = audioCtx.createGain();
+  musicGain.gain.value = 0.5;
+  musicGain.connect(audioCtx.destination);
+  sfxGain = audioCtx.createGain();
+  sfxGain.gain.value = 0.6;
+  sfxGain.connect(audioCtx.destination);
+  initFlameLoop();
+  startMusic();
+}
+
 let player, enemies, mouseDX, mouseDY, scrollTurn, running, gameOver, won;
 let pitch = 0; // vertical look offset in screen pixels, shifts the horizon/sprites/walls
 let keys = {};
@@ -590,6 +788,7 @@ function isOpen(x, y) {
 }
 
 function newGame() {
+  ensureAudio();
   player = { x: 0, y: 0, dirX: 1, dirY: 0, planeX: 0, planeY: FOV_PLANE, hp: 100 };
 
   keys = {};
@@ -663,7 +862,7 @@ document.addEventListener("keydown", e => {
   if (e.code === "Digit1") currentWeaponKey = "blaster";
   if (e.code === "Digit2") currentWeaponKey = "harpoon";
   if (e.code === "Digit3") currentWeaponKey = "flamethrower";
-  if (e.code === "Digit1" || e.code === "Digit2" || e.code === "Digit3") { if (player) updateHud(); }
+  if (e.code === "Digit1" || e.code === "Digit2" || e.code === "Digit3") { if (player) updateHud(); if (audioCtx) sfxClick(); }
 });
 document.addEventListener("keyup", e => { keys[e.code] = false; });
 
@@ -784,6 +983,7 @@ for (const btn of weaponBtnEls) {
     currentWeaponKey = btn.dataset.weapon;
     weaponBtnEls.forEach(b => b.classList.toggle("selected", b === btn));
     if (player) updateHud();
+    if (audioCtx) sfxClick();
   }, { passive: false });
 }
 
@@ -873,8 +1073,10 @@ function killIfDead(e) {
       if (levelIndex < LEVELS.length - 1) {
         levelTransition = true;
         levelTransitionTimer = 2.4;
+        sfxLevelClear();
       } else {
         won = true;
+        sfxWin();
       }
     }
   }
@@ -889,6 +1091,7 @@ function trySemiShot() {
   muzzleFlash = 6;
   recoilOffset = currentWeaponKey === "harpoon" ? 18 : 11;
   spawnMuzzleSparks(currentWeaponKey);
+  if (currentWeaponKey === "harpoon") sfxHarpoon(); else sfxBlaster();
 
   const target = findPixelTarget(w.range);
   spawnTracer(currentWeaponKey);
@@ -896,18 +1099,21 @@ function trySemiShot() {
     target.hp -= w.damage;
     target.hitFlash = 8;
     spawnImpactParticles(SCREEN_W / 2, SCREEN_H / 2, target.type);
+    const wasAlive = target.alive;
     killIfDead(target);
+    if (wasAlive && !target.alive) sfxKill(target.type); else sfxHit(target.type);
     updateHud();
   }
 }
 
 function tickFlamethrower(dt) {
   const w = WEAPONS.flamethrower;
-  if (fuel <= 0) return;
+  if (fuel <= 0) { flameLoopSetActive(false); return; }
   fuel = Math.max(0, fuel - w.fuelDrain * dt);
   muzzleFlash = 4;
   recoilOffset = Math.min(7, recoilOffset + 30 * dt);
   flameShakeX = (Math.random() - 0.5) * 3;
+  flameLoopSetActive(true);
   spawnFlameParticles(dt);
   const invDet = 1.0 / (player.planeX * player.dirY - player.dirX * player.planeY);
   for (const e of enemies) {
@@ -922,7 +1128,9 @@ function tickFlamethrower(dt) {
       const iy = proj.drawStartY + proj.spriteHeight * (0.35 + Math.random() * 0.3);
       spawnImpactParticles(ix, iy, e.type);
     }
+    const wasAlive = e.alive;
     killIfDead(e);
+    if (wasAlive && !e.alive) sfxKill(e.type);
   }
   updateHud();
 }
@@ -1502,6 +1710,7 @@ function update(dt) {
   const curWeapon = WEAPONS[currentWeaponKey];
   if (mouseHeld && curWeapon.mode === "auto") tickFlamethrower(dt);
   if (!(mouseHeld && currentWeaponKey === "flamethrower")) {
+    flameLoopSetActive(false);
     const fw = WEAPONS.flamethrower;
     if (fuel < fw.maxFuel) {
       fuel = Math.min(fw.maxFuel, fuel + fw.fuelRegen * dt);
@@ -1526,7 +1735,8 @@ function update(dt) {
     } else if (dist <= stats.attackRange && now - e.lastAttack > stats.attackCooldown) {
       e.lastAttack = now;
       player.hp -= stats.damage;
-      if (player.hp <= 0) { player.hp = 0; gameOver = true; }
+      sfxPlayerHurt();
+      if (player.hp <= 0) { player.hp = 0; gameOver = true; sfxGameOver(); }
       updateHud();
     }
   }
