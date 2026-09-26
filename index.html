@@ -108,7 +108,9 @@
     <h1>PENGU&Oslash;&Oslash;M</h1>
     <p>The Emperor's Guard has seized four sectors of the Ice Fortress, and they brought
        polar bears. Clear every hostile from each sector before advancing to the next —
-       they get harder, and colder, the deeper you go.
+       they get harder, and colder, the deeper you go. Starting on Sector 2, one walrus
+       lurks in every sector: slow, but armored like a tank and hits far harder than a
+       bear — don't get cornered by it.
        Click to lock your mouse and begin. Press 1/2/3 to switch between the
        Fish Blaster, Harpoon Cannon, and Flamethrower.</p>
     <button id="startBtn">ENTER THE ICE</button>
@@ -201,24 +203,69 @@ function buildLevel(levelConfig) {
 }
 
 // ---------------------------------------------------------------------------
-// Penguin sprite: pre-rendered once to an offscreen canvas.
+// Enemy sprites: each type is pre-rendered once at startup into a small grid
+// of walk-cycle x expression frames (not just one static image), so legs,
+// flippers and paws swing as the enemy moves, and the face reads as calm or
+// snarling depending on whether it has spotted the player. Everything is
+// still baked into offscreen canvases ahead of time, so render() drops in a
+// single drawImage per enemy per frame — identical cost to the old
+// single-canvas version, just picking from a small array instead of a
+// constant.
 // ---------------------------------------------------------------------------
 const SPRITE_SIZE = 64;
-const penguinCanvas = document.createElement("canvas");
-penguinCanvas.width = SPRITE_SIZE;
-penguinCanvas.height = SPRITE_SIZE;
-(function drawPenguinSprite() {
-  const c = penguinCanvas.getContext("2d");
-  const s = SPRITE_SIZE;
+const ANIM_FRAME_COUNT = 4;
+
+function makeSpriteCanvas() {
+  const c = document.createElement("canvas");
+  c.width = SPRITE_SIZE; c.height = SPRITE_SIZE;
+  return c;
+}
+
+// Renders drawFn at ANIM_FRAME_COUNT evenly-spaced gait phases, for both a
+// calm and an aggressive (spotted-the-player) expression.
+function buildFrameSet(drawFn) {
+  const set = { neutral: [], aggressive: [] };
+  for (const aggressive of [false, true]) {
+    const frames = aggressive ? set.aggressive : set.neutral;
+    for (let i = 0; i < ANIM_FRAME_COUNT; i++) {
+      const phase = (i / ANIM_FRAME_COUNT) * Math.PI * 2;
+      const canvas = makeSpriteCanvas();
+      drawFn(canvas.getContext("2d"), SPRITE_SIZE, phase, aggressive);
+      frames.push(canvas);
+    }
+  }
+  return set;
+}
+
+// Per-type alpha mask, sampled from the neutral standing frame, so hit
+// detection can check "is there actually a sprite pixel under the crosshair"
+// instead of an arbitrary angular tolerance. Legs/flippers only shift a few
+// pixels across the animation, so one reference pose is accurate enough for
+// every frame of that type.
+function buildAlphaMask(canvas) {
+  const c = canvas.getContext("2d");
+  const data = c.getImageData(0, 0, canvas.width, canvas.height).data;
+  const mask = new Uint8Array(canvas.width * canvas.height);
+  for (let i = 0; i < mask.length; i++) mask[i] = data[i * 4 + 3] > 24 ? 1 : 0;
+  return mask;
+}
+
+function drawPenguinFrame(c, s, phase, aggressive) {
   c.clearRect(0, 0, s, s);
+  const legLift1 = Math.sin(phase) * 0.028;
+  const legLift2 = Math.sin(phase + Math.PI) * 0.028;
+  const wingSwing1 = Math.sin(phase + Math.PI) * 0.22;
+  const wingSwing2 = Math.sin(phase) * 0.22;
+
   // feet (drawn first, partly covered by body — still fully hittable since
-  // the alpha mask is sampled from this final composited canvas)
+  // the alpha mask is sampled from the neutral standing frame), alternating
+  // up/down across the gait phase for a waddling walk cycle.
   c.fillStyle = "#e8830f";
-  c.beginPath(); c.ellipse(s * 0.36, s * 0.94, s * 0.10, s * 0.045, 0, 0, Math.PI * 2); c.fill();
-  c.beginPath(); c.ellipse(s * 0.64, s * 0.94, s * 0.10, s * 0.045, 0, 0, Math.PI * 2); c.fill();
+  c.beginPath(); c.ellipse(s * 0.36, s * (0.94 + legLift1), s * 0.10, s * 0.045, 0, 0, Math.PI * 2); c.fill();
+  c.beginPath(); c.ellipse(s * 0.64, s * (0.94 + legLift2), s * 0.10, s * 0.045, 0, 0, Math.PI * 2); c.fill();
   c.fillStyle = "#ff9d2f";
-  c.beginPath(); c.ellipse(s * 0.355, s * 0.925, s * 0.085, s * 0.035, 0, 0, Math.PI * 2); c.fill();
-  c.beginPath(); c.ellipse(s * 0.645, s * 0.925, s * 0.085, s * 0.035, 0, 0, Math.PI * 2); c.fill();
+  c.beginPath(); c.ellipse(s * 0.355, s * (0.925 + legLift1), s * 0.085, s * 0.035, 0, 0, Math.PI * 2); c.fill();
+  c.beginPath(); c.ellipse(s * 0.645, s * (0.925 + legLift2), s * 0.085, s * 0.035, 0, 0, Math.PI * 2); c.fill();
 
   // body (black, radial-shaded for volume instead of flat fill)
   const bodyGrad = c.createRadialGradient(s * 0.42, s * 0.46, s * 0.06, s * 0.5, s * 0.58, s * 0.42);
@@ -247,13 +294,14 @@ penguinCanvas.height = SPRITE_SIZE;
     c.stroke();
   }
 
-  // little wings (behind head, in front of body edge)
+  // little wings (behind head, in front of body edge) — swing opposite the
+  // legs so the waddle reads as a real gait instead of a static pose
   const wingGrad = c.createLinearGradient(s * 0.18, s * 0.4, s * 0.3, s * 0.75);
   wingGrad.addColorStop(0, "#20282c");
   wingGrad.addColorStop(1, "#0a0e10");
   c.fillStyle = wingGrad;
-  c.beginPath(); c.ellipse(s * 0.24, s * 0.58, s * 0.06, s * 0.18, -0.3, 0, Math.PI * 2); c.fill();
-  c.beginPath(); c.ellipse(s * 0.76, s * 0.58, s * 0.06, s * 0.18, 0.3, 0, Math.PI * 2); c.fill();
+  c.beginPath(); c.ellipse(s * 0.24, s * 0.58, s * 0.06, s * 0.18, -0.3 + wingSwing1, 0, Math.PI * 2); c.fill();
+  c.beginPath(); c.ellipse(s * 0.76, s * 0.58, s * 0.06, s * 0.18, 0.3 + wingSwing2, 0, Math.PI * 2); c.fill();
 
   // head
   c.fillStyle = "#151b1f";
@@ -264,52 +312,71 @@ penguinCanvas.height = SPRITE_SIZE;
   c.fillStyle = "rgba(255,205,160,0.28)";
   c.beginPath(); c.ellipse(s * 0.34, s * 0.27, s * 0.045, s * 0.035, 0, 0, Math.PI * 2); c.fill();
   c.beginPath(); c.ellipse(s * 0.66, s * 0.27, s * 0.045, s * 0.035, 0, 0, Math.PI * 2); c.fill();
-  // eyes
-  c.fillStyle = "#fff";
-  c.beginPath(); c.ellipse(s * 0.43, s * 0.22, 0.045 * s, 0.05 * s, 0, 0, Math.PI * 2); c.fill();
-  c.beginPath(); c.ellipse(s * 0.57, s * 0.22, 0.045 * s, 0.05 * s, 0, 0, Math.PI * 2); c.fill();
-  c.fillStyle = "#000";
-  c.beginPath(); c.ellipse(s * 0.44, s * 0.225, 0.02 * s, 0.025 * s, 0, 0, Math.PI * 2); c.fill();
-  c.beginPath(); c.ellipse(s * 0.56, s * 0.225, 0.02 * s, 0.025 * s, 0, 0, Math.PI * 2); c.fill();
-  c.fillStyle = "rgba(255,255,255,0.8)";
-  c.beginPath(); c.ellipse(s * 0.435, s * 0.215, 0.008 * s, 0.01 * s, 0, 0, Math.PI * 2); c.fill();
-  c.beginPath(); c.ellipse(s * 0.555, s * 0.215, 0.008 * s, 0.01 * s, 0, 0, Math.PI * 2); c.fill();
-  // beak
+  // eyes — wide and round when calm, narrowed to angry slits once it's
+  // spotted the player
+  if (aggressive) {
+    c.strokeStyle = "#000";
+    c.lineWidth = s * 0.028;
+    c.lineCap = "round";
+    c.beginPath(); c.moveTo(s * 0.385, s * 0.205); c.lineTo(s * 0.475, s * 0.225); c.stroke();
+    c.beginPath(); c.moveTo(s * 0.615, s * 0.205); c.lineTo(s * 0.525, s * 0.225); c.stroke();
+  } else {
+    c.fillStyle = "#fff";
+    c.beginPath(); c.ellipse(s * 0.43, s * 0.22, 0.045 * s, 0.05 * s, 0, 0, Math.PI * 2); c.fill();
+    c.beginPath(); c.ellipse(s * 0.57, s * 0.22, 0.045 * s, 0.05 * s, 0, 0, Math.PI * 2); c.fill();
+    c.fillStyle = "#000";
+    c.beginPath(); c.ellipse(s * 0.44, s * 0.225, 0.02 * s, 0.025 * s, 0, 0, Math.PI * 2); c.fill();
+    c.beginPath(); c.ellipse(s * 0.56, s * 0.225, 0.02 * s, 0.025 * s, 0, 0, Math.PI * 2); c.fill();
+    c.fillStyle = "rgba(255,255,255,0.8)";
+    c.beginPath(); c.ellipse(s * 0.435, s * 0.215, 0.008 * s, 0.01 * s, 0, 0, Math.PI * 2); c.fill();
+    c.beginPath(); c.ellipse(s * 0.555, s * 0.215, 0.008 * s, 0.01 * s, 0, 0, Math.PI * 2); c.fill();
+  }
+  // beak — flares open in a hiss when aggressive, closed otherwise
   const beakGrad = c.createLinearGradient(s * 0.44, s * 0.27, s * 0.56, s * 0.31);
   beakGrad.addColorStop(0, "#ffb654");
   beakGrad.addColorStop(1, "#e8830f");
   c.fillStyle = beakGrad;
   c.beginPath();
-  c.moveTo(s * 0.5, s * 0.27);
-  c.lineTo(s * 0.5 - 0.06 * s, s * 0.31);
-  c.lineTo(s * 0.5 + 0.06 * s, s * 0.31);
+  if (aggressive) {
+    c.moveTo(s * 0.5, s * 0.265);
+    c.lineTo(s * 0.5 - 0.075 * s, s * 0.30);
+    c.lineTo(s * 0.5, s * 0.335);
+    c.lineTo(s * 0.5 + 0.075 * s, s * 0.30);
+  } else {
+    c.moveTo(s * 0.5, s * 0.27);
+    c.lineTo(s * 0.5 - 0.06 * s, s * 0.31);
+    c.lineTo(s * 0.5 + 0.06 * s, s * 0.31);
+  }
   c.closePath();
   c.fill();
+  if (aggressive) {
+    c.fillStyle = "#7a1c14";
+    c.beginPath(); c.ellipse(s * 0.5, s * 0.30, s * 0.025, s * 0.018, 0, 0, Math.PI * 2); c.fill();
+  }
   // thin outline for definition (also fills in anti-aliased edge pixels into the hit mask)
   c.strokeStyle = "rgba(0,0,0,0.35)";
   c.lineWidth = 1;
   c.beginPath();
   c.ellipse(s * 0.5, s * 0.58, s * 0.30, s * 0.40, 0, 0, Math.PI * 2);
   c.stroke();
-})();
+}
 
-const polarBearCanvas = document.createElement("canvas");
-polarBearCanvas.width = SPRITE_SIZE;
-polarBearCanvas.height = SPRITE_SIZE;
-(function drawPolarBearSprite() {
-  const c = polarBearCanvas.getContext("2d");
-  const s = SPRITE_SIZE;
+function drawPolarBearFrame(c, s, phase, aggressive) {
   c.clearRect(0, 0, s, s);
-  // paws (with claws)
+  const legLift1 = Math.sin(phase) * 0.022;
+  const legLift2 = Math.sin(phase + Math.PI) * 0.022;
+
+  // paws (with claws), alternating up/down across the gait phase
   c.fillStyle = "#c7d3d8";
-  c.beginPath(); c.ellipse(s * 0.30, s * 0.94, s * 0.13, s * 0.065, 0, 0, Math.PI * 2); c.fill();
-  c.beginPath(); c.ellipse(s * 0.70, s * 0.94, s * 0.13, s * 0.065, 0, 0, Math.PI * 2); c.fill();
+  c.beginPath(); c.ellipse(s * 0.30, s * (0.94 + legLift1), s * 0.13, s * 0.065, 0, 0, Math.PI * 2); c.fill();
+  c.beginPath(); c.ellipse(s * 0.70, s * (0.94 + legLift2), s * 0.13, s * 0.065, 0, 0, Math.PI * 2); c.fill();
   c.fillStyle = "#dfe8ec";
-  c.beginPath(); c.ellipse(s * 0.30, s * 0.925, s * 0.115, s * 0.05, 0, 0, Math.PI * 2); c.fill();
-  c.beginPath(); c.ellipse(s * 0.70, s * 0.925, s * 0.115, s * 0.05, 0, 0, Math.PI * 2); c.fill();
+  c.beginPath(); c.ellipse(s * 0.30, s * (0.925 + legLift1), s * 0.115, s * 0.05, 0, 0, Math.PI * 2); c.fill();
+  c.beginPath(); c.ellipse(s * 0.70, s * (0.925 + legLift2), s * 0.115, s * 0.05, 0, 0, Math.PI * 2); c.fill();
   c.fillStyle = "#4a4f53";
   for (const px of [0.22, 0.30, 0.38, 0.62, 0.70, 0.78]) {
-    c.beginPath(); c.ellipse(s * px, s * 0.96, s * 0.012, s * 0.018, 0, 0, Math.PI * 2); c.fill();
+    const lift = px < 0.5 ? legLift1 : legLift2;
+    c.beginPath(); c.ellipse(s * px, s * (0.96 + lift), s * 0.012, s * 0.018, 0, 0, Math.PI * 2); c.fill();
   }
 
   // body, radially shaded so it reads as round fur rather than a flat disc
@@ -352,16 +419,38 @@ polarBearCanvas.height = SPRITE_SIZE;
   c.beginPath(); c.ellipse(s * 0.5, s * 0.40, s * 0.045, s * 0.035, 0, 0, Math.PI * 2); c.fill();
   c.fillStyle = "rgba(255,255,255,0.5)";
   c.beginPath(); c.ellipse(s * 0.49, s * 0.39, s * 0.012, s * 0.008, 0, 0, Math.PI * 2); c.fill();
-  // mouth line
-  c.strokeStyle = "#20242a";
-  c.lineWidth = 1;
-  c.beginPath(); c.moveTo(s * 0.5, s * 0.435); c.lineTo(s * 0.5, s * 0.46); c.stroke();
-  c.beginPath(); c.moveTo(s * 0.5, s * 0.46); c.quadraticCurveTo(s * 0.46, s * 0.475, s * 0.44, s * 0.465); c.stroke();
-  c.beginPath(); c.moveTo(s * 0.5, s * 0.46); c.quadraticCurveTo(s * 0.54, s * 0.475, s * 0.56, s * 0.465); c.stroke();
+  // mouth — roaring open with teeth and a furrowed brow when aggressive,
+  // otherwise the calm closed-mouth line
+  if (aggressive) {
+    c.fillStyle = "#3a1410";
+    c.beginPath();
+    c.moveTo(s * 0.5, s * 0.435);
+    c.quadraticCurveTo(s * 0.40, s * 0.50, s * 0.42, s * 0.575);
+    c.quadraticCurveTo(s * 0.5, s * 0.605, s * 0.58, s * 0.575);
+    c.quadraticCurveTo(s * 0.60, s * 0.50, s * 0.5, s * 0.435);
+    c.closePath();
+    c.fill();
+    c.fillStyle = "#b33";
+    c.beginPath(); c.ellipse(s * 0.5, s * 0.55, s * 0.05, s * 0.03, 0, 0, Math.PI * 2); c.fill();
+    c.fillStyle = "#fff";
+    for (const tx of [0.45, 0.5, 0.55]) {
+      c.beginPath(); c.moveTo(s * tx, s * 0.45); c.lineTo(s * (tx - 0.018), s * 0.475); c.lineTo(s * (tx + 0.018), s * 0.475); c.closePath(); c.fill();
+      c.beginPath(); c.moveTo(s * tx, s * 0.58); c.lineTo(s * (tx - 0.018), s * 0.555); c.lineTo(s * (tx + 0.018), s * 0.555); c.closePath(); c.fill();
+    }
+    c.strokeStyle = "#8a9298"; c.lineWidth = s * 0.02; c.lineCap = "round";
+    c.beginPath(); c.moveTo(s * 0.34, s * 0.235); c.lineTo(s * 0.42, s * 0.255); c.stroke();
+    c.beginPath(); c.moveTo(s * 0.66, s * 0.235); c.lineTo(s * 0.58, s * 0.255); c.stroke();
+  } else {
+    c.strokeStyle = "#20242a";
+    c.lineWidth = 1;
+    c.beginPath(); c.moveTo(s * 0.5, s * 0.435); c.lineTo(s * 0.5, s * 0.46); c.stroke();
+    c.beginPath(); c.moveTo(s * 0.5, s * 0.46); c.quadraticCurveTo(s * 0.46, s * 0.475, s * 0.44, s * 0.465); c.stroke();
+    c.beginPath(); c.moveTo(s * 0.5, s * 0.46); c.quadraticCurveTo(s * 0.54, s * 0.475, s * 0.56, s * 0.465); c.stroke();
+  }
   // eyes
   c.fillStyle = "#20242a";
-  c.beginPath(); c.ellipse(s * 0.40, s * 0.28, s * 0.025, s * 0.03, 0, 0, Math.PI * 2); c.fill();
-  c.beginPath(); c.ellipse(s * 0.60, s * 0.28, s * 0.025, s * 0.03, 0, 0, Math.PI * 2); c.fill();
+  c.beginPath(); c.ellipse(s * 0.40, s * (aggressive ? 0.285 : 0.28), s * 0.025, s * (aggressive ? 0.022 : 0.03), 0, 0, Math.PI * 2); c.fill();
+  c.beginPath(); c.ellipse(s * 0.60, s * (aggressive ? 0.285 : 0.28), s * 0.025, s * (aggressive ? 0.022 : 0.03), 0, 0, Math.PI * 2); c.fill();
   c.fillStyle = "rgba(255,255,255,0.7)";
   c.beginPath(); c.ellipse(s * 0.395, s * 0.272, s * 0.008, s * 0.009, 0, 0, Math.PI * 2); c.fill();
   c.beginPath(); c.ellipse(s * 0.595, s * 0.272, s * 0.008, s * 0.009, 0, 0, Math.PI * 2); c.fill();
@@ -369,27 +458,123 @@ polarBearCanvas.height = SPRITE_SIZE;
   c.strokeStyle = "rgba(120,140,150,0.3)";
   c.lineWidth = 1;
   c.beginPath(); c.ellipse(s * 0.5, s * 0.62, s * 0.37, s * 0.33, 0, 0, Math.PI * 2); c.stroke();
-})();
-
-// Per-type alpha masks, sampled from the exact pixels drawn above, so hit
-// detection can check "is there actually a sprite pixel under the crosshair"
-// instead of an arbitrary angular tolerance.
-function buildAlphaMask(canvas) {
-  const c = canvas.getContext("2d");
-  const data = c.getImageData(0, 0, canvas.width, canvas.height).data;
-  const mask = new Uint8Array(canvas.width * canvas.height);
-  for (let i = 0; i < mask.length; i++) mask[i] = data[i * 4 + 3] > 24 ? 1 : 0;
-  return mask;
 }
-const penguinAlphaMask = buildAlphaMask(penguinCanvas);
-const polarBearAlphaMask = buildAlphaMask(polarBearCanvas);
+
+function drawWalrusFrame(c, s, phase, aggressive) {
+  c.clearRect(0, 0, s, s);
+  const legLift1 = Math.sin(phase) * 0.016;
+  const legLift2 = Math.sin(phase + Math.PI) * 0.016;
+
+  // flippers — short and stubby, barely lifting as it shuffles along
+  c.fillStyle = "#7a6650";
+  c.beginPath(); c.ellipse(s * 0.28, s * (0.95 + legLift1), s * 0.15, s * 0.06, 0, 0, Math.PI * 2); c.fill();
+  c.beginPath(); c.ellipse(s * 0.72, s * (0.95 + legLift2), s * 0.15, s * 0.06, 0, 0, Math.PI * 2); c.fill();
+  c.fillStyle = "#8d7a62";
+  c.beginPath(); c.ellipse(s * 0.28, s * (0.935 + legLift1), s * 0.13, s * 0.045, 0, 0, Math.PI * 2); c.fill();
+  c.beginPath(); c.ellipse(s * 0.72, s * (0.935 + legLift2), s * 0.13, s * 0.045, 0, 0, Math.PI * 2); c.fill();
+
+  // body: big barrel-shaped bulk, radially shaded
+  const bodyGrad = c.createRadialGradient(s * 0.4, s * 0.5, s * 0.08, s * 0.5, s * 0.64, s * 0.46);
+  bodyGrad.addColorStop(0, "#b09070");
+  bodyGrad.addColorStop(0.6, "#8d7359");
+  bodyGrad.addColorStop(1, "#5f4c3a");
+  c.fillStyle = bodyGrad;
+  c.beginPath(); c.ellipse(s * 0.5, s * 0.64, s * 0.40, s * 0.34, 0, 0, Math.PI * 2); c.fill();
+  // blubbery fold lines
+  c.strokeStyle = "rgba(90,72,54,0.4)";
+  c.lineWidth = 1;
+  for (let i = 0; i < 4; i++) {
+    c.beginPath();
+    c.ellipse(s * 0.5, s * (0.55 + i * 0.09), s * (0.30 - i * 0.02), s * 0.05, 0, 0, Math.PI);
+    c.stroke();
+  }
+  // belly shading
+  c.fillStyle = "#c9ac8c";
+  c.beginPath(); c.ellipse(s * 0.5, s * 0.82, s * 0.30, s * 0.10, 0, 0, Math.PI * 2); c.fill();
+
+  // head
+  const headGrad = c.createRadialGradient(s * 0.44, s * 0.26, s * 0.04, s * 0.5, s * 0.33, s * 0.26);
+  headGrad.addColorStop(0, "#b8996f");
+  headGrad.addColorStop(1, "#8d7359");
+  c.fillStyle = headGrad;
+  c.beginPath(); c.ellipse(s * 0.5, s * 0.33, s * 0.23, s * 0.21, 0, 0, Math.PI * 2); c.fill();
+
+  // whiskers
+  c.strokeStyle = "rgba(40,30,20,0.5)";
+  c.lineWidth = 0.8;
+  for (const wy of [-0.02, 0, 0.02, 0.04]) {
+    c.beginPath(); c.moveTo(s * 0.42, s * (0.42 + wy)); c.lineTo(s * 0.27, s * (0.40 + wy)); c.stroke();
+    c.beginPath(); c.moveTo(s * 0.58, s * (0.42 + wy)); c.lineTo(s * 0.73, s * (0.40 + wy)); c.stroke();
+  }
+
+  // eyes: small and deep-set
+  c.fillStyle = "#1a1410";
+  c.beginPath(); c.ellipse(s * 0.40, s * 0.28, s * 0.022, s * 0.026, 0, 0, Math.PI * 2); c.fill();
+  c.beginPath(); c.ellipse(s * 0.60, s * 0.28, s * 0.022, s * 0.026, 0, 0, Math.PI * 2); c.fill();
+  if (aggressive) {
+    c.strokeStyle = "#3a2c1c"; c.lineWidth = s * 0.022; c.lineCap = "round";
+    c.beginPath(); c.moveTo(s * 0.33, s * 0.235); c.lineTo(s * 0.42, s * 0.255); c.stroke();
+    c.beginPath(); c.moveTo(s * 0.67, s * 0.235); c.lineTo(s * 0.58, s * 0.255); c.stroke();
+  }
+
+  // mouth: bellowing open when aggressive, a closed line otherwise
+  if (aggressive) {
+    c.fillStyle = "#4a1f18";
+    c.beginPath(); c.ellipse(s * 0.5, s * 0.46, s * 0.09, s * 0.06, 0, 0, Math.PI * 2); c.fill();
+  } else {
+    c.strokeStyle = "#3a2c1c"; c.lineWidth = 1;
+    c.beginPath(); c.moveTo(s * 0.44, s * 0.44); c.quadraticCurveTo(s * 0.5, s * 0.455, s * 0.56, s * 0.44); c.stroke();
+  }
+
+  // tusks — hang further and gleam brighter when aggressive
+  const tuskLen = aggressive ? 0.30 : 0.24;
+  const tuskGrad = c.createLinearGradient(0, s * 0.42, 0, s * (0.42 + tuskLen));
+  tuskGrad.addColorStop(0, "#fffbe8");
+  tuskGrad.addColorStop(1, "#e8dcb8");
+  c.fillStyle = tuskGrad;
+  for (const side of [-1, 1]) {
+    c.beginPath();
+    c.moveTo(s * (0.5 + side * 0.09), s * 0.44);
+    c.quadraticCurveTo(s * (0.5 + side * 0.135), s * (0.44 + tuskLen * 0.6), s * (0.5 + side * 0.095), s * (0.44 + tuskLen));
+    c.lineTo(s * (0.5 + side * 0.055), s * (0.44 + tuskLen * 0.92));
+    c.quadraticCurveTo(s * (0.5 + side * 0.075), s * (0.44 + tuskLen * 0.5), s * (0.5 + side * 0.05), s * 0.44);
+    c.closePath();
+    c.fill();
+    c.strokeStyle = "rgba(120,100,60,0.4)"; c.lineWidth = 0.8; c.stroke();
+  }
+
+  // outline for definition
+  c.strokeStyle = "rgba(60,45,30,0.35)";
+  c.lineWidth = 1;
+  c.beginPath(); c.ellipse(s * 0.5, s * 0.64, s * 0.40, s * 0.34, 0, 0, Math.PI * 2); c.stroke();
+}
+
+const penguinFrames = buildFrameSet(drawPenguinFrame);
+const polarBearFrames = buildFrameSet(drawPolarBearFrame);
+const walrusFrames = buildFrameSet(drawWalrusFrame);
+const penguinAlphaMask = buildAlphaMask(penguinFrames.neutral[0]);
+const polarBearAlphaMask = buildAlphaMask(polarBearFrames.neutral[0]);
+const walrusAlphaMask = buildAlphaMask(walrusFrames.neutral[0]);
+
+// Picks the current walk-cycle/expression frame for an enemy: aggressive
+// once it has spotted the player (e.aware, set in the AI update), calm
+// otherwise, stepping through the gait frames as e.animPhase advances.
+function currentSpriteFrame(stats, e) {
+  const frames = stats.frames[e.aware ? "aggressive" : "neutral"];
+  const t = e.animPhase - Math.floor(e.animPhase);
+  const idx = Math.min(ANIM_FRAME_COUNT - 1, Math.floor(t * ANIM_FRAME_COUNT));
+  return frames[idx];
+}
 
 // wanderSpeedMult scales `speed` down for idle roaming, so the chase/charge
 // speed already tuned for difficulty stays exactly as it was — a polar bear's
 // charge is literally 2x its own lumber speed, per wanderSpeedMult: 0.5.
 const ENEMY_TYPES = {
-  penguin: { hp: 2, speed: 1.1, damage: 8, detect: 8, attackRange: 0.6, attackCooldown: 700, canvas: penguinCanvas, alphaMask: penguinAlphaMask, scale: 0.9, wanderSpeedMult: 0.35, wanderInterval: [1.2, 3.0], wanderPauseChance: 0.25 },
-  polarbear: { hp: 6, speed: 0.85, damage: 20, detect: 9, attackRange: 0.85, attackCooldown: 900, canvas: polarBearCanvas, alphaMask: polarBearAlphaMask, scale: 1.35, wanderSpeedMult: 0.5, wanderInterval: [2.0, 4.0], wanderPauseChance: 0.35 },
+  penguin: { hp: 2, speed: 1.1, damage: 8, detect: 8, attackRange: 0.6, attackCooldown: 700, frames: penguinFrames, alphaMask: penguinAlphaMask, scale: 0.9, wanderSpeedMult: 0.35, wanderInterval: [1.2, 3.0], wanderPauseChance: 0.25 },
+  polarbear: { hp: 6, speed: 0.85, damage: 20, detect: 9, attackRange: 0.85, attackCooldown: 900, frames: polarBearFrames, alphaMask: polarBearAlphaMask, scale: 1.35, wanderSpeedMult: 0.5, wanderInterval: [2.0, 4.0], wanderPauseChance: 0.35 },
+  // Very slow, but ~3x a polar bear's HP (so ~3x harder to kill) and hits
+  // considerably harder — one spawns per sector from Sector 2 onward.
+  walrus: { hp: 18, speed: 0.45, damage: 34, detect: 7, attackRange: 1.0, attackCooldown: 1300, frames: walrusFrames, alphaMask: walrusAlphaMask, scale: 1.65, wanderSpeedMult: 0.35, wanderInterval: [3.0, 6.0], wanderPauseChance: 0.45 },
 };
 
 // ---------------------------------------------------------------------------
@@ -630,10 +815,14 @@ function sfxHarpoon() {
   playNoise({ duration: 0.06, gain: 0.15, filterFreq: 2600, filterType: "highpass" });
 }
 function sfxHit(enemyType) {
-  playTone({ freq: enemyType === "polarbear" ? 320 : 520, endFreq: 180, type: "triangle", duration: 0.08, gain: 0.22 });
+  const freq = enemyType === "walrus" ? 220 : enemyType === "polarbear" ? 320 : 520;
+  playTone({ freq, endFreq: 150, type: "triangle", duration: 0.08, gain: 0.22 });
 }
 function sfxKill(enemyType) {
-  if (enemyType === "polarbear") {
+  if (enemyType === "walrus") {
+    playTone({ freq: 130, endFreq: 35, type: "sawtooth", duration: 0.65, gain: 0.34 });
+    playNoise({ duration: 0.4, gain: 0.22, filterFreq: 250, filterType: "lowpass", delay: 0.05 });
+  } else if (enemyType === "polarbear") {
     playTone({ freq: 200, endFreq: 55, type: "sawtooth", duration: 0.45, gain: 0.3 });
   } else {
     playTone({ freq: 640, endFreq: 900, type: "sine", duration: 0.12, gain: 0.25 });
@@ -644,9 +833,35 @@ function sfxPlayerHurt() {
   playNoise({ duration: 0.16, gain: 0.35, filterFreq: 700, filterType: "lowpass" });
   playTone({ freq: 140, endFreq: 60, type: "sawtooth", duration: 0.2, gain: 0.25 });
 }
+// Layered bear roar: a low growl sweep, a sub-bass rumble an octave under
+// it, and two filtered noise bursts for breathy/throaty texture — reads as
+// a real bear roar instead of a single tone.
 function sfxRoar() {
-  playTone({ freq: 90, endFreq: 55, type: "sawtooth", duration: 0.55, gain: 0.32 });
-  playNoise({ duration: 0.5, gain: 0.28, filterFreq: 350, filterType: "lowpass", delay: 0.02 });
+  playTone({ freq: 130, endFreq: 70, type: "sawtooth", duration: 0.7, gain: 0.34 });
+  playTone({ freq: 65, endFreq: 40, type: "sawtooth", duration: 0.75, gain: 0.28, delay: 0.02 });
+  playNoise({ duration: 0.6, gain: 0.32, filterFreq: 300, filterType: "lowpass", delay: 0.03 });
+  playNoise({ duration: 0.22, gain: 0.22, filterFreq: 1400, filterType: "bandpass", delay: 0.05 });
+}
+// Deep, nasal walrus bellow — lower and longer than the bear's roar, with a
+// slow pitch wobble so it reads as a heavy, blubbery honk rather than a growl.
+function sfxWalrusBellow() {
+  const t0 = audioCtx.currentTime;
+  const osc = audioCtx.createOscillator();
+  osc.type = "sawtooth";
+  osc.frequency.setValueAtTime(95, t0);
+  osc.frequency.linearRampToValueAtTime(60, t0 + 0.9);
+  const wobble = audioCtx.createOscillator();
+  wobble.type = "sine"; wobble.frequency.value = 7;
+  const wobbleGain = audioCtx.createGain(); wobbleGain.gain.value = 6;
+  wobble.connect(wobbleGain); wobbleGain.connect(osc.frequency);
+  const g = audioCtx.createGain();
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.exponentialRampToValueAtTime(0.32, t0 + 0.08);
+  g.gain.exponentialRampToValueAtTime(0.0005, t0 + 1.0);
+  osc.connect(g); g.connect(sfxGain);
+  wobble.start(t0); osc.start(t0);
+  wobble.stop(t0 + 1.05); osc.stop(t0 + 1.05);
+  playNoise({ duration: 0.5, gain: 0.22, filterFreq: 220, filterType: "lowpass", delay: 0.04 });
 }
 function sfxLevelClear() {
   [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => playTone({ freq: f, type: "triangle", duration: 0.5, gain: 0.22, delay: i * 0.11 }));
@@ -828,6 +1043,15 @@ function newGame() {
   startLevel(0);
 }
 
+function makeEnemy(type, x, y) {
+  const stats = ENEMY_TYPES[type];
+  return {
+    type, x: x + 0.5, y: y + 0.5, hp: stats.hp, alive: true, hitFlash: 0, lastAttack: 0,
+    hunting: false, aware: false, wanderDirX: 0, wanderDirY: 0, wanderTimer: Math.random() * 2,
+    animPhase: Math.random() * 4,
+  };
+}
+
 // Rebuilds the maze and enemy roster for a sector without touching HP,
 // weapon, or fuel — those carry over between sectors.
 function startLevel(idx) {
@@ -844,14 +1068,17 @@ function startLevel(idx) {
   const candidates = openCells.filter(([x, y]) => distance(x, y, player.x, player.y) > 4);
   const shuffled = candidates.sort(() => Math.random() - 0.5);
   const count = Math.min(18, Math.max(7, Math.floor(shuffled.length / 6)) + level.enemyBonus);
-  enemies = shuffled.slice(0, count).map(([x, y]) => {
-    const type = Math.random() < level.bearChance ? "polarbear" : "penguin";
-    const stats = ENEMY_TYPES[type];
-    return {
-      type, x: x + 0.5, y: y + 0.5, hp: stats.hp, alive: true, hitFlash: 0, lastAttack: 0,
-      hunting: false, wanderDirX: 0, wanderDirY: 0, wanderTimer: Math.random() * 2,
-    };
-  });
+  enemies = shuffled.slice(0, count).map(([x, y]) => makeEnemy(Math.random() < level.bearChance ? "polarbear" : "penguin", x, y));
+
+  // Exactly one walrus per sector from Sector 2 onward: slow, very tanky,
+  // very hard-hitting — placed on a leftover cell so it doesn't just spawn
+  // stacked with the regular roster.
+  if (idx >= 1) {
+    const leftover = shuffled.slice(count);
+    const pool = leftover.length ? leftover : shuffled;
+    const [wx, wy] = pool[Math.floor(Math.random() * pool.length)];
+    enemies.push(makeEnemy("walrus", wx, wy));
+  }
 
   updateHud();
 }
@@ -1322,6 +1549,7 @@ function drawTracers() {
 let impactParticles = [];
 function spawnImpactParticles(x, y, enemyType) {
   const isBear = enemyType === "polarbear";
+  const isWalrus = enemyType === "walrus";
   const count = 9 + Math.floor(Math.random() * 4);
   for (let i = 0; i < count; i++) {
     const angle = Math.random() * Math.PI * 2;
@@ -1332,8 +1560,10 @@ function spawnImpactParticles(x, y, enemyType) {
       vy: Math.sin(angle) * speed - 50,
       life: 0.22 + Math.random() * 0.22,
       maxLife: 0.44,
-      size: isBear ? 2 + Math.random() * 2.6 : 1.4 + Math.random() * 2,
-      color: isBear
+      size: isBear || isWalrus ? 2 + Math.random() * 2.6 : 1.4 + Math.random() * 2,
+      color: isWalrus
+        ? (Math.random() < 0.6 ? "#8d7359" : "#e8dcb8")
+        : isBear
         ? (Math.random() < 0.5 ? "#f4f4f4" : "#d9dde0")
         : (Math.random() < 0.6 ? "#1a1f22" : "#ff9d2f"),
     });
@@ -1751,10 +1981,21 @@ function update(dt) {
     const stats = ENEMY_TYPES[e.type];
     const dx = player.x - e.x, dy = player.y - e.y;
     const dist = Math.hypot(dx, dy);
-    const hunting = dist < stats.detect && dist > stats.attackRange && hasLineOfSight(e.x, e.y, player.x, player.y);
+    // "aware" (spotted the player, within detect range and line of sight)
+    // drives the aggressive face/expression and the roar/bellow cue, and is
+    // broader than "hunting" (aware AND still outside biting range) — an
+    // enemy standing right next to the player between attacks stays aware
+    // and snarling rather than reverting to a calm idle look.
+    const wasAware = e.aware;
+    const aware = dist < stats.detect && hasLineOfSight(e.x, e.y, player.x, player.y);
+    e.aware = aware;
+    if (aware && !wasAware) {
+      if (e.type === "polarbear") sfxRoar();
+      else if (e.type === "walrus") sfxWalrusBellow();
+    }
+    const hunting = aware && dist > stats.attackRange;
 
     if (hunting) {
-      if (!e.hunting && e.type === "polarbear") sfxRoar();
       e.hunting = true;
       const speed = stats.speed * dt;
       const nx = e.x + (dx / dist) * speed;
@@ -1769,11 +2010,14 @@ function update(dt) {
         sfxPlayerHurt();
         if (player.hp <= 0) { player.hp = 0; gameOver = true; sfxGameOver(); }
         updateHud();
-      } else {
-        // Idle roaming: penguins waddle, polar bears lumber — both at a slow
-        // fraction of their (unchanged) chase speed, in a random heading that
-        // changes on a timer, with occasional pauses and a wall-bounce so
-        // they don't shove uselessly into a corner.
+      } else if (!aware) {
+        // Idle roaming: penguins waddle, polar bears lumber, walruses barely
+        // shuffle — all at a slow fraction of their (unchanged) chase speed,
+        // in a random heading that changes on a timer, with occasional
+        // pauses and a wall-bounce so they don't shove uselessly into a
+        // corner. Only when the player hasn't been spotted — an aware enemy
+        // that's merely on attack cooldown holds its ground and glares
+        // instead of waddling off mid-fight.
         e.wanderTimer -= dt;
         if (e.wanderTimer <= 0) {
           e.wanderTimer = stats.wanderInterval[0] + Math.random() * (stats.wanderInterval[1] - stats.wanderInterval[0]);
@@ -1794,8 +2038,17 @@ function update(dt) {
           if (openY) e.y = ny; else e.wanderDirY = -e.wanderDirY;
           if (!openX && !openY) e.wanderTimer = 0;
         }
+      } else {
+        e.wanderDirX = 0; e.wanderDirY = 0;
       }
     }
+
+    // Walk-cycle animation phase: advances faster while actually moving
+    // (chasing or wandering) than while standing still, scaled by the
+    // enemy's own speed stat so a lumbering walrus visibly shuffles slower
+    // than a waddling penguin.
+    const moving = hunting || e.wanderDirX !== 0 || e.wanderDirY !== 0;
+    e.animPhase += dt * stats.speed * (moving ? 2.2 : 0.6);
   }
 
   if (muzzleFlash > 0) muzzleFlash--;
@@ -1949,6 +2202,8 @@ function renderSprites() {
     const { drawStartX, drawEndX, drawStartY, spriteWidth, spriteHeight, transformY } = proj;
     if (drawEndX < 0 || drawStartX > SCREEN_W) continue;
 
+    const spriteCanvas = currentSpriteFrame(stats, e);
+
     // Find contiguous unoccluded column runs against the depth buffer.
     let runStart = null;
     for (let sx = Math.max(0, drawStartX); sx <= Math.min(SCREEN_W - 1, drawEndX); sx++) {
@@ -1956,7 +2211,7 @@ function renderSprites() {
       if (visible && runStart === null) runStart = sx;
       if ((!visible || sx === Math.min(SCREEN_W - 1, drawEndX)) && runStart !== null) {
         const runEnd = visible ? sx + 1 : sx;
-        drawSpriteRun(e, stats.canvas, drawStartX, drawStartY, spriteWidth, spriteHeight, runStart, runEnd);
+        drawSpriteRun(e, spriteCanvas, drawStartX, drawStartY, spriteWidth, spriteHeight, runStart, runEnd);
         runStart = null;
       }
     }
@@ -2005,9 +2260,9 @@ function renderMinimap() {
   }
   for (const e of enemies) {
     if (!e.alive) continue;
-    mmCtx.fillStyle = e.type === "polarbear" ? "#ffffff" : "#7fe8ff";
+    mmCtx.fillStyle = e.type === "walrus" ? "#c9a878" : e.type === "polarbear" ? "#ffffff" : "#7fe8ff";
     mmCtx.beginPath();
-    mmCtx.arc(e.x * scale, e.y * scale, e.type === "polarbear" ? 3 : 2, 0, Math.PI * 2);
+    mmCtx.arc(e.x * scale, e.y * scale, e.type === "walrus" ? 4 : e.type === "polarbear" ? 3 : 2, 0, Math.PI * 2);
     mmCtx.fill();
   }
   mmCtx.fillStyle = "#7fffb0";
