@@ -39,7 +39,7 @@
   <canvas id="game" width="800" height="480"></canvas>
   <canvas id="minimap" width="150" height="150"></canvas>
   <div id="crosshair"></div>
-  <div id="hint">WASD move · mouse/scroll to turn · hold click to fire · 1/2/3 weapon · R restart</div>
+  <div id="hint">WASD move · mouse to look (aim up/down matters!) · scroll to turn · hold click to fire · 1/2/3 weapon · R restart</div>
   <div id="hud">
     <div id="hp">HP: 100</div>
     <div id="level">Sector 1: Ice Fortress</div>
@@ -138,25 +138,59 @@ penguinCanvas.height = SPRITE_SIZE;
   const c = penguinCanvas.getContext("2d");
   const s = SPRITE_SIZE;
   c.clearRect(0, 0, s, s);
-  // feet
+  // feet (drawn first, partly covered by body — still fully hittable since
+  // the alpha mask is sampled from this final composited canvas)
+  c.fillStyle = "#e8830f";
+  c.beginPath(); c.ellipse(s * 0.36, s * 0.94, s * 0.10, s * 0.045, 0, 0, Math.PI * 2); c.fill();
+  c.beginPath(); c.ellipse(s * 0.64, s * 0.94, s * 0.10, s * 0.045, 0, 0, Math.PI * 2); c.fill();
   c.fillStyle = "#ff9d2f";
-  c.beginPath(); c.ellipse(s * 0.36, s * 0.93, s * 0.09, s * 0.04, 0, 0, Math.PI * 2); c.fill();
-  c.beginPath(); c.ellipse(s * 0.64, s * 0.93, s * 0.09, s * 0.04, 0, 0, Math.PI * 2); c.fill();
-  // body (black)
-  c.fillStyle = "#12181c";
+  c.beginPath(); c.ellipse(s * 0.355, s * 0.925, s * 0.085, s * 0.035, 0, 0, Math.PI * 2); c.fill();
+  c.beginPath(); c.ellipse(s * 0.645, s * 0.925, s * 0.085, s * 0.035, 0, 0, Math.PI * 2); c.fill();
+
+  // body (black, radial-shaded for volume instead of flat fill)
+  const bodyGrad = c.createRadialGradient(s * 0.42, s * 0.46, s * 0.06, s * 0.5, s * 0.58, s * 0.42);
+  bodyGrad.addColorStop(0, "#232b30");
+  bodyGrad.addColorStop(0.55, "#161d21");
+  bodyGrad.addColorStop(1, "#0a0e10");
+  c.fillStyle = bodyGrad;
   c.beginPath();
   c.ellipse(s * 0.5, s * 0.58, s * 0.30, s * 0.40, 0, 0, Math.PI * 2);
   c.fill();
-  // belly (white)
-  c.fillStyle = "#f4fbff";
+
+  // belly (white, subtly shaded)
+  const bellyGrad = c.createRadialGradient(s * 0.46, s * 0.48, s * 0.03, s * 0.5, s * 0.62, s * 0.3);
+  bellyGrad.addColorStop(0, "#ffffff");
+  bellyGrad.addColorStop(1, "#dcedf3");
+  c.fillStyle = bellyGrad;
   c.beginPath();
   c.ellipse(s * 0.5, s * 0.62, s * 0.18, s * 0.30, 0, 0, Math.PI * 2);
   c.fill();
+  // faint chest feather lines
+  c.strokeStyle = "rgba(150,180,195,0.35)";
+  c.lineWidth = 0.9;
+  for (let i = 0; i < 3; i++) {
+    c.beginPath();
+    c.ellipse(s * 0.5, s * (0.5 + i * 0.13), s * (0.14 - i * 0.02), s * 0.05, 0, 0, Math.PI);
+    c.stroke();
+  }
+
+  // little wings (behind head, in front of body edge)
+  const wingGrad = c.createLinearGradient(s * 0.18, s * 0.4, s * 0.3, s * 0.75);
+  wingGrad.addColorStop(0, "#20282c");
+  wingGrad.addColorStop(1, "#0a0e10");
+  c.fillStyle = wingGrad;
+  c.beginPath(); c.ellipse(s * 0.24, s * 0.58, s * 0.06, s * 0.18, -0.3, 0, Math.PI * 2); c.fill();
+  c.beginPath(); c.ellipse(s * 0.76, s * 0.58, s * 0.06, s * 0.18, 0.3, 0, Math.PI * 2); c.fill();
+
   // head
-  c.fillStyle = "#12181c";
+  c.fillStyle = "#151b1f";
   c.beginPath();
   c.ellipse(s * 0.5, s * 0.24, s * 0.18, s * 0.18, 0, 0, Math.PI * 2);
   c.fill();
+  // cheek blush
+  c.fillStyle = "rgba(255,205,160,0.28)";
+  c.beginPath(); c.ellipse(s * 0.34, s * 0.27, s * 0.045, s * 0.035, 0, 0, Math.PI * 2); c.fill();
+  c.beginPath(); c.ellipse(s * 0.66, s * 0.27, s * 0.045, s * 0.035, 0, 0, Math.PI * 2); c.fill();
   // eyes
   c.fillStyle = "#fff";
   c.beginPath(); c.ellipse(s * 0.43, s * 0.22, 0.045 * s, 0.05 * s, 0, 0, Math.PI * 2); c.fill();
@@ -164,18 +198,26 @@ penguinCanvas.height = SPRITE_SIZE;
   c.fillStyle = "#000";
   c.beginPath(); c.ellipse(s * 0.44, s * 0.225, 0.02 * s, 0.025 * s, 0, 0, Math.PI * 2); c.fill();
   c.beginPath(); c.ellipse(s * 0.56, s * 0.225, 0.02 * s, 0.025 * s, 0, 0, Math.PI * 2); c.fill();
+  c.fillStyle = "rgba(255,255,255,0.8)";
+  c.beginPath(); c.ellipse(s * 0.435, s * 0.215, 0.008 * s, 0.01 * s, 0, 0, Math.PI * 2); c.fill();
+  c.beginPath(); c.ellipse(s * 0.555, s * 0.215, 0.008 * s, 0.01 * s, 0, 0, Math.PI * 2); c.fill();
   // beak
-  c.fillStyle = "#ff9d2f";
+  const beakGrad = c.createLinearGradient(s * 0.44, s * 0.27, s * 0.56, s * 0.31);
+  beakGrad.addColorStop(0, "#ffb654");
+  beakGrad.addColorStop(1, "#e8830f");
+  c.fillStyle = beakGrad;
   c.beginPath();
   c.moveTo(s * 0.5, s * 0.27);
   c.lineTo(s * 0.5 - 0.06 * s, s * 0.31);
   c.lineTo(s * 0.5 + 0.06 * s, s * 0.31);
   c.closePath();
   c.fill();
-  // little wings
-  c.fillStyle = "#12181c";
-  c.beginPath(); c.ellipse(s * 0.24, s * 0.58, s * 0.06, s * 0.18, -0.3, 0, Math.PI * 2); c.fill();
-  c.beginPath(); c.ellipse(s * 0.76, s * 0.58, s * 0.06, s * 0.18, 0.3, 0, Math.PI * 2); c.fill();
+  // thin outline for definition (also fills in anti-aliased edge pixels into the hit mask)
+  c.strokeStyle = "rgba(0,0,0,0.35)";
+  c.lineWidth = 1;
+  c.beginPath();
+  c.ellipse(s * 0.5, s * 0.58, s * 0.30, s * 0.40, 0, 0, Math.PI * 2);
+  c.stroke();
 })();
 
 const polarBearCanvas = document.createElement("canvas");
@@ -185,38 +227,93 @@ polarBearCanvas.height = SPRITE_SIZE;
   const c = polarBearCanvas.getContext("2d");
   const s = SPRITE_SIZE;
   c.clearRect(0, 0, s, s);
-  // paws
+  // paws (with claws)
+  c.fillStyle = "#c7d3d8";
+  c.beginPath(); c.ellipse(s * 0.30, s * 0.94, s * 0.13, s * 0.065, 0, 0, Math.PI * 2); c.fill();
+  c.beginPath(); c.ellipse(s * 0.70, s * 0.94, s * 0.13, s * 0.065, 0, 0, Math.PI * 2); c.fill();
   c.fillStyle = "#dfe8ec";
-  c.beginPath(); c.ellipse(s * 0.30, s * 0.93, s * 0.12, s * 0.06, 0, 0, Math.PI * 2); c.fill();
-  c.beginPath(); c.ellipse(s * 0.70, s * 0.93, s * 0.12, s * 0.06, 0, 0, Math.PI * 2); c.fill();
-  // body
-  c.fillStyle = "#f6fafc";
+  c.beginPath(); c.ellipse(s * 0.30, s * 0.925, s * 0.115, s * 0.05, 0, 0, Math.PI * 2); c.fill();
+  c.beginPath(); c.ellipse(s * 0.70, s * 0.925, s * 0.115, s * 0.05, 0, 0, Math.PI * 2); c.fill();
+  c.fillStyle = "#4a4f53";
+  for (const px of [0.22, 0.30, 0.38, 0.62, 0.70, 0.78]) {
+    c.beginPath(); c.ellipse(s * px, s * 0.96, s * 0.012, s * 0.018, 0, 0, Math.PI * 2); c.fill();
+  }
+
+  // body, radially shaded so it reads as round fur rather than a flat disc
+  const bodyGrad = c.createRadialGradient(s * 0.4, s * 0.5, s * 0.08, s * 0.5, s * 0.62, s * 0.42);
+  bodyGrad.addColorStop(0, "#ffffff");
+  bodyGrad.addColorStop(0.6, "#eef4f6");
+  bodyGrad.addColorStop(1, "#c9d5da");
+  c.fillStyle = bodyGrad;
   c.beginPath(); c.ellipse(s * 0.5, s * 0.62, s * 0.37, s * 0.33, 0, 0, Math.PI * 2); c.fill();
+  // fur texture flecks
+  c.strokeStyle = "rgba(190,205,212,0.4)";
+  c.lineWidth = 0.8;
+  for (let i = 0; i < 14; i++) {
+    const fx = s * (0.22 + Math.random() * 0.56);
+    const fy = s * (0.42 + Math.random() * 0.42);
+    c.beginPath(); c.moveTo(fx, fy); c.lineTo(fx + s * 0.02, fy + s * 0.03); c.stroke();
+  }
   // belly shading
   c.fillStyle = "#dce7eb";
   c.beginPath(); c.ellipse(s * 0.5, s * 0.80, s * 0.28, s * 0.11, 0, 0, Math.PI * 2); c.fill();
+
   // head
-  c.fillStyle = "#f8fbfc";
+  const headGrad = c.createRadialGradient(s * 0.44, s * 0.24, s * 0.04, s * 0.5, s * 0.31, s * 0.24);
+  headGrad.addColorStop(0, "#ffffff");
+  headGrad.addColorStop(1, "#e4ecef");
+  c.fillStyle = headGrad;
   c.beginPath(); c.ellipse(s * 0.5, s * 0.31, s * 0.22, s * 0.20, 0, 0, Math.PI * 2); c.fill();
   // ears
+  c.fillStyle = "#dbe4e8";
+  c.beginPath(); c.ellipse(s * 0.34, s * 0.16, s * 0.065, s * 0.065, 0, 0, Math.PI * 2); c.fill();
+  c.beginPath(); c.ellipse(s * 0.66, s * 0.16, s * 0.065, s * 0.065, 0, 0, Math.PI * 2); c.fill();
   c.fillStyle = "#eef4f6";
-  c.beginPath(); c.ellipse(s * 0.34, s * 0.16, s * 0.06, s * 0.06, 0, 0, Math.PI * 2); c.fill();
-  c.beginPath(); c.ellipse(s * 0.66, s * 0.16, s * 0.06, s * 0.06, 0, 0, Math.PI * 2); c.fill();
+  c.beginPath(); c.ellipse(s * 0.34, s * 0.165, s * 0.04, s * 0.04, 0, 0, Math.PI * 2); c.fill();
+  c.beginPath(); c.ellipse(s * 0.66, s * 0.165, s * 0.04, s * 0.04, 0, 0, Math.PI * 2); c.fill();
   // snout
   c.fillStyle = "#eef4f6";
   c.beginPath(); c.ellipse(s * 0.5, s * 0.40, s * 0.12, s * 0.09, 0, 0, Math.PI * 2); c.fill();
   // nose
   c.fillStyle = "#20242a";
   c.beginPath(); c.ellipse(s * 0.5, s * 0.40, s * 0.045, s * 0.035, 0, 0, Math.PI * 2); c.fill();
+  c.fillStyle = "rgba(255,255,255,0.5)";
+  c.beginPath(); c.ellipse(s * 0.49, s * 0.39, s * 0.012, s * 0.008, 0, 0, Math.PI * 2); c.fill();
+  // mouth line
+  c.strokeStyle = "#20242a";
+  c.lineWidth = 1;
+  c.beginPath(); c.moveTo(s * 0.5, s * 0.435); c.lineTo(s * 0.5, s * 0.46); c.stroke();
+  c.beginPath(); c.moveTo(s * 0.5, s * 0.46); c.quadraticCurveTo(s * 0.46, s * 0.475, s * 0.44, s * 0.465); c.stroke();
+  c.beginPath(); c.moveTo(s * 0.5, s * 0.46); c.quadraticCurveTo(s * 0.54, s * 0.475, s * 0.56, s * 0.465); c.stroke();
   // eyes
   c.fillStyle = "#20242a";
   c.beginPath(); c.ellipse(s * 0.40, s * 0.28, s * 0.025, s * 0.03, 0, 0, Math.PI * 2); c.fill();
   c.beginPath(); c.ellipse(s * 0.60, s * 0.28, s * 0.025, s * 0.03, 0, 0, Math.PI * 2); c.fill();
+  c.fillStyle = "rgba(255,255,255,0.7)";
+  c.beginPath(); c.ellipse(s * 0.395, s * 0.272, s * 0.008, s * 0.009, 0, 0, Math.PI * 2); c.fill();
+  c.beginPath(); c.ellipse(s * 0.595, s * 0.272, s * 0.008, s * 0.009, 0, 0, Math.PI * 2); c.fill();
+  // subtle outline for definition
+  c.strokeStyle = "rgba(120,140,150,0.3)";
+  c.lineWidth = 1;
+  c.beginPath(); c.ellipse(s * 0.5, s * 0.62, s * 0.37, s * 0.33, 0, 0, Math.PI * 2); c.stroke();
 })();
 
+// Per-type alpha masks, sampled from the exact pixels drawn above, so hit
+// detection can check "is there actually a sprite pixel under the crosshair"
+// instead of an arbitrary angular tolerance.
+function buildAlphaMask(canvas) {
+  const c = canvas.getContext("2d");
+  const data = c.getImageData(0, 0, canvas.width, canvas.height).data;
+  const mask = new Uint8Array(canvas.width * canvas.height);
+  for (let i = 0; i < mask.length; i++) mask[i] = data[i * 4 + 3] > 24 ? 1 : 0;
+  return mask;
+}
+const penguinAlphaMask = buildAlphaMask(penguinCanvas);
+const polarBearAlphaMask = buildAlphaMask(polarBearCanvas);
+
 const ENEMY_TYPES = {
-  penguin: { hp: 2, speed: 1.1, damage: 8, detect: 8, attackRange: 0.6, attackCooldown: 700, canvas: penguinCanvas, scale: 0.9 },
-  polarbear: { hp: 6, speed: 0.85, damage: 20, detect: 9, attackRange: 0.85, attackCooldown: 900, canvas: polarBearCanvas, scale: 1.35 },
+  penguin: { hp: 2, speed: 1.1, damage: 8, detect: 8, attackRange: 0.6, attackCooldown: 700, canvas: penguinCanvas, alphaMask: penguinAlphaMask, scale: 0.9 },
+  polarbear: { hp: 6, speed: 0.85, damage: 20, detect: 9, attackRange: 0.85, attackCooldown: 900, canvas: polarBearCanvas, alphaMask: polarBearAlphaMask, scale: 1.35 },
 };
 
 // ---------------------------------------------------------------------------
@@ -238,9 +335,9 @@ const overlay = document.getElementById("overlay");
 const startBtn = document.getElementById("startBtn");
 
 const WEAPONS = {
-  blaster: { name: "Fish Blaster", mode: "semi", damage: 1, cooldown: 280, range: 14, tolerance: 0.08, bodyColor: "#274b63", barrelColor: "#3a6f8f" },
-  harpoon: { name: "Harpoon Cannon", mode: "semi", damage: 4, cooldown: 750, range: 18, tolerance: 0.045, bodyColor: "#4a3320", barrelColor: "#8a5a2b" },
-  flamethrower: { name: "Flamethrower", mode: "auto", dps: 5, range: 4.5, tolerance: 0.4, fuelDrain: 40, fuelRegen: 22, maxFuel: 100, bodyColor: "#5c1f16", barrelColor: "#c9432b" },
+  blaster: { name: "Fish Blaster", mode: "semi", damage: 1, cooldown: 280, range: 14, bodyColor: "#274b63", barrelColor: "#3a6f8f" },
+  harpoon: { name: "Harpoon Cannon", mode: "semi", damage: 4, cooldown: 750, range: 18, bodyColor: "#4a3320", barrelColor: "#8a5a2b" },
+  flamethrower: { name: "Flamethrower", mode: "auto", dps: 5, range: 4.5, flameHalfWidth: 85, fuelDrain: 40, fuelRegen: 22, maxFuel: 100, bodyColor: "#5c1f16", barrelColor: "#c9432b" },
 };
 
 // ---------------------------------------------------------------------------
@@ -360,7 +457,8 @@ function buildLevelAssets() {
 }
 buildLevelAssets();
 
-let player, enemies, mouseDX, scrollTurn, running, gameOver, won;
+let player, enemies, mouseDX, mouseDY, scrollTurn, running, gameOver, won;
+let pitch = 0; // vertical look offset in screen pixels, shifts the horizon/sprites/walls
 let keys = {};
 let mouseHeld = false;
 let currentWeaponKey = "blaster";
@@ -385,6 +483,8 @@ function newGame() {
 
   keys = {};
   mouseDX = 0;
+  mouseDY = 0;
+  pitch = 0;
   scrollTurn = 0;
   mouseHeld = false;
   currentWeaponKey = "blaster";
@@ -397,6 +497,8 @@ function newGame() {
   flameShakeX = 0;
   sparkParticles = [];
   flameParticles = [];
+  tracers = [];
+  impactParticles = [];
   ambientParticles = [];
   ambientSpawnAccum = 0;
   levelTransition = false;
@@ -460,7 +562,7 @@ canvas.addEventListener("mousedown", () => {
 canvas.addEventListener("mouseup", () => { mouseHeld = false; });
 
 document.addEventListener("mousemove", e => {
-  if (document.pointerLockElement === canvas) mouseDX += e.movementX;
+  if (document.pointerLockElement === canvas) { mouseDX += e.movementX; mouseDY += e.movementY; }
 });
 
 // Scroll right -> turn right, scroll left -> turn left.
@@ -475,13 +577,77 @@ startBtn.addEventListener("click", () => {
   canvas.requestPointerLock();
 });
 
-function angleDiffTo(tx, ty) {
-  const angleTo = Math.atan2(ty - player.y, tx - player.x);
-  const playerAngle = Math.atan2(player.dirY, player.dirX);
-  let diff = angleTo - playerAngle;
-  while (diff > Math.PI) diff -= Math.PI * 2;
-  while (diff < -Math.PI) diff += Math.PI * 2;
-  return diff;
+// ---------------------------------------------------------------------------
+// Sprite screen projection + pixel-accurate hit testing.
+//
+// The renderer already turns each enemy's world position into a screen-space
+// billboard rectangle every frame (see renderSprites). Hit detection reuses
+// that exact same math, then samples the sprite's alpha mask at the
+// crosshair's position inside that rectangle — so a shot only lands where
+// there is actually an opaque pixel (a foot, a wing, a beak, ...) under the
+// reticle, and misses the same gaps the player can see through.
+// ---------------------------------------------------------------------------
+function projectSprite(e, stats, invDet) {
+  const spriteX = e.x - player.x, spriteY = e.y - player.y;
+  const transformX = invDet * (player.dirY * spriteX - player.dirX * spriteY);
+  const transformY = invDet * (-player.planeY * spriteX + player.planeX * spriteY);
+  if (transformY <= 0.15) return null;
+
+  const spriteScreenX = Math.floor((SCREEN_W / 2) * (1 + transformX / transformY));
+  const spriteHeight = Math.abs(Math.floor(SCREEN_H / transformY)) * 0.9 * stats.scale;
+  const spriteWidth = spriteHeight;
+  const horizon = SCREEN_H / 2 + pitch;
+  const drawStartY = Math.max(0, -spriteHeight / 2 + horizon);
+  const drawEndY = Math.min(SCREEN_H, spriteHeight / 2 + horizon);
+  const drawStartX = Math.floor(-spriteWidth / 2 + spriteScreenX);
+  const drawEndX = Math.floor(spriteWidth / 2 + spriteScreenX);
+
+  return { transformY, spriteScreenX, spriteWidth, spriteHeight, drawStartX, drawEndX, drawStartY, drawEndY };
+}
+
+function pixelHitTestAtScreen(stats, proj, screenX, screenY) {
+  if (screenX < proj.drawStartX || screenX >= proj.drawStartX + proj.spriteWidth) return false;
+  if (screenY < proj.drawStartY || screenY >= proj.drawStartY + proj.spriteHeight) return false;
+  const localX = (screenX - proj.drawStartX) / proj.spriteWidth * SPRITE_SIZE;
+  const localY = (screenY - proj.drawStartY) / proj.spriteHeight * SPRITE_SIZE;
+  const sx = Math.min(SPRITE_SIZE - 1, Math.max(0, Math.floor(localX)));
+  const sy = Math.min(SPRITE_SIZE - 1, Math.max(0, Math.floor(localY)));
+  return stats.alphaMask[sy * SPRITE_SIZE + sx] === 1;
+}
+
+// Finds the closest enemy whose actual sprite pixel sits under the crosshair
+// and is not behind a wall (checked against the same zBuffer the renderer
+// used this frame), for the precise semi-auto weapons.
+function findPixelTarget(range) {
+  const cx = SCREEN_W / 2, cy = SCREEN_H / 2;
+  const col = Math.min(SCREEN_W - 1, Math.max(0, Math.round(cx)));
+  const invDet = 1.0 / (player.planeX * player.dirY - player.dirX * player.planeY);
+  let best = null, bestDepth = Infinity;
+  for (const e of enemies) {
+    if (!e.alive) continue;
+    if (distance(player.x, player.y, e.x, e.y) > range) continue;
+    const stats = ENEMY_TYPES[e.type];
+    const proj = projectSprite(e, stats, invDet);
+    if (!proj) continue;
+    if (proj.transformY >= zBuffer[col]) continue; // occluded by a wall
+    if (!pixelHitTestAtScreen(stats, proj, cx, cy)) continue;
+    if (proj.transformY < bestDepth) { best = e; bestDepth = proj.transformY; }
+  }
+  return best;
+}
+
+// The flamethrower sprays a cone rather than a pinpoint shot, so instead of a
+// single crosshair pixel it checks whether the enemy's actual on-screen
+// silhouette footprint overlaps the visible flame stream band.
+function flameCatchesEnemy(e, stats, invDet, halfWidth, range) {
+  if (distance(player.x, player.y, e.x, e.y) > range) return false;
+  const proj = projectSprite(e, stats, invDet);
+  if (!proj) return false;
+  const col = Math.min(SCREEN_W - 1, Math.max(0, Math.round(proj.spriteScreenX)));
+  if (proj.transformY >= zBuffer[col]) return false; // occluded by a wall
+  const left = SCREEN_W / 2 - halfWidth, right = SCREEN_W / 2 + halfWidth;
+  if (proj.drawEndX < left || proj.drawStartX > right) return false;
+  return proj;
 }
 
 function killIfDead(e) {
@@ -508,20 +674,13 @@ function trySemiShot() {
   recoilOffset = currentWeaponKey === "harpoon" ? 18 : 11;
   spawnMuzzleSparks(currentWeaponKey);
 
-  let best = null, bestDist = Infinity;
-  for (const e of enemies) {
-    if (!e.alive) continue;
-    const dist = distance(player.x, player.y, e.x, e.y);
-    if (dist > w.range) continue;
-    const diff = angleDiffTo(e.x, e.y);
-    if (Math.abs(diff) < w.tolerance && dist < bestDist && hasLineOfSight(player.x, player.y, e.x, e.y)) {
-      best = e; bestDist = dist;
-    }
-  }
-  if (best) {
-    best.hp -= w.damage;
-    best.hitFlash = 8;
-    killIfDead(best);
+  const target = findPixelTarget(w.range);
+  spawnTracer(currentWeaponKey);
+  if (target) {
+    target.hp -= w.damage;
+    target.hitFlash = 8;
+    spawnImpactParticles(SCREEN_W / 2, SCREEN_H / 2, target.type);
+    killIfDead(target);
     updateHud();
   }
 }
@@ -534,16 +693,20 @@ function tickFlamethrower(dt) {
   recoilOffset = Math.min(7, recoilOffset + 30 * dt);
   flameShakeX = (Math.random() - 0.5) * 3;
   spawnFlameParticles(dt);
+  const invDet = 1.0 / (player.planeX * player.dirY - player.dirX * player.planeY);
   for (const e of enemies) {
     if (!e.alive) continue;
-    const dist = distance(player.x, player.y, e.x, e.y);
-    if (dist > w.range) continue;
-    const diff = angleDiffTo(e.x, e.y);
-    if (Math.abs(diff) < w.tolerance && hasLineOfSight(player.x, player.y, e.x, e.y)) {
-      e.hp -= w.dps * dt;
-      e.hitFlash = 6;
-      killIfDead(e);
+    const stats = ENEMY_TYPES[e.type];
+    const proj = flameCatchesEnemy(e, stats, invDet, w.flameHalfWidth, w.range);
+    if (!proj) continue;
+    e.hp -= w.dps * dt;
+    e.hitFlash = 6;
+    if (Math.random() < dt * 14) {
+      const ix = Math.min(SCREEN_W - 1, Math.max(0, proj.spriteScreenX));
+      const iy = proj.drawStartY + proj.spriteHeight * (0.35 + Math.random() * 0.3);
+      spawnImpactParticles(ix, iy, e.type);
     }
+    killIfDead(e);
   }
   updateHud();
 }
@@ -575,7 +738,7 @@ function spawnMuzzleSparks(weaponKey) {
     const speed = isHarpoon ? 100 + Math.random() * 70 : 150 + Math.random() * 130;
     sparkParticles.push({
       x: SCREEN_W / 2 + (Math.random() - 0.5) * 8,
-      y: SCREEN_H * 0.76 - recoilOffset,
+      y: SCREEN_H * 0.76 - recoilOffset + pitch,
       vx: Math.cos(angle) * speed,
       vy: Math.sin(angle) * speed,
       life: 0.16 + Math.random() * 0.1,
@@ -617,7 +780,7 @@ function spawnFlameParticles(dt) {
     const spread = (Math.random() - 0.5) * 30;
     flameParticles.push({
       x: SCREEN_W / 2 + spread * 0.35,
-      y: SCREEN_H * 0.74 - recoilOffset,
+      y: SCREEN_H * 0.74 - recoilOffset + pitch,
       vx: spread * 2.2 + (Math.random() - 0.5) * 24,
       vy: -160 - Math.random() * 100,
       life: 0,
@@ -654,6 +817,99 @@ function drawFlameParticles() {
     const size = p.size * (1 - t * 0.35);
     ctx.beginPath();
     ctx.ellipse(p.x, p.y, size, size * 0.85, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+// ---------------------------------------------------------------------------
+// Shot tracers: a quick glowing streak from the gun's nozzle up to the
+// crosshair, so the semi-auto weapons read as firing a visible projectile
+// instead of an invisible instant hit.
+// ---------------------------------------------------------------------------
+let tracers = [];
+function spawnTracer(weaponKey) {
+  const nozzleY = SCREEN_H * 0.62 - recoilOffset + pitch;
+  tracers.push({
+    x: SCREEN_W / 2 + (Math.random() - 0.5) * 3,
+    y0: nozzleY,
+    y1: SCREEN_H / 2,
+    life: 0.1,
+    maxLife: 0.1,
+    color: weaponKey === "harpoon" ? "#e8c98a" : "#bff3ff",
+    width: weaponKey === "harpoon" ? 5 : 3,
+  });
+}
+
+function updateTracers(dt) {
+  for (let i = tracers.length - 1; i >= 0; i--) {
+    tracers[i].life -= dt;
+    if (tracers[i].life <= 0) tracers.splice(i, 1);
+  }
+}
+
+function drawTracers() {
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
+  ctx.lineCap = "round";
+  for (const t of tracers) {
+    const a = Math.max(0, t.life / t.maxLife);
+    ctx.globalAlpha = a;
+    ctx.strokeStyle = t.color;
+    ctx.lineWidth = t.width * a + 1;
+    ctx.beginPath();
+    ctx.moveTo(t.x, t.y0);
+    ctx.lineTo(t.x, t.y1);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+// ---------------------------------------------------------------------------
+// Impact particles: a small burst of feathers/fur/sparks spawned at the
+// exact screen point where a shot registered, so the reaction visibly
+// happens at the hit location (a foot shot kicks up its burst down low).
+// ---------------------------------------------------------------------------
+let impactParticles = [];
+function spawnImpactParticles(x, y, enemyType) {
+  const isBear = enemyType === "polarbear";
+  const count = 9 + Math.floor(Math.random() * 4);
+  for (let i = 0; i < count; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 60 + Math.random() * 170;
+    impactParticles.push({
+      x, y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed - 50,
+      life: 0.22 + Math.random() * 0.22,
+      maxLife: 0.44,
+      size: isBear ? 2 + Math.random() * 2.6 : 1.4 + Math.random() * 2,
+      color: isBear
+        ? (Math.random() < 0.5 ? "#f4f4f4" : "#d9dde0")
+        : (Math.random() < 0.6 ? "#1a1f22" : "#ff9d2f"),
+    });
+  }
+}
+
+function updateImpactParticles(dt) {
+  for (let i = impactParticles.length - 1; i >= 0; i--) {
+    const p = impactParticles[i];
+    p.life -= dt;
+    if (p.life <= 0) { impactParticles.splice(i, 1); continue; }
+    p.x += p.vx * dt;
+    p.y += p.vy * dt;
+    p.vy += 260 * dt;
+    p.vx *= 1 - dt * 0.9;
+  }
+}
+
+function drawImpactParticles() {
+  ctx.save();
+  for (const p of impactParticles) {
+    ctx.globalAlpha = Math.max(0, p.life / p.maxLife);
+    ctx.fillStyle = p.color;
+    ctx.beginPath();
+    ctx.ellipse(p.x, p.y, p.size, p.size, 0, 0, Math.PI * 2);
     ctx.fill();
   }
   ctx.restore();
@@ -725,7 +981,7 @@ function drawAmbient() {
 function drawWeapon(key, recoil, shakeX) {
   const w = WEAPONS[key];
   ctx.save();
-  ctx.translate(SCREEN_W / 2 + shakeX, SCREEN_H - recoil);
+  ctx.translate(SCREEN_W / 2 + shakeX, SCREEN_H - recoil + pitch);
   if (key === "blaster") drawBlasterGun(w);
   else if (key === "harpoon") drawHarpoonGun(w);
   else drawFlamethrowerGun(w);
@@ -733,11 +989,20 @@ function drawWeapon(key, recoil, shakeX) {
 }
 
 function drawBlasterGun(w) {
-  ctx.fillStyle = "#1a2530";
+  // grip
+  const gripGrad = ctx.createLinearGradient(-14, -34, 6, -34);
+  gripGrad.addColorStop(0, "#0d1318");
+  gripGrad.addColorStop(1, "#26333d");
+  ctx.fillStyle = gripGrad;
   ctx.fillRect(-14, -34, 20, 40);
+  ctx.strokeStyle = "rgba(0,0,0,0.4)";
+  ctx.lineWidth = 1;
+  for (let gy = -30; gy < -2; gy += 6) { ctx.beginPath(); ctx.moveTo(-13, gy); ctx.lineTo(5, gy); ctx.stroke(); }
 
+  // body shell, lit from upper-left
   const grad = ctx.createLinearGradient(-34, -95, 34, -20);
-  grad.addColorStop(0, "#3a6f8f");
+  grad.addColorStop(0, "#5c96b8");
+  grad.addColorStop(0.45, "#3a6f8f");
   grad.addColorStop(1, w.bodyColor);
   ctx.fillStyle = grad;
   ctx.beginPath();
@@ -747,49 +1012,117 @@ function drawBlasterGun(w) {
   ctx.lineTo(34, -20);
   ctx.closePath();
   ctx.fill();
+  ctx.strokeStyle = "rgba(10,20,28,0.55)";
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  // panel seam + rivets
+  ctx.strokeStyle = "rgba(15,30,40,0.5)";
+  ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(-24, -76); ctx.lineTo(-20, -28); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(24, -88); ctx.lineTo(20, -28); ctx.stroke();
+  ctx.fillStyle = "rgba(200,235,245,0.55)";
+  for (const [rx, ry] of [[-26, -70], [-22, -40], [24, -80], [20, -40]]) {
+    ctx.beginPath(); ctx.ellipse(rx, ry, 1.6, 1.6, 0, 0, Math.PI * 2); ctx.fill();
+  }
 
-  ctx.fillStyle = w.barrelColor;
+  // barrel with metallic gradient + fins
+  const barrelGrad = ctx.createLinearGradient(-11, 0, 11, 0);
+  barrelGrad.addColorStop(0, "#1c3a4a");
+  barrelGrad.addColorStop(0.5, w.barrelColor);
+  barrelGrad.addColorStop(1, "#1c3a4a");
+  ctx.fillStyle = barrelGrad;
   ctx.fillRect(-11, -140, 22, 55);
+  ctx.fillStyle = "#1a2530";
+  ctx.fillRect(-13, -122, 26, 5);
+  ctx.fillRect(-13, -108, 26, 5);
   ctx.beginPath();
   ctx.ellipse(0, -140, 11, 6, 0, 0, Math.PI * 2);
   ctx.fill();
+  ctx.fillStyle = barrelGrad;
+  ctx.beginPath();
+  ctx.ellipse(0, -140, 8.5, 4.5, 0, 0, Math.PI * 2);
+  ctx.fill();
 
-  ctx.fillStyle = "#1a2530";
-  ctx.fillRect(-9, -118, 18, 4);
-  ctx.fillRect(-9, -108, 18, 4);
-
+  // glowing energy core, visible through the barrel vents
   const pulse = 0.55 + 0.45 * Math.sin(performance.now() / 180);
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
   ctx.fillStyle = `rgba(140,235,255,${pulse})`;
   ctx.beginPath();
-  ctx.ellipse(0, -140, 5, 5, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, -140, 6, 6, 0, 0, Math.PI * 2);
   ctx.fill();
+  ctx.fillStyle = `rgba(180,250,255,${pulse * 0.5})`;
+  ctx.beginPath();
+  ctx.ellipse(0, -140, 10, 10, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+  ctx.strokeStyle = "rgba(20,40,50,0.7)";
+  ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.ellipse(0, -140, 11, 6, 0, 0, Math.PI * 2); ctx.stroke();
+
+  // top sight rail highlight
+  ctx.fillStyle = "rgba(220,245,255,0.35)";
+  ctx.fillRect(-2, -142, 4, 2);
 }
 
 function drawHarpoonGun(w) {
-  ctx.fillStyle = "#2a1c10";
+  ctx.fillStyle = "#1c130a";
   ctx.fillRect(-14, -30, 20, 36);
+  ctx.strokeStyle = "rgba(0,0,0,0.4)";
+  for (let gy = -26; gy < -2; gy += 6) { ctx.beginPath(); ctx.moveTo(-13, gy); ctx.lineTo(5, gy); ctx.stroke(); }
 
-  ctx.fillStyle = w.bodyColor;
+  // riveted iron body block, lit from top
+  const bodyGrad = ctx.createLinearGradient(-38, -85, -38, -25);
+  bodyGrad.addColorStop(0, "#6a4a2c");
+  bodyGrad.addColorStop(1, w.bodyColor);
+  ctx.fillStyle = bodyGrad;
   ctx.fillRect(-38, -85, 76, 60);
+  ctx.strokeStyle = "rgba(20,12,5,0.6)";
+  ctx.lineWidth = 2;
+  ctx.strokeRect(-38, -85, 76, 60);
 
-  ctx.fillStyle = "#000a";
+  ctx.fillStyle = "#12100c";
   for (const rx of [-30, -10, 10, 30]) {
-    ctx.beginPath(); ctx.arc(rx, -55, 2.5, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(rx, -55, 2.6, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "rgba(220,200,170,0.4)";
+    ctx.beginPath(); ctx.arc(rx - 0.6, -55.6, 0.8, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#12100c";
   }
+  // pressure gauge
+  ctx.fillStyle = "#e8dfc8";
+  ctx.beginPath(); ctx.arc(20, -70, 7, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = "#3a2814"; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.arc(20, -70, 7, 0, Math.PI * 2); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(20, -70); ctx.lineTo(24, -74); ctx.stroke();
 
-  ctx.fillStyle = w.barrelColor;
+  // barrel, steel gradient
+  const barrelGrad = ctx.createLinearGradient(-13, 0, 13, 0);
+  barrelGrad.addColorStop(0, "#5a3a1e");
+  barrelGrad.addColorStop(0.5, w.barrelColor);
+  barrelGrad.addColorStop(1, "#4a2f18");
+  ctx.fillStyle = barrelGrad;
   ctx.fillRect(-13, -150, 26, 68);
+  ctx.strokeStyle = "rgba(20,12,5,0.5)";
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(-13, -150, 26, 68);
 
+  // barbed harpoon tip loaded in the barrel
   ctx.fillStyle = "#c9c9c9";
   ctx.beginPath();
-  ctx.moveTo(0, -178);
+  ctx.moveTo(0, -182);
   ctx.lineTo(-8, -150);
   ctx.lineTo(8, -150);
   ctx.closePath();
   ctx.fill();
+  ctx.strokeStyle = "#5a5a5a"; ctx.lineWidth = 1; ctx.stroke();
+  // barbs
+  ctx.fillStyle = "#b0b0b0";
+  ctx.beginPath(); ctx.moveTo(-8, -150); ctx.lineTo(-15, -142); ctx.lineTo(-6, -144); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(8, -150); ctx.lineTo(15, -142); ctx.lineTo(6, -144); ctx.closePath(); ctx.fill();
   ctx.fillStyle = "#8a8a8a";
   ctx.fillRect(-11, -152, 22, 6);
 
+  // coiled rope on the side
   ctx.strokeStyle = "#7a5a30";
   ctx.lineWidth = 3;
   for (let i = 0; i < 3; i++) {
@@ -797,36 +1130,92 @@ function drawHarpoonGun(w) {
     ctx.ellipse(-44, -40 - i * 9, 10, 6, 0.3, 0, Math.PI * 2);
     ctx.stroke();
   }
+  ctx.strokeStyle = "rgba(255,230,190,0.25)";
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.ellipse(-46, -49, 9, 5, 0.3, 0, Math.PI); ctx.stroke();
 }
 
 function drawFlamethrowerGun(w) {
-  ctx.fillStyle = "#3a3a3a";
-  ctx.beginPath(); ctx.ellipse(-46, -70, 16, 46, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.ellipse(46, -70, 16, 46, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = "#c9432b";
-  ctx.fillRect(-58, -95, 24, 8);
-  ctx.fillRect(34, -95, 24, 8);
+  // dual fuel tanks with cylindrical shading
+  for (const side of [-1, 1]) {
+    const tankGrad = ctx.createLinearGradient(side * 60, 0, side * 32, 0);
+    tankGrad.addColorStop(0, "#222222");
+    tankGrad.addColorStop(0.5, "#4a4a4a");
+    tankGrad.addColorStop(1, "#2a2a2a");
+    ctx.fillStyle = tankGrad;
+    ctx.beginPath(); ctx.ellipse(side * 46, -70, 16, 46, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = "rgba(0,0,0,0.5)"; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.ellipse(side * 46, -70, 16, 46, 0, 0, Math.PI * 2); ctx.stroke();
+    ctx.strokeStyle = "rgba(0,0,0,0.35)"; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(side * 46, -108); ctx.lineTo(side * 46, -32); ctx.stroke();
+    // hazard stripe
+    ctx.fillStyle = "#c9432b";
+    ctx.fillRect(side * 58 - 12, -95, 24, 8);
+    ctx.fillStyle = "rgba(0,0,0,0.5)";
+    ctx.fillRect(side * 58 - 12, -95, 24, 2);
+    ctx.fillRect(side * 58 - 12, -89, 24, 2);
+  }
 
-  ctx.fillStyle = "#241713";
+  ctx.fillStyle = "#1a110d";
   ctx.fillRect(-14, -30, 20, 36);
+  ctx.strokeStyle = "rgba(0,0,0,0.4)";
+  for (let gy = -26; gy < -2; gy += 6) { ctx.beginPath(); ctx.moveTo(-13, gy); ctx.lineTo(5, gy); ctx.stroke(); }
 
-  ctx.fillStyle = w.bodyColor;
+  const bodyGrad = ctx.createLinearGradient(-30, -90, 30, -28);
+  bodyGrad.addColorStop(0, "#8a2c1e");
+  bodyGrad.addColorStop(1, w.bodyColor);
+  ctx.fillStyle = bodyGrad;
   ctx.fillRect(-30, -90, 60, 62);
+  ctx.strokeStyle = "rgba(20,5,0,0.5)"; ctx.lineWidth = 2;
+  ctx.strokeRect(-30, -90, 60, 62);
 
+  // rivets + small pilot-light window
+  ctx.fillStyle = "#150805";
+  for (const [rx, ry] of [[-22, -78], [22, -78], [-22, -40], [22, -40]]) {
+    ctx.beginPath(); ctx.arc(rx, ry, 2, 0, Math.PI * 2); ctx.fill();
+  }
+  const flick = 0.5 + 0.5 * Math.sin(performance.now() / 60);
+  ctx.fillStyle = `rgba(255,${140 + flick * 60 | 0},60,0.9)`;
+  ctx.beginPath(); ctx.ellipse(0, -58, 6, 8, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = "#1a1a1a"; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.ellipse(0, -58, 6, 8, 0, 0, Math.PI * 2); ctx.stroke();
+
+  // fuel hose
   ctx.strokeStyle = "#1a1a1a";
   ctx.lineWidth = 6;
   ctx.beginPath();
   ctx.moveTo(-30, -80);
   ctx.quadraticCurveTo(-46, -100, -20, -120);
   ctx.stroke();
+  ctx.strokeStyle = "rgba(255,255,255,0.12)";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(-30, -80);
+  ctx.quadraticCurveTo(-46, -100, -20, -120);
+  ctx.stroke();
 
-  ctx.fillStyle = w.barrelColor;
+  // nozzle barrel
+  const barrelGrad = ctx.createLinearGradient(-15, 0, 15, 0);
+  barrelGrad.addColorStop(0, "#7a2419");
+  barrelGrad.addColorStop(0.5, w.barrelColor);
+  barrelGrad.addColorStop(1, "#5c1f16");
+  ctx.fillStyle = barrelGrad;
   ctx.fillRect(-15, -140, 30, 55);
+  ctx.strokeStyle = "rgba(20,5,0,0.5)"; ctx.lineWidth = 1.5;
+  ctx.strokeRect(-15, -140, 30, 55);
+  ctx.fillStyle = "#2a0d08";
+  ctx.fillRect(-15, -110, 30, 4);
   ctx.beginPath(); ctx.ellipse(0, -140, 15, 8, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = "#1a1a1a";
+  ctx.beginPath(); ctx.ellipse(0, -140, 10, 5, 0, 0, Math.PI * 2); ctx.fill();
 
-  const flick = 0.5 + 0.5 * Math.sin(performance.now() / 60);
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
   ctx.fillStyle = `rgba(255,180,80,${0.5 + flick * 0.5})`;
   ctx.beginPath(); ctx.ellipse(0, -145, 4 + flick * 2, 4 + flick * 2, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = `rgba(255,220,150,${0.3 + flick * 0.3})`;
+  ctx.beginPath(); ctx.ellipse(0, -145, 8 + flick * 2, 8 + flick * 2, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
 }
 
 // ---------------------------------------------------------------------------
@@ -838,6 +1227,8 @@ function update(dt) {
     if (muzzleFlash > 0) muzzleFlash--;
     updateSparkParticles(dt);
     updateFlameParticles(dt);
+    updateTracers(dt);
+    updateImpactParticles(dt);
     updateAmbient(dt);
     if (levelTransitionTimer <= 0) {
       levelTransition = false;
@@ -852,6 +1243,13 @@ function update(dt) {
   const mouseRot = mouseDX * turnSpeed;
   mouseDX = 0;
   if (mouseRot !== 0) rotatePlayer(mouseRot);
+
+  // Vertical look (moving the mouse up/down shifts the horizon, walls and
+  // sprites up/down on screen — this is what lets a shot actually land on
+  // an enemy's feet vs its head instead of always hitting body-center).
+  const MAX_PITCH = 130;
+  pitch = Math.max(-MAX_PITCH, Math.min(MAX_PITCH, pitch - mouseDY * 0.8));
+  mouseDY = 0;
 
   // Scroll-wheel look: scrolling right turns right, scrolling left turns left.
   const scrollTurnSpeed = 0.0022;
@@ -918,6 +1316,8 @@ function update(dt) {
   if (!(mouseHeld && currentWeaponKey === "flamethrower")) flameShakeX = 0;
   updateSparkParticles(dt);
   updateFlameParticles(dt);
+  updateTracers(dt);
+  updateImpactParticles(dt);
   updateAmbient(dt);
 }
 
@@ -937,27 +1337,30 @@ const zBuffer = new Array(SCREEN_W);
 
 function render() {
   const level = LEVELS[levelIndex];
+  // Horizon shifts with vertical look (pitch) — walls, sprites and the
+  // sky/floor split all move together so aiming up/down is consistent.
+  const horizon = SCREEN_H / 2 + pitch;
 
   // Sky/ceiling: per-sector gradient plus a pre-rendered decoration layer
   // (ice glints, stalactites, or drifting embers depending on the sector).
-  const grad = ctx.createLinearGradient(0, 0, 0, SCREEN_H / 2);
+  const grad = ctx.createLinearGradient(0, 0, 0, horizon);
   grad.addColorStop(0, level.sky[0]);
   grad.addColorStop(1, level.sky[1]);
   ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, SCREEN_W, SCREEN_H / 2);
-  if (level.ceilingCanvas) ctx.drawImage(level.ceilingCanvas, 0, 0);
+  ctx.fillRect(0, 0, SCREEN_W, Math.max(0, horizon));
+  if (level.ceilingCanvas) ctx.drawImage(level.ceilingCanvas, 0, horizon - SCREEN_H / 2);
 
   // Floor: gradient plus a tiled speckle/crack pattern baked per sector.
-  const floorGrad = ctx.createLinearGradient(0, SCREEN_H / 2, 0, SCREEN_H);
+  const floorGrad = ctx.createLinearGradient(0, horizon, 0, SCREEN_H);
   floorGrad.addColorStop(0, level.floorShade);
   floorGrad.addColorStop(1, level.floorColor);
   ctx.fillStyle = floorGrad;
-  ctx.fillRect(0, SCREEN_H / 2, SCREEN_W, SCREEN_H / 2);
+  ctx.fillRect(0, Math.max(0, horizon), SCREEN_W, SCREEN_H - Math.max(0, horizon));
   if (level.floorPattern) {
     ctx.save();
     ctx.globalAlpha = 0.55;
     ctx.fillStyle = level.floorPattern;
-    ctx.fillRect(0, SCREEN_H / 2, SCREEN_W, SCREEN_H / 2);
+    ctx.fillRect(0, Math.max(0, horizon), SCREEN_W, SCREEN_H - Math.max(0, horizon));
     ctx.restore();
   }
 
@@ -992,8 +1395,8 @@ function render() {
     zBuffer[x] = dist;
 
     const lineHeight = Math.floor(SCREEN_H / dist);
-    const drawStart = Math.max(0, -lineHeight / 2 + SCREEN_H / 2);
-    const drawEnd = Math.min(SCREEN_H, lineHeight / 2 + SCREEN_H / 2);
+    const drawStart = Math.max(0, -lineHeight / 2 + horizon);
+    const drawEnd = Math.min(SCREEN_H, lineHeight / 2 + horizon);
 
     // Block tint: each map cell gets a deterministic shade variance so walls
     // don't read as one flat slab, plus a darker mortar line at cell edges.
@@ -1021,6 +1424,8 @@ function render() {
   drawAmbient();
 
   drawWeapon(currentWeaponKey, recoilOffset, flameShakeX);
+  if (tracers.length) drawTracers();
+  if (impactParticles.length) drawImpactParticles();
   if (flameParticles.length) drawFlameParticles();
   if (sparkParticles.length) drawSparkParticles();
 
@@ -1031,7 +1436,7 @@ function render() {
     ctx.globalCompositeOperation = "lighter";
     ctx.fillStyle = `rgba(${glowColor},${(muzzleFlash / 14) * 0.55})`;
     ctx.beginPath();
-    ctx.ellipse(SCREEN_W / 2, SCREEN_H * 0.76 - recoilOffset, glowSize, glowSize * 0.55, 0, 0, Math.PI * 2);
+    ctx.ellipse(SCREEN_W / 2, SCREEN_H * 0.76 - recoilOffset + pitch, glowSize, glowSize * 0.55, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
   }
@@ -1052,20 +1457,9 @@ function renderSprites() {
 
   for (const { e } of sorted) {
     const stats = ENEMY_TYPES[e.type];
-    const spriteX = e.x - player.x, spriteY = e.y - player.y;
-    const transformX = invDet * (player.dirY * spriteX - player.dirX * spriteY);
-    const transformY = invDet * (-player.planeY * spriteX + player.planeX * spriteY);
-    if (transformY <= 0.15) continue;
-
-    const spriteScreenX = Math.floor((SCREEN_W / 2) * (1 + transformX / transformY));
-    const spriteHeight = Math.abs(Math.floor(SCREEN_H / transformY)) * 0.9 * stats.scale;
-    const spriteWidth = spriteHeight;
-
-    const drawStartY = Math.max(0, -spriteHeight / 2 + SCREEN_H / 2);
-    const drawEndY = Math.min(SCREEN_H, spriteHeight / 2 + SCREEN_H / 2);
-    const drawStartX = Math.floor(-spriteWidth / 2 + spriteScreenX);
-    const drawEndX = Math.floor(spriteWidth / 2 + spriteScreenX);
-
+    const proj = projectSprite(e, stats, invDet);
+    if (!proj) continue;
+    const { drawStartX, drawEndX, drawStartY, spriteWidth, spriteHeight, transformY } = proj;
     if (drawEndX < 0 || drawStartX > SCREEN_W) continue;
 
     // Find contiguous unoccluded column runs against the depth buffer.
@@ -1082,17 +1476,31 @@ function renderSprites() {
   }
 }
 
+// Scratch canvas used to composite the hit-flash tint so it only lands on
+// the sprite's own opaque pixels (source-atop against a canvas containing
+// nothing but the sprite) instead of tinting its whole bounding rectangle.
+const spriteScratchCanvas = document.createElement("canvas");
+spriteScratchCanvas.width = SPRITE_SIZE;
+spriteScratchCanvas.height = SPRITE_SIZE;
+const spriteScratchCtx = spriteScratchCanvas.getContext("2d");
+
 function drawSpriteRun(e, spriteCanvas, drawStartX, drawStartY, spriteWidth, spriteHeight, runStart, runEnd) {
   ctx.save();
   ctx.beginPath();
   ctx.rect(runStart, drawStartY, runEnd - runStart, spriteHeight);
   ctx.clip();
-  ctx.drawImage(spriteCanvas, drawStartX, drawStartY, spriteWidth, spriteHeight);
   if (e.hitFlash > 0) {
-    ctx.globalAlpha = e.hitFlash / 8;
-    ctx.fillStyle = "#ff3b3b";
-    ctx.fillRect(drawStartX, drawStartY, spriteWidth, spriteHeight);
-    ctx.globalAlpha = 1;
+    spriteScratchCtx.clearRect(0, 0, SPRITE_SIZE, SPRITE_SIZE);
+    spriteScratchCtx.drawImage(spriteCanvas, 0, 0);
+    spriteScratchCtx.globalCompositeOperation = "source-atop";
+    spriteScratchCtx.globalAlpha = Math.min(1, e.hitFlash / 8) * 0.9;
+    spriteScratchCtx.fillStyle = "#ff3b3b";
+    spriteScratchCtx.fillRect(0, 0, SPRITE_SIZE, SPRITE_SIZE);
+    spriteScratchCtx.globalAlpha = 1;
+    spriteScratchCtx.globalCompositeOperation = "source-over";
+    ctx.drawImage(spriteScratchCanvas, drawStartX, drawStartY, spriteWidth, spriteHeight);
+  } else {
+    ctx.drawImage(spriteCanvas, drawStartX, drawStartY, spriteWidth, spriteHeight);
   }
   ctx.restore();
 }
