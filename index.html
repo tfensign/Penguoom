@@ -1,0 +1,1173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>PENGUOOM</title>
+<style>
+  html, body { margin: 0; background: #000; overflow: hidden; height: 100%; }
+  #wrap { position: relative; width: 100vw; height: 100vh; display: flex; align-items: center; justify-content: center; }
+  canvas { image-rendering: pixelated; background: #000; }
+  #overlay {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    flex-direction: column; color: #eafcff; font-family: 'Courier New', monospace; text-align: center;
+    background: rgba(0,10,20,0.75); z-index: 10;
+  }
+  #overlay h1 { font-size: 3rem; letter-spacing: 0.3rem; margin-bottom: 0.2rem; color: #7fe8ff; text-shadow: 0 0 12px #2ad; }
+  #overlay p { max-width: 560px; line-height: 1.5; }
+  #overlay button {
+    margin-top: 1.2rem; font-size: 1.3rem; padding: 0.6rem 1.6rem; cursor: pointer;
+    background: #1b6; border: none; border-radius: 6px; color: #012; font-weight: bold;
+  }
+  #hud {
+    position: absolute; left: 0; right: 0; bottom: 0; display: flex; justify-content: space-between;
+    padding: 10px 18px; font-family: 'Courier New', monospace; color: #eafcff; font-size: 1.1rem;
+    text-shadow: 1px 1px 2px #000; pointer-events: none;
+  }
+  #crosshair {
+    position: absolute; top: 50%; left: 50%; width: 18px; height: 18px; margin: -9px 0 0 -9px;
+    pointer-events: none;
+  }
+  #crosshair::before, #crosshair::after { content: ""; position: absolute; background: #7fffb0; }
+  #crosshair::before { left: 8px; top: 0; width: 2px; height: 18px; }
+  #crosshair::after { top: 8px; left: 0; width: 18px; height: 2px; }
+  #minimap { position: absolute; top: 12px; right: 12px; border: 2px solid #7fe8ff88; background: rgba(0,10,20,0.5); }
+  #hint { position: absolute; top: 12px; left: 12px; color: #cfefff; font-family: 'Courier New', monospace; font-size: 0.8rem; opacity: 0.8; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="game" width="800" height="480"></canvas>
+  <canvas id="minimap" width="150" height="150"></canvas>
+  <div id="crosshair"></div>
+  <div id="hint">WASD move · mouse/scroll to turn · hold click to fire · 1/2/3 weapon · R restart</div>
+  <div id="hud">
+    <div id="hp">HP: 100</div>
+    <div id="level">Sector 1: Ice Fortress</div>
+    <div id="weapon">Weapon: Fish Blaster</div>
+    <div id="score">Enemies defeated: 0 / 0</div>
+  </div>
+  <div id="overlay">
+    <h1>PENGU&Oslash;&Oslash;M</h1>
+    <p>The Emperor's Guard has seized four sectors of the Ice Fortress, and they brought
+       polar bears. Clear every hostile from each sector before advancing to the next —
+       they get harder, and colder, the deeper you go.
+       Click to lock your mouse and begin. Press 1/2/3 to switch between the
+       Fish Blaster, Harpoon Cannon, and Flamethrower.</p>
+    <button id="startBtn">ENTER THE ICE</button>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+// ---------------------------------------------------------------------------
+// Maze generation: randomized DFS carve on an odd-sized grid, then a
+// "loosening" pass knocks out extra walls so it reads as rooms, not corridors.
+// ---------------------------------------------------------------------------
+let MAP_SIZE = 19; // odd, varies per level
+function generateMaze(size, loosenChance) {
+  const grid = new Array(size * size).fill(1);
+  const idx = (x, y) => y * size + x;
+  const inBounds = (x, y) => x > 0 && y > 0 && x < size - 1 && y < size - 1;
+
+  grid[idx(1, 1)] = 0;
+  const stack = [[1, 1]];
+  const dirs = [[2, 0], [-2, 0], [0, 2], [0, -2]];
+
+  while (stack.length) {
+    const [cx, cy] = stack[stack.length - 1];
+    const shuffled = dirs.slice().sort(() => Math.random() - 0.5);
+    let carved = false;
+    for (const [dx, dy] of shuffled) {
+      const nx = cx + dx, ny = cy + dy;
+      if (inBounds(nx, ny) && grid[idx(nx, ny)] === 1) {
+        grid[idx(nx, ny)] = 0;
+        grid[idx(cx + dx / 2, cy + dy / 2)] = 0;
+        stack.push([nx, ny]);
+        carved = true;
+        break;
+      }
+    }
+    if (!carved) stack.pop();
+  }
+
+  // Loosen: knock out extra interior walls to create open rooms and loops.
+  for (let y = 1; y < size - 1; y++) {
+    for (let x = 1; x < size - 1; x++) {
+      if (grid[idx(x, y)] === 1 && Math.random() < loosenChance) grid[idx(x, y)] = 0;
+    }
+  }
+  return grid;
+}
+
+function floodFillOpenCells(grid, size, startX, startY) {
+  const idx = (x, y) => y * size + x;
+  const seen = new Set([idx(startX, startY)]);
+  const queue = [[startX, startY]];
+  const cells = [];
+  while (queue.length) {
+    const [x, y] = queue.shift();
+    cells.push([x, y]);
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const nx = x + dx, ny = y + dy;
+      if (nx > 0 && ny > 0 && nx < size - 1 && ny < size - 1 && grid[idx(nx, ny)] === 0 && !seen.has(idx(nx, ny))) {
+        seen.add(idx(nx, ny));
+        queue.push([nx, ny]);
+      }
+    }
+  }
+  return cells;
+}
+
+let MAP, mapIdx, openCells;
+function buildLevel(levelConfig) {
+  MAP_SIZE = levelConfig.mazeSize;
+  MAP = generateMaze(MAP_SIZE, levelConfig.loosenChance);
+  mapIdx = (x, y) => y * MAP_SIZE + x;
+  openCells = floodFillOpenCells(MAP, MAP_SIZE, 1, 1);
+}
+
+// ---------------------------------------------------------------------------
+// Penguin sprite: pre-rendered once to an offscreen canvas.
+// ---------------------------------------------------------------------------
+const SPRITE_SIZE = 64;
+const penguinCanvas = document.createElement("canvas");
+penguinCanvas.width = SPRITE_SIZE;
+penguinCanvas.height = SPRITE_SIZE;
+(function drawPenguinSprite() {
+  const c = penguinCanvas.getContext("2d");
+  const s = SPRITE_SIZE;
+  c.clearRect(0, 0, s, s);
+  // feet
+  c.fillStyle = "#ff9d2f";
+  c.beginPath(); c.ellipse(s * 0.36, s * 0.93, s * 0.09, s * 0.04, 0, 0, Math.PI * 2); c.fill();
+  c.beginPath(); c.ellipse(s * 0.64, s * 0.93, s * 0.09, s * 0.04, 0, 0, Math.PI * 2); c.fill();
+  // body (black)
+  c.fillStyle = "#12181c";
+  c.beginPath();
+  c.ellipse(s * 0.5, s * 0.58, s * 0.30, s * 0.40, 0, 0, Math.PI * 2);
+  c.fill();
+  // belly (white)
+  c.fillStyle = "#f4fbff";
+  c.beginPath();
+  c.ellipse(s * 0.5, s * 0.62, s * 0.18, s * 0.30, 0, 0, Math.PI * 2);
+  c.fill();
+  // head
+  c.fillStyle = "#12181c";
+  c.beginPath();
+  c.ellipse(s * 0.5, s * 0.24, s * 0.18, s * 0.18, 0, 0, Math.PI * 2);
+  c.fill();
+  // eyes
+  c.fillStyle = "#fff";
+  c.beginPath(); c.ellipse(s * 0.43, s * 0.22, 0.045 * s, 0.05 * s, 0, 0, Math.PI * 2); c.fill();
+  c.beginPath(); c.ellipse(s * 0.57, s * 0.22, 0.045 * s, 0.05 * s, 0, 0, Math.PI * 2); c.fill();
+  c.fillStyle = "#000";
+  c.beginPath(); c.ellipse(s * 0.44, s * 0.225, 0.02 * s, 0.025 * s, 0, 0, Math.PI * 2); c.fill();
+  c.beginPath(); c.ellipse(s * 0.56, s * 0.225, 0.02 * s, 0.025 * s, 0, 0, Math.PI * 2); c.fill();
+  // beak
+  c.fillStyle = "#ff9d2f";
+  c.beginPath();
+  c.moveTo(s * 0.5, s * 0.27);
+  c.lineTo(s * 0.5 - 0.06 * s, s * 0.31);
+  c.lineTo(s * 0.5 + 0.06 * s, s * 0.31);
+  c.closePath();
+  c.fill();
+  // little wings
+  c.fillStyle = "#12181c";
+  c.beginPath(); c.ellipse(s * 0.24, s * 0.58, s * 0.06, s * 0.18, -0.3, 0, Math.PI * 2); c.fill();
+  c.beginPath(); c.ellipse(s * 0.76, s * 0.58, s * 0.06, s * 0.18, 0.3, 0, Math.PI * 2); c.fill();
+})();
+
+const polarBearCanvas = document.createElement("canvas");
+polarBearCanvas.width = SPRITE_SIZE;
+polarBearCanvas.height = SPRITE_SIZE;
+(function drawPolarBearSprite() {
+  const c = polarBearCanvas.getContext("2d");
+  const s = SPRITE_SIZE;
+  c.clearRect(0, 0, s, s);
+  // paws
+  c.fillStyle = "#dfe8ec";
+  c.beginPath(); c.ellipse(s * 0.30, s * 0.93, s * 0.12, s * 0.06, 0, 0, Math.PI * 2); c.fill();
+  c.beginPath(); c.ellipse(s * 0.70, s * 0.93, s * 0.12, s * 0.06, 0, 0, Math.PI * 2); c.fill();
+  // body
+  c.fillStyle = "#f6fafc";
+  c.beginPath(); c.ellipse(s * 0.5, s * 0.62, s * 0.37, s * 0.33, 0, 0, Math.PI * 2); c.fill();
+  // belly shading
+  c.fillStyle = "#dce7eb";
+  c.beginPath(); c.ellipse(s * 0.5, s * 0.80, s * 0.28, s * 0.11, 0, 0, Math.PI * 2); c.fill();
+  // head
+  c.fillStyle = "#f8fbfc";
+  c.beginPath(); c.ellipse(s * 0.5, s * 0.31, s * 0.22, s * 0.20, 0, 0, Math.PI * 2); c.fill();
+  // ears
+  c.fillStyle = "#eef4f6";
+  c.beginPath(); c.ellipse(s * 0.34, s * 0.16, s * 0.06, s * 0.06, 0, 0, Math.PI * 2); c.fill();
+  c.beginPath(); c.ellipse(s * 0.66, s * 0.16, s * 0.06, s * 0.06, 0, 0, Math.PI * 2); c.fill();
+  // snout
+  c.fillStyle = "#eef4f6";
+  c.beginPath(); c.ellipse(s * 0.5, s * 0.40, s * 0.12, s * 0.09, 0, 0, Math.PI * 2); c.fill();
+  // nose
+  c.fillStyle = "#20242a";
+  c.beginPath(); c.ellipse(s * 0.5, s * 0.40, s * 0.045, s * 0.035, 0, 0, Math.PI * 2); c.fill();
+  // eyes
+  c.fillStyle = "#20242a";
+  c.beginPath(); c.ellipse(s * 0.40, s * 0.28, s * 0.025, s * 0.03, 0, 0, Math.PI * 2); c.fill();
+  c.beginPath(); c.ellipse(s * 0.60, s * 0.28, s * 0.025, s * 0.03, 0, 0, Math.PI * 2); c.fill();
+})();
+
+const ENEMY_TYPES = {
+  penguin: { hp: 2, speed: 1.1, damage: 8, detect: 8, attackRange: 0.6, attackCooldown: 700, canvas: penguinCanvas, scale: 0.9 },
+  polarbear: { hp: 6, speed: 0.85, damage: 20, detect: 9, attackRange: 0.85, attackCooldown: 900, canvas: polarBearCanvas, scale: 1.35 },
+};
+
+// ---------------------------------------------------------------------------
+// Game state
+// ---------------------------------------------------------------------------
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+const SCREEN_W = canvas.width, SCREEN_H = canvas.height;
+const FOV_PLANE = 0.66;
+
+const mmCanvas = document.getElementById("minimap");
+const mmCtx = mmCanvas.getContext("2d");
+
+const hpEl = document.getElementById("hp");
+const levelEl = document.getElementById("level");
+const weaponEl = document.getElementById("weapon");
+const scoreEl = document.getElementById("score");
+const overlay = document.getElementById("overlay");
+const startBtn = document.getElementById("startBtn");
+
+const WEAPONS = {
+  blaster: { name: "Fish Blaster", mode: "semi", damage: 1, cooldown: 280, range: 14, tolerance: 0.08, bodyColor: "#274b63", barrelColor: "#3a6f8f" },
+  harpoon: { name: "Harpoon Cannon", mode: "semi", damage: 4, cooldown: 750, range: 18, tolerance: 0.045, bodyColor: "#4a3320", barrelColor: "#8a5a2b" },
+  flamethrower: { name: "Flamethrower", mode: "auto", dps: 5, range: 4.5, tolerance: 0.4, fuelDrain: 40, fuelRegen: 22, maxFuel: 100, bodyColor: "#5c1f16", barrelColor: "#c9432b" },
+};
+
+// ---------------------------------------------------------------------------
+// Levels: each sector has its own maze shape, wall/floor/ceiling palette,
+// fog falloff, ambient decoration, and enemy pressure. Floor/ceiling art is
+// generated once per level into offscreen canvases/patterns (see
+// buildLevelAssets) so render() stays a handful of cheap draw calls.
+// ---------------------------------------------------------------------------
+const LEVELS = [
+  {
+    name: "Ice Fortress", mazeSize: 17, loosenChance: 0.22,
+    sky: ["#0a1a2e", "#1c3a55"], floorColor: "#cfd9dd", floorShade: "#9fb3bd",
+    wallLow: [120, 190, 230], wallHigh: [165, 222, 250],
+    fogColor: [10, 22, 38], fogDensity: 14,
+    floorSpeckles: [{ color: "rgba(150,190,210,0.5)", count: 90, size: [0.6, 1.8] }],
+    floorCracks: { count: 5, color: "rgba(70,100,120,0.35)" },
+    ambient: "snow", ambientRate: 12,
+    enemyBonus: 0, bearChance: 0.2,
+  },
+  {
+    name: "Frozen Caverns", mazeSize: 19, loosenChance: 0.16,
+    sky: ["#04070a", "#141c22"], floorColor: "#39414a", floorShade: "#1e242a",
+    wallLow: [70, 92, 100], wallHigh: [118, 148, 158],
+    fogColor: [4, 7, 10], fogDensity: 10,
+    floorSpeckles: [{ color: "rgba(20,26,30,0.5)", count: 70, size: [1, 3] }, { color: "rgba(150,210,230,0.18)", count: 20, size: [0.5, 1.4] }],
+    floorCracks: { count: 8, color: "rgba(10,14,16,0.5)" },
+    ambient: "drip", ambientRate: 5,
+    enemyBonus: 2, bearChance: 0.3,
+  },
+  {
+    name: "Blizzard Wastes", mazeSize: 21, loosenChance: 0.3,
+    sky: ["#7e97ab", "#c3d7e2"], floorColor: "#e9f1f5", floorShade: "#c2d3dc",
+    wallLow: [205, 218, 226], wallHigh: [240, 248, 252],
+    fogColor: [205, 222, 232], fogDensity: 8,
+    floorSpeckles: [{ color: "rgba(255,255,255,0.6)", count: 60, size: [0.6, 1.6] }],
+    floorCracks: { count: 0, color: "transparent" },
+    ambient: "snowstorm", ambientRate: 55,
+    enemyBonus: 3, bearChance: 0.35,
+  },
+  {
+    name: "Emperor's Keep", mazeSize: 19, loosenChance: 0.2,
+    sky: ["#170808", "#3a1414"], floorColor: "#2b1616", floorShade: "#150a0a",
+    wallLow: [125, 58, 48], wallHigh: [188, 92, 66],
+    fogColor: [18, 8, 8], fogDensity: 11,
+    floorSpeckles: [{ color: "rgba(255,140,60,0.28)", count: 40, size: [0.6, 1.6] }, { color: "rgba(0,0,0,0.4)", count: 60, size: [1, 2.4] }],
+    floorCracks: { count: 10, color: "rgba(0,0,0,0.5)" },
+    ambient: "embers", ambientRate: 16,
+    enemyBonus: 5, bearChance: 0.45,
+  },
+];
+
+function hash2(x, y) {
+  const v = Math.sin(x * 127.1 + y * 311.7) * 43758.5453;
+  return v - Math.floor(v);
+}
+
+function buildLevelAssets() {
+  for (const level of LEVELS) {
+    const floorCanvas = document.createElement("canvas");
+    floorCanvas.width = 64; floorCanvas.height = 64;
+    const fc = floorCanvas.getContext("2d");
+    fc.fillStyle = level.floorColor;
+    fc.fillRect(0, 0, 64, 64);
+    for (const speck of level.floorSpeckles) {
+      for (let i = 0; i < speck.count; i++) {
+        const x = Math.random() * 64, y = Math.random() * 64;
+        const r = speck.size[0] + Math.random() * (speck.size[1] - speck.size[0]);
+        fc.fillStyle = speck.color;
+        fc.beginPath();
+        fc.ellipse(x, y, r, r * 0.7, Math.random() * Math.PI, 0, Math.PI * 2);
+        fc.fill();
+      }
+    }
+    fc.strokeStyle = level.floorCracks.color;
+    fc.lineWidth = 1;
+    for (let i = 0; i < level.floorCracks.count; i++) {
+      let x = Math.random() * 64, y = Math.random() * 64;
+      fc.beginPath();
+      fc.moveTo(x, y);
+      for (let s = 0; s < 3; s++) {
+        x += (Math.random() - 0.5) * 22; y += (Math.random() - 0.5) * 22;
+        fc.lineTo(x, y);
+      }
+      fc.stroke();
+    }
+    level.floorPattern = ctx.createPattern(floorCanvas, "repeat");
+
+    const ceilCanvas = document.createElement("canvas");
+    ceilCanvas.width = SCREEN_W; ceilCanvas.height = SCREEN_H / 2;
+    const cc = ceilCanvas.getContext("2d");
+    if (level.ambient === "snow" || level.ambient === "snowstorm") {
+      for (let i = 0; i < 90; i++) {
+        const x = Math.random() * SCREEN_W, y = Math.random() * (SCREEN_H / 2) * 0.85;
+        cc.fillStyle = `rgba(255,255,255,${0.15 + Math.random() * 0.55})`;
+        cc.beginPath(); cc.arc(x, y, Math.random() * 1.6 + 0.3, 0, Math.PI * 2); cc.fill();
+      }
+    } else if (level.ambient === "drip") {
+      for (let i = 0; i < 16; i++) {
+        const x = Math.random() * SCREEN_W;
+        const len = 16 + Math.random() * 38;
+        cc.fillStyle = "rgba(12,17,21,0.9)";
+        cc.beginPath();
+        cc.moveTo(x - 9, 0); cc.lineTo(x + 9, 0); cc.lineTo(x, len);
+        cc.closePath(); cc.fill();
+        cc.fillStyle = "rgba(140,210,230,0.3)";
+        cc.beginPath(); cc.arc(x, len - 3, 2, 0, Math.PI * 2); cc.fill();
+      }
+    } else if (level.ambient === "embers") {
+      for (let i = 0; i < 50; i++) {
+        const x = Math.random() * SCREEN_W, y = Math.random() * (SCREEN_H / 2);
+        cc.fillStyle = `rgba(255,${100 + Math.random() * 90 | 0},${30 + Math.random() * 40 | 0},${0.12 + Math.random() * 0.3})`;
+        cc.beginPath(); cc.arc(x, y, Math.random() * 2 + 0.6, 0, Math.PI * 2); cc.fill();
+      }
+    }
+    level.ceilingCanvas = ceilCanvas;
+  }
+}
+buildLevelAssets();
+
+let player, enemies, mouseDX, scrollTurn, running, gameOver, won;
+let keys = {};
+let mouseHeld = false;
+let currentWeaponKey = "blaster";
+let fuel = 100;
+let lastShotTime = { blaster: 0, harpoon: 0 };
+let levelIndex = 0;
+let levelTransition = false;
+let levelTransitionTimer = 0;
+let ambientParticles = [];
+let ambientSpawnAccum = 0;
+
+function distance(x1, y1, x2, y2) { return Math.hypot(x2 - x1, y2 - y1); }
+
+function isOpen(x, y) {
+  const mx = Math.floor(x), my = Math.floor(y);
+  if (mx < 0 || my < 0 || mx >= MAP_SIZE || my >= MAP_SIZE) return false;
+  return MAP[mapIdx(mx, my)] === 0;
+}
+
+function newGame() {
+  player = { x: 0, y: 0, dirX: 1, dirY: 0, planeX: 0, planeY: FOV_PLANE, hp: 100 };
+
+  keys = {};
+  mouseDX = 0;
+  scrollTurn = 0;
+  mouseHeld = false;
+  currentWeaponKey = "blaster";
+  fuel = 100;
+  running = true;
+  gameOver = false;
+  won = false;
+  lastShotTime = { blaster: 0, harpoon: 0 };
+  recoilOffset = 0;
+  flameShakeX = 0;
+  sparkParticles = [];
+  flameParticles = [];
+  ambientParticles = [];
+  ambientSpawnAccum = 0;
+  levelTransition = false;
+  levelTransitionTimer = 0;
+  startLevel(0);
+}
+
+// Rebuilds the maze and enemy roster for a sector without touching HP,
+// weapon, or fuel — those carry over between sectors.
+function startLevel(idx) {
+  levelIndex = idx;
+  const level = LEVELS[idx];
+  buildLevel(level);
+  const startCell = openCells[0];
+  player.x = startCell[0] + 0.5;
+  player.y = startCell[1] + 0.5;
+  player.dirX = 1; player.dirY = 0; player.planeX = 0; player.planeY = FOV_PLANE;
+
+  // Place enemies on open cells reasonably far from the player. Bear odds
+  // and headcount both climb with each deeper sector.
+  const candidates = openCells.filter(([x, y]) => distance(x, y, player.x, player.y) > 4);
+  const shuffled = candidates.sort(() => Math.random() - 0.5);
+  const count = Math.min(18, Math.max(7, Math.floor(shuffled.length / 6)) + level.enemyBonus);
+  enemies = shuffled.slice(0, count).map(([x, y]) => {
+    const type = Math.random() < level.bearChance ? "polarbear" : "penguin";
+    const stats = ENEMY_TYPES[type];
+    return { type, x: x + 0.5, y: y + 0.5, hp: stats.hp, alive: true, hitFlash: 0, lastAttack: 0 };
+  });
+
+  updateHud();
+}
+
+function updateHud() {
+  hpEl.textContent = "HP: " + Math.max(0, Math.round(player.hp));
+  const alive = enemies.filter(e => e.alive).length;
+  const total = enemies.length;
+  scoreEl.textContent = "Enemies defeated: " + (total - alive) + " / " + total;
+  const w = WEAPONS[currentWeaponKey];
+  weaponEl.textContent = "Weapon: " + w.name + (currentWeaponKey === "flamethrower" ? " (fuel " + Math.round(fuel) + "%)" : "");
+  levelEl.textContent = "Sector " + (levelIndex + 1) + ": " + LEVELS[levelIndex].name;
+}
+
+// ---------------------------------------------------------------------------
+// Input
+// ---------------------------------------------------------------------------
+document.addEventListener("keydown", e => {
+  keys[e.code] = true;
+  if (e.code === "KeyR") newGame();
+  if (e.code === "Digit1") currentWeaponKey = "blaster";
+  if (e.code === "Digit2") currentWeaponKey = "harpoon";
+  if (e.code === "Digit3") currentWeaponKey = "flamethrower";
+  if (e.code === "Digit1" || e.code === "Digit2" || e.code === "Digit3") { if (player) updateHud(); }
+});
+document.addEventListener("keyup", e => { keys[e.code] = false; });
+
+canvas.addEventListener("mousedown", () => {
+  if (!document.pointerLockElement) { canvas.requestPointerLock(); return; }
+  mouseHeld = true;
+  if (WEAPONS[currentWeaponKey].mode === "semi") trySemiShot();
+});
+canvas.addEventListener("mouseup", () => { mouseHeld = false; });
+
+document.addEventListener("mousemove", e => {
+  if (document.pointerLockElement === canvas) mouseDX += e.movementX;
+});
+
+// Scroll right -> turn right, scroll left -> turn left.
+canvas.addEventListener("wheel", e => {
+  e.preventDefault();
+  scrollTurn += e.deltaX;
+}, { passive: false });
+
+startBtn.addEventListener("click", () => {
+  overlay.style.display = "none";
+  newGame();
+  canvas.requestPointerLock();
+});
+
+function angleDiffTo(tx, ty) {
+  const angleTo = Math.atan2(ty - player.y, tx - player.x);
+  const playerAngle = Math.atan2(player.dirY, player.dirX);
+  let diff = angleTo - playerAngle;
+  while (diff > Math.PI) diff -= Math.PI * 2;
+  while (diff < -Math.PI) diff += Math.PI * 2;
+  return diff;
+}
+
+function killIfDead(e) {
+  if (e.hp <= 0 && e.alive) {
+    e.alive = false;
+    if (enemies.every(x => !x.alive)) {
+      if (levelIndex < LEVELS.length - 1) {
+        levelTransition = true;
+        levelTransitionTimer = 2.4;
+      } else {
+        won = true;
+      }
+    }
+  }
+}
+
+function trySemiShot() {
+  if (gameOver || won || levelTransition) return;
+  const w = WEAPONS[currentWeaponKey];
+  const now = performance.now();
+  if (now - lastShotTime[currentWeaponKey] < w.cooldown) return;
+  lastShotTime[currentWeaponKey] = now;
+  muzzleFlash = 6;
+  recoilOffset = currentWeaponKey === "harpoon" ? 18 : 11;
+  spawnMuzzleSparks(currentWeaponKey);
+
+  let best = null, bestDist = Infinity;
+  for (const e of enemies) {
+    if (!e.alive) continue;
+    const dist = distance(player.x, player.y, e.x, e.y);
+    if (dist > w.range) continue;
+    const diff = angleDiffTo(e.x, e.y);
+    if (Math.abs(diff) < w.tolerance && dist < bestDist && hasLineOfSight(player.x, player.y, e.x, e.y)) {
+      best = e; bestDist = dist;
+    }
+  }
+  if (best) {
+    best.hp -= w.damage;
+    best.hitFlash = 8;
+    killIfDead(best);
+    updateHud();
+  }
+}
+
+function tickFlamethrower(dt) {
+  const w = WEAPONS.flamethrower;
+  if (fuel <= 0) return;
+  fuel = Math.max(0, fuel - w.fuelDrain * dt);
+  muzzleFlash = 4;
+  recoilOffset = Math.min(7, recoilOffset + 30 * dt);
+  flameShakeX = (Math.random() - 0.5) * 3;
+  spawnFlameParticles(dt);
+  for (const e of enemies) {
+    if (!e.alive) continue;
+    const dist = distance(player.x, player.y, e.x, e.y);
+    if (dist > w.range) continue;
+    const diff = angleDiffTo(e.x, e.y);
+    if (Math.abs(diff) < w.tolerance && hasLineOfSight(player.x, player.y, e.x, e.y)) {
+      e.hp -= w.dps * dt;
+      e.hitFlash = 6;
+      killIfDead(e);
+    }
+  }
+  updateHud();
+}
+
+function hasLineOfSight(x0, y0, x1, y1) {
+  const steps = Math.ceil(distance(x0, y0, x1, y1) * 4);
+  for (let i = 1; i < steps; i++) {
+    const t = i / steps;
+    if (!isOpen(x0 + (x1 - x0) * t, y0 + (y1 - y0) * t)) return false;
+  }
+  return true;
+}
+
+let muzzleFlash = 0;
+let recoilOffset = 0;
+let flameShakeX = 0;
+let sparkParticles = [];
+let flameParticles = [];
+let flameSpawnAccum = 0;
+
+// ---------------------------------------------------------------------------
+// Muzzle / flame particle effects
+// ---------------------------------------------------------------------------
+function spawnMuzzleSparks(weaponKey) {
+  const isHarpoon = weaponKey === "harpoon";
+  const count = isHarpoon ? 6 : 10;
+  for (let i = 0; i < count; i++) {
+    const angle = -Math.PI / 2 + (Math.random() - 0.5) * (isHarpoon ? 1.0 : 1.9);
+    const speed = isHarpoon ? 100 + Math.random() * 70 : 150 + Math.random() * 130;
+    sparkParticles.push({
+      x: SCREEN_W / 2 + (Math.random() - 0.5) * 8,
+      y: SCREEN_H * 0.76 - recoilOffset,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      life: 0.16 + Math.random() * 0.1,
+      maxLife: 0.26,
+      size: isHarpoon ? 3 + Math.random() * 2.5 : 1.5 + Math.random() * 2.2,
+      color: isHarpoon ? "#ffd28a" : "#bff3ff",
+    });
+  }
+}
+
+function updateSparkParticles(dt) {
+  for (let i = sparkParticles.length - 1; i >= 0; i--) {
+    const p = sparkParticles[i];
+    p.life -= dt;
+    if (p.life <= 0) { sparkParticles.splice(i, 1); continue; }
+    p.x += p.vx * dt;
+    p.y += p.vy * dt;
+    p.vy += 260 * dt;
+  }
+}
+
+function drawSparkParticles() {
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
+  for (const p of sparkParticles) {
+    ctx.globalAlpha = Math.max(0, Math.min(1, p.life / p.maxLife));
+    ctx.fillStyle = p.color;
+    ctx.beginPath();
+    ctx.ellipse(p.x, p.y, p.size, p.size, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+function spawnFlameParticles(dt) {
+  flameSpawnAccum += dt * 70;
+  while (flameSpawnAccum >= 1) {
+    flameSpawnAccum -= 1;
+    const spread = (Math.random() - 0.5) * 30;
+    flameParticles.push({
+      x: SCREEN_W / 2 + spread * 0.35,
+      y: SCREEN_H * 0.74 - recoilOffset,
+      vx: spread * 2.2 + (Math.random() - 0.5) * 24,
+      vy: -160 - Math.random() * 100,
+      life: 0,
+      maxLife: 0.32 + Math.random() * 0.28,
+      size: 9 + Math.random() * 15,
+    });
+  }
+}
+
+function updateFlameParticles(dt) {
+  for (let i = flameParticles.length - 1; i >= 0; i--) {
+    const p = flameParticles[i];
+    p.life += dt;
+    if (p.life >= p.maxLife) { flameParticles.splice(i, 1); continue; }
+    p.x += p.vx * dt;
+    p.y += p.vy * dt;
+    p.vy += 70 * dt;
+    p.vx *= 1 - dt * 0.6;
+  }
+}
+
+function flameColor(t) {
+  if (t < 0.3) return `rgba(255, 235, 150, ${1 - t * 0.5})`;
+  if (t < 0.65) return `rgba(255, 140, 40, ${1 - t * 0.7})`;
+  return `rgba(110, 80, 60, ${(1 - t) * 0.6})`;
+}
+
+function drawFlameParticles() {
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
+  for (const p of flameParticles) {
+    const t = p.life / p.maxLife;
+    ctx.fillStyle = flameColor(t);
+    const size = p.size * (1 - t * 0.35);
+    ctx.beginPath();
+    ctx.ellipse(p.x, p.y, size, size * 0.85, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+// ---------------------------------------------------------------------------
+// Ambient environment particles (per-sector decoration: falling snow,
+// cavern drips, blizzard whiteout, rising embers).
+// ---------------------------------------------------------------------------
+function makeAmbientParticle(level) {
+  if (level.ambient === "snow" || level.ambient === "snowstorm") {
+    const heavy = level.ambient === "snowstorm";
+    return {
+      x: Math.random() * SCREEN_W, y: -4,
+      vx: (Math.random() - 0.5) * (heavy ? 150 : 26),
+      vy: (heavy ? 130 : 45) + Math.random() * (heavy ? 90 : 35),
+      life: 6, size: 1 + Math.random() * (heavy ? 2.6 : 1.8),
+      color: `rgba(255,255,255,${heavy ? 0.85 : 0.7})`,
+    };
+  }
+  if (level.ambient === "drip") {
+    return {
+      x: Math.random() * SCREEN_W, y: SCREEN_H * 0.15 + Math.random() * SCREEN_H * 0.15,
+      vx: 0, vy: 70 + Math.random() * 50,
+      life: 2.2, size: 1.1 + Math.random() * 0.8,
+      color: "rgba(170,225,240,0.7)",
+    };
+  }
+  // embers
+  return {
+    x: Math.random() * SCREEN_W, y: SCREEN_H * 0.65 + Math.random() * SCREEN_H * 0.35,
+    vx: (Math.random() - 0.5) * 24, vy: -35 - Math.random() * 45,
+    life: 2.4, size: 1 + Math.random() * 2,
+    color: `rgba(255,${120 + Math.random() * 80 | 0},${40 + Math.random() * 40 | 0},0.85)`,
+  };
+}
+
+function updateAmbient(dt) {
+  const level = LEVELS[levelIndex];
+  ambientSpawnAccum += dt * level.ambientRate;
+  while (ambientSpawnAccum >= 1) {
+    ambientSpawnAccum -= 1;
+    ambientParticles.push(makeAmbientParticle(level));
+  }
+  for (let i = ambientParticles.length - 1; i >= 0; i--) {
+    const p = ambientParticles[i];
+    p.life -= dt;
+    p.x += p.vx * dt;
+    p.y += p.vy * dt;
+    if (p.life <= 0 || p.y > SCREEN_H || p.y < -10) ambientParticles.splice(i, 1);
+  }
+}
+
+function drawAmbient() {
+  ctx.save();
+  for (const p of ambientParticles) {
+    ctx.globalAlpha = Math.max(0, Math.min(1, p.life / 2));
+    ctx.fillStyle = p.color;
+    ctx.beginPath();
+    ctx.ellipse(p.x, p.y, p.size, p.size, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+// ---------------------------------------------------------------------------
+// Weapon silhouette drawing
+// ---------------------------------------------------------------------------
+function drawWeapon(key, recoil, shakeX) {
+  const w = WEAPONS[key];
+  ctx.save();
+  ctx.translate(SCREEN_W / 2 + shakeX, SCREEN_H - recoil);
+  if (key === "blaster") drawBlasterGun(w);
+  else if (key === "harpoon") drawHarpoonGun(w);
+  else drawFlamethrowerGun(w);
+  ctx.restore();
+}
+
+function drawBlasterGun(w) {
+  ctx.fillStyle = "#1a2530";
+  ctx.fillRect(-14, -34, 20, 40);
+
+  const grad = ctx.createLinearGradient(-34, -95, 34, -20);
+  grad.addColorStop(0, "#3a6f8f");
+  grad.addColorStop(1, w.bodyColor);
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.moveTo(-34, -20);
+  ctx.lineTo(-30, -80);
+  ctx.lineTo(30, -95);
+  ctx.lineTo(34, -20);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.fillStyle = w.barrelColor;
+  ctx.fillRect(-11, -140, 22, 55);
+  ctx.beginPath();
+  ctx.ellipse(0, -140, 11, 6, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = "#1a2530";
+  ctx.fillRect(-9, -118, 18, 4);
+  ctx.fillRect(-9, -108, 18, 4);
+
+  const pulse = 0.55 + 0.45 * Math.sin(performance.now() / 180);
+  ctx.fillStyle = `rgba(140,235,255,${pulse})`;
+  ctx.beginPath();
+  ctx.ellipse(0, -140, 5, 5, 0, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawHarpoonGun(w) {
+  ctx.fillStyle = "#2a1c10";
+  ctx.fillRect(-14, -30, 20, 36);
+
+  ctx.fillStyle = w.bodyColor;
+  ctx.fillRect(-38, -85, 76, 60);
+
+  ctx.fillStyle = "#000a";
+  for (const rx of [-30, -10, 10, 30]) {
+    ctx.beginPath(); ctx.arc(rx, -55, 2.5, 0, Math.PI * 2); ctx.fill();
+  }
+
+  ctx.fillStyle = w.barrelColor;
+  ctx.fillRect(-13, -150, 26, 68);
+
+  ctx.fillStyle = "#c9c9c9";
+  ctx.beginPath();
+  ctx.moveTo(0, -178);
+  ctx.lineTo(-8, -150);
+  ctx.lineTo(8, -150);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = "#8a8a8a";
+  ctx.fillRect(-11, -152, 22, 6);
+
+  ctx.strokeStyle = "#7a5a30";
+  ctx.lineWidth = 3;
+  for (let i = 0; i < 3; i++) {
+    ctx.beginPath();
+    ctx.ellipse(-44, -40 - i * 9, 10, 6, 0.3, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+}
+
+function drawFlamethrowerGun(w) {
+  ctx.fillStyle = "#3a3a3a";
+  ctx.beginPath(); ctx.ellipse(-46, -70, 16, 46, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(46, -70, 16, 46, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = "#c9432b";
+  ctx.fillRect(-58, -95, 24, 8);
+  ctx.fillRect(34, -95, 24, 8);
+
+  ctx.fillStyle = "#241713";
+  ctx.fillRect(-14, -30, 20, 36);
+
+  ctx.fillStyle = w.bodyColor;
+  ctx.fillRect(-30, -90, 60, 62);
+
+  ctx.strokeStyle = "#1a1a1a";
+  ctx.lineWidth = 6;
+  ctx.beginPath();
+  ctx.moveTo(-30, -80);
+  ctx.quadraticCurveTo(-46, -100, -20, -120);
+  ctx.stroke();
+
+  ctx.fillStyle = w.barrelColor;
+  ctx.fillRect(-15, -140, 30, 55);
+  ctx.beginPath(); ctx.ellipse(0, -140, 15, 8, 0, 0, Math.PI * 2); ctx.fill();
+
+  const flick = 0.5 + 0.5 * Math.sin(performance.now() / 60);
+  ctx.fillStyle = `rgba(255,180,80,${0.5 + flick * 0.5})`;
+  ctx.beginPath(); ctx.ellipse(0, -145, 4 + flick * 2, 4 + flick * 2, 0, 0, Math.PI * 2); ctx.fill();
+}
+
+// ---------------------------------------------------------------------------
+// Update loop
+// ---------------------------------------------------------------------------
+function update(dt) {
+  if (levelTransition) {
+    levelTransitionTimer -= dt;
+    if (muzzleFlash > 0) muzzleFlash--;
+    updateSparkParticles(dt);
+    updateFlameParticles(dt);
+    updateAmbient(dt);
+    if (levelTransitionTimer <= 0) {
+      levelTransition = false;
+      startLevel(levelIndex + 1);
+    }
+    return;
+  }
+  if (gameOver || won) return;
+
+  // Mouse look (moving the mouse right turns the view right)
+  const turnSpeed = 0.0024;
+  const mouseRot = mouseDX * turnSpeed;
+  mouseDX = 0;
+  if (mouseRot !== 0) rotatePlayer(mouseRot);
+
+  // Scroll-wheel look: scrolling right turns right, scrolling left turns left.
+  const scrollTurnSpeed = 0.0022;
+  if (scrollTurn !== 0) {
+    rotatePlayer(scrollTurn * scrollTurnSpeed);
+    scrollTurn = 0;
+  }
+
+  // Keyboard turning fallback (rotatePlayer(+) turns right, (-) turns left)
+  const kTurn = 2.4 * dt;
+  if (keys["ArrowLeft"]) rotatePlayer(-kTurn);
+  if (keys["ArrowRight"]) rotatePlayer(kTurn);
+
+  const moveSpeed = 3.0 * dt;
+  let mx = 0, my = 0;
+  if (keys["KeyW"]) { mx += player.dirX; my += player.dirY; }
+  if (keys["KeyS"]) { mx -= player.dirX; my -= player.dirY; }
+  if (keys["KeyA"]) { mx += player.dirY; my -= player.dirX; }
+  if (keys["KeyD"]) { mx -= player.dirY; my += player.dirX; }
+  const mlen = Math.hypot(mx, my);
+  if (mlen > 0) {
+    mx = (mx / mlen) * moveSpeed;
+    my = (my / mlen) * moveSpeed;
+    const pad = 0.2;
+    if (isOpen(player.x + mx + Math.sign(mx) * pad, player.y)) player.x += mx;
+    if (isOpen(player.x, player.y + my + Math.sign(my) * pad)) player.y += my;
+  }
+
+  // Weapon firing / fuel
+  const curWeapon = WEAPONS[currentWeaponKey];
+  if (mouseHeld && curWeapon.mode === "auto") tickFlamethrower(dt);
+  if (!(mouseHeld && currentWeaponKey === "flamethrower")) {
+    const fw = WEAPONS.flamethrower;
+    if (fuel < fw.maxFuel) {
+      fuel = Math.min(fw.maxFuel, fuel + fw.fuelRegen * dt);
+      if (currentWeaponKey === "flamethrower") updateHud();
+    }
+  }
+
+  // Enemy AI
+  const now = performance.now();
+  for (const e of enemies) {
+    if (!e.alive) continue;
+    if (e.hitFlash > 0) e.hitFlash--;
+    const stats = ENEMY_TYPES[e.type];
+    const dx = player.x - e.x, dy = player.y - e.y;
+    const dist = Math.hypot(dx, dy);
+    if (dist < stats.detect && dist > stats.attackRange && hasLineOfSight(e.x, e.y, player.x, player.y)) {
+      const speed = stats.speed * dt;
+      const nx = e.x + (dx / dist) * speed;
+      const ny = e.y + (dy / dist) * speed;
+      if (isOpen(nx, e.y)) e.x = nx;
+      if (isOpen(e.x, ny)) e.y = ny;
+    } else if (dist <= stats.attackRange && now - e.lastAttack > stats.attackCooldown) {
+      e.lastAttack = now;
+      player.hp -= stats.damage;
+      if (player.hp <= 0) { player.hp = 0; gameOver = true; }
+      updateHud();
+    }
+  }
+
+  if (muzzleFlash > 0) muzzleFlash--;
+  recoilOffset = Math.max(0, recoilOffset - 46 * dt);
+  if (!(mouseHeld && currentWeaponKey === "flamethrower")) flameShakeX = 0;
+  updateSparkParticles(dt);
+  updateFlameParticles(dt);
+  updateAmbient(dt);
+}
+
+function rotatePlayer(rot) {
+  const oldDirX = player.dirX;
+  player.dirX = player.dirX * Math.cos(rot) - player.dirY * Math.sin(rot);
+  player.dirY = oldDirX * Math.sin(rot) + player.dirY * Math.cos(rot);
+  const oldPlaneX = player.planeX;
+  player.planeX = player.planeX * Math.cos(rot) - player.planeY * Math.sin(rot);
+  player.planeY = oldPlaneX * Math.sin(rot) + player.planeY * Math.cos(rot);
+}
+
+// ---------------------------------------------------------------------------
+// Raycasting render
+// ---------------------------------------------------------------------------
+const zBuffer = new Array(SCREEN_W);
+
+function render() {
+  const level = LEVELS[levelIndex];
+
+  // Sky/ceiling: per-sector gradient plus a pre-rendered decoration layer
+  // (ice glints, stalactites, or drifting embers depending on the sector).
+  const grad = ctx.createLinearGradient(0, 0, 0, SCREEN_H / 2);
+  grad.addColorStop(0, level.sky[0]);
+  grad.addColorStop(1, level.sky[1]);
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, SCREEN_W, SCREEN_H / 2);
+  if (level.ceilingCanvas) ctx.drawImage(level.ceilingCanvas, 0, 0);
+
+  // Floor: gradient plus a tiled speckle/crack pattern baked per sector.
+  const floorGrad = ctx.createLinearGradient(0, SCREEN_H / 2, 0, SCREEN_H);
+  floorGrad.addColorStop(0, level.floorShade);
+  floorGrad.addColorStop(1, level.floorColor);
+  ctx.fillStyle = floorGrad;
+  ctx.fillRect(0, SCREEN_H / 2, SCREEN_W, SCREEN_H / 2);
+  if (level.floorPattern) {
+    ctx.save();
+    ctx.globalAlpha = 0.55;
+    ctx.fillStyle = level.floorPattern;
+    ctx.fillRect(0, SCREEN_H / 2, SCREEN_W, SCREEN_H / 2);
+    ctx.restore();
+  }
+
+  for (let x = 0; x < SCREEN_W; x++) {
+    const cameraX = (2 * x) / SCREEN_W - 1;
+    const rayDirX = player.dirX + player.planeX * cameraX;
+    const rayDirY = player.dirY + player.planeY * cameraX;
+
+    let mapX = Math.floor(player.x), mapY = Math.floor(player.y);
+    const deltaDistX = rayDirX === 0 ? 1e30 : Math.abs(1 / rayDirX);
+    const deltaDistY = rayDirY === 0 ? 1e30 : Math.abs(1 / rayDirY);
+
+    let stepX, stepY, sideDistX, sideDistY;
+    if (rayDirX < 0) { stepX = -1; sideDistX = (player.x - mapX) * deltaDistX; }
+    else { stepX = 1; sideDistX = (mapX + 1 - player.x) * deltaDistX; }
+    if (rayDirY < 0) { stepY = -1; sideDistY = (player.y - mapY) * deltaDistY; }
+    else { stepY = 1; sideDistY = (mapY + 1 - player.y) * deltaDistY; }
+
+    let hit = 0, side = 0, guard = 0;
+    while (hit === 0 && guard < 256) {
+      guard++;
+      if (sideDistX < sideDistY) { sideDistX += deltaDistX; mapX += stepX; side = 0; }
+      else { sideDistY += deltaDistY; mapY += stepY; side = 1; }
+      if (mapX < 0 || mapY < 0 || mapX >= MAP_SIZE || mapY >= MAP_SIZE) { hit = 1; break; }
+      if (MAP[mapIdx(mapX, mapY)] === 1) hit = 1;
+    }
+
+    const perpWallDist = side === 0
+      ? (mapX - player.x + (1 - stepX) / 2) / (rayDirX || 1e-9)
+      : (mapY - player.y + (1 - stepY) / 2) / (rayDirY || 1e-9);
+    const dist = Math.max(perpWallDist, 0.0001);
+    zBuffer[x] = dist;
+
+    const lineHeight = Math.floor(SCREEN_H / dist);
+    const drawStart = Math.max(0, -lineHeight / 2 + SCREEN_H / 2);
+    const drawEnd = Math.min(SCREEN_H, lineHeight / 2 + SCREEN_H / 2);
+
+    // Block tint: each map cell gets a deterministic shade variance so walls
+    // don't read as one flat slab, plus a darker mortar line at cell edges.
+    const wallX = side === 0 ? player.y + dist * rayDirY : player.x + dist * rayDirX;
+    const wallFrac = wallX - Math.floor(wallX);
+    const variance = 0.85 + hash2(mapX, mapY) * 0.3;
+    const base = side === 0 ? level.wallHigh : level.wallLow;
+    let r = base[0] * variance, g = base[1] * variance, b = base[2] * variance;
+    if (wallFrac < 0.05 || wallFrac > 0.95) { r *= 0.55; g *= 0.55; b *= 0.55; }
+
+    const shade = Math.max(0.12, 1 - dist / level.fogDensity);
+    r *= shade; g *= shade; b *= shade;
+
+    // Fog blend: distant walls fade toward the sector's atmosphere color.
+    const fogT = Math.min(1, Math.max(0, (dist - level.fogDensity * 0.55) / (level.fogDensity * 0.9)));
+    r += (level.fogColor[0] - r) * fogT;
+    g += (level.fogColor[1] - g) * fogT;
+    b += (level.fogColor[2] - b) * fogT;
+
+    ctx.fillStyle = `rgb(${r | 0}, ${g | 0}, ${b | 0})`;
+    ctx.fillRect(x, drawStart, 1, drawEnd - drawStart);
+  }
+
+  renderSprites();
+  drawAmbient();
+
+  drawWeapon(currentWeaponKey, recoilOffset, flameShakeX);
+  if (flameParticles.length) drawFlameParticles();
+  if (sparkParticles.length) drawSparkParticles();
+
+  if (muzzleFlash > 0) {
+    const glowColor = currentWeaponKey === "flamethrower" ? "255,150,60" : currentWeaponKey === "harpoon" ? "255,210,140" : "190,240,255";
+    const glowSize = currentWeaponKey === "flamethrower" ? 60 : 42;
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    ctx.fillStyle = `rgba(${glowColor},${(muzzleFlash / 14) * 0.55})`;
+    ctx.beginPath();
+    ctx.ellipse(SCREEN_W / 2, SCREEN_H * 0.76 - recoilOffset, glowSize, glowSize * 0.55, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  renderMinimap();
+}
+
+function renderSprites() {
+  const sorted = enemies
+    .filter(e => e.alive)
+    .map(e => {
+      const dx = e.x - player.x, dy = e.y - player.y;
+      return { e, dist: dx * dx + dy * dy };
+    })
+    .sort((a, b) => b.dist - a.dist);
+
+  const invDet = 1.0 / (player.planeX * player.dirY - player.dirX * player.planeY);
+
+  for (const { e } of sorted) {
+    const stats = ENEMY_TYPES[e.type];
+    const spriteX = e.x - player.x, spriteY = e.y - player.y;
+    const transformX = invDet * (player.dirY * spriteX - player.dirX * spriteY);
+    const transformY = invDet * (-player.planeY * spriteX + player.planeX * spriteY);
+    if (transformY <= 0.15) continue;
+
+    const spriteScreenX = Math.floor((SCREEN_W / 2) * (1 + transformX / transformY));
+    const spriteHeight = Math.abs(Math.floor(SCREEN_H / transformY)) * 0.9 * stats.scale;
+    const spriteWidth = spriteHeight;
+
+    const drawStartY = Math.max(0, -spriteHeight / 2 + SCREEN_H / 2);
+    const drawEndY = Math.min(SCREEN_H, spriteHeight / 2 + SCREEN_H / 2);
+    const drawStartX = Math.floor(-spriteWidth / 2 + spriteScreenX);
+    const drawEndX = Math.floor(spriteWidth / 2 + spriteScreenX);
+
+    if (drawEndX < 0 || drawStartX > SCREEN_W) continue;
+
+    // Find contiguous unoccluded column runs against the depth buffer.
+    let runStart = null;
+    for (let sx = Math.max(0, drawStartX); sx <= Math.min(SCREEN_W - 1, drawEndX); sx++) {
+      const visible = transformY < zBuffer[sx];
+      if (visible && runStart === null) runStart = sx;
+      if ((!visible || sx === Math.min(SCREEN_W - 1, drawEndX)) && runStart !== null) {
+        const runEnd = visible ? sx + 1 : sx;
+        drawSpriteRun(e, stats.canvas, drawStartX, drawStartY, spriteWidth, spriteHeight, runStart, runEnd);
+        runStart = null;
+      }
+    }
+  }
+}
+
+function drawSpriteRun(e, spriteCanvas, drawStartX, drawStartY, spriteWidth, spriteHeight, runStart, runEnd) {
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(runStart, drawStartY, runEnd - runStart, spriteHeight);
+  ctx.clip();
+  ctx.drawImage(spriteCanvas, drawStartX, drawStartY, spriteWidth, spriteHeight);
+  if (e.hitFlash > 0) {
+    ctx.globalAlpha = e.hitFlash / 8;
+    ctx.fillStyle = "#ff3b3b";
+    ctx.fillRect(drawStartX, drawStartY, spriteWidth, spriteHeight);
+    ctx.globalAlpha = 1;
+  }
+  ctx.restore();
+}
+
+function renderMinimap() {
+  const level = LEVELS[levelIndex];
+  const scale = mmCanvas.width / MAP_SIZE;
+  const wallTint = `rgb(${level.wallHigh[0] * 0.35 | 0},${level.wallHigh[1] * 0.35 | 0},${level.wallHigh[2] * 0.35 | 0})`;
+  mmCtx.clearRect(0, 0, mmCanvas.width, mmCanvas.height);
+  for (let y = 0; y < MAP_SIZE; y++) {
+    for (let x = 0; x < MAP_SIZE; x++) {
+      mmCtx.fillStyle = MAP[mapIdx(x, y)] === 1 ? wallTint : "#0a1a2ecc";
+      mmCtx.fillRect(x * scale, y * scale, scale, scale);
+    }
+  }
+  for (const e of enemies) {
+    if (!e.alive) continue;
+    mmCtx.fillStyle = e.type === "polarbear" ? "#ffffff" : "#7fe8ff";
+    mmCtx.beginPath();
+    mmCtx.arc(e.x * scale, e.y * scale, e.type === "polarbear" ? 3 : 2, 0, Math.PI * 2);
+    mmCtx.fill();
+  }
+  mmCtx.fillStyle = "#7fffb0";
+  mmCtx.beginPath();
+  mmCtx.arc(player.x * scale, player.y * scale, 3, 0, Math.PI * 2);
+  mmCtx.fill();
+  mmCtx.strokeStyle = "#7fffb0";
+  mmCtx.beginPath();
+  mmCtx.moveTo(player.x * scale, player.y * scale);
+  mmCtx.lineTo((player.x + player.dirX) * scale, (player.y + player.dirY) * scale);
+  mmCtx.stroke();
+}
+
+function renderEndState() {
+  ctx.fillStyle = "rgba(0,0,0,0.6)";
+  ctx.fillRect(0, 0, SCREEN_W, SCREEN_H);
+  ctx.fillStyle = won ? "#7fffb0" : "#ff6b6b";
+  ctx.font = "bold 40px 'Courier New', monospace";
+  ctx.textAlign = "center";
+  ctx.fillText(won ? "ALL SECTORS CLEARED" : "YOU HAVE BEEN WADDLED ON", SCREEN_W / 2, SCREEN_H / 2 - 10);
+  ctx.font = "20px 'Courier New', monospace";
+  ctx.fillStyle = "#eafcff";
+  ctx.fillText("Press R to play again", SCREEN_W / 2, SCREEN_H / 2 + 30);
+  ctx.textAlign = "left";
+}
+
+function renderLevelTransition() {
+  ctx.fillStyle = "rgba(0,0,0,0.55)";
+  ctx.fillRect(0, 0, SCREEN_W, SCREEN_H);
+  ctx.fillStyle = "#7fffb0";
+  ctx.font = "bold 32px 'Courier New', monospace";
+  ctx.textAlign = "center";
+  ctx.fillText("SECTOR CLEARED", SCREEN_W / 2, SCREEN_H / 2 - 14);
+  ctx.font = "20px 'Courier New', monospace";
+  ctx.fillStyle = "#eafcff";
+  ctx.fillText("Entering " + LEVELS[levelIndex + 1].name, SCREEN_W / 2, SCREEN_H / 2 + 22);
+  ctx.textAlign = "left";
+}
+
+// ---------------------------------------------------------------------------
+// Main loop
+// ---------------------------------------------------------------------------
+let lastTime = performance.now();
+function frame(now) {
+  const dt = Math.min(0.05, (now - lastTime) / 1000);
+  lastTime = now;
+  if (running) {
+    update(dt);
+    render();
+    if (gameOver || won) renderEndState();
+    else if (levelTransition) renderLevelTransition();
+  }
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
