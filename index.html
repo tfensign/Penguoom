@@ -2,15 +2,25 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>PENGUOOM</title>
 <style>
-  html, body { margin: 0; background: #000; overflow: hidden; height: 100%; }
-  #wrap { position: relative; width: 100vw; height: 100vh; display: flex; align-items: center; justify-content: center; }
-  canvas { image-rendering: pixelated; background: #000; }
+  html, body {
+    margin: 0; background: #000; overflow: hidden; height: 100%;
+    overscroll-behavior: none; touch-action: none;
+    -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent;
+  }
+  body { display: flex; align-items: center; justify-content: center; }
+  /* #wrap is sized in JS (fitCanvas) to exactly match the letterboxed game
+     rect, so everything inside it (HUD, crosshair, minimap) stays visually
+     locked to the actual rendered canvas instead of the raw viewport edges. */
+  #wrap { position: relative; width: 800px; height: 480px; }
+  canvas#game { image-rendering: pixelated; background: #000; display: block; width: 100%; height: 100%; }
+  #minimap { image-rendering: pixelated; }
   #overlay {
     position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
     flex-direction: column; color: #eafcff; font-family: 'Courier New', monospace; text-align: center;
-    background: rgba(0,10,20,0.75); z-index: 10;
+    background: rgba(0,10,20,0.75); z-index: 10; padding: 16px; box-sizing: border-box;
   }
   #overlay h1 { font-size: 3rem; letter-spacing: 0.3rem; margin-bottom: 0.2rem; color: #7fe8ff; text-shadow: 0 0 12px #2ad; }
   #overlay p { max-width: 560px; line-height: 1.5; }
@@ -31,7 +41,50 @@
   #crosshair::before { left: 8px; top: 0; width: 2px; height: 18px; }
   #crosshair::after { top: 8px; left: 0; width: 18px; height: 2px; }
   #minimap { position: absolute; top: 12px; right: 12px; border: 2px solid #7fe8ff88; background: rgba(0,10,20,0.5); }
-  #hint { position: absolute; top: 12px; left: 12px; color: #cfefff; font-family: 'Courier New', monospace; font-size: 0.8rem; opacity: 0.8; }
+  #hint { position: absolute; top: 12px; left: 12px; color: #cfefff; font-family: 'Courier New', monospace; font-size: 0.8rem; opacity: 0.8; max-width: 60%; }
+
+  /* Touch controls sit outside #wrap, pinned to the true screen edges (fixed,
+     full viewport) so thumbs can reach them regardless of letterbox size. */
+  #mobileControls {
+    position: fixed; inset: 0; z-index: 6; display: none;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    box-sizing: border-box;
+  }
+  #mobileControls.active { display: block; }
+  .touchBtn { pointer-events: auto; -webkit-tap-highlight-color: transparent; user-select: none; touch-action: none; }
+  #joyBase {
+    position: absolute; left: 24px; bottom: 24px; width: 128px; height: 128px; border-radius: 50%;
+    background: rgba(120,190,220,0.15); border: 2px solid rgba(150,220,240,0.4);
+  }
+  #joyKnob {
+    position: absolute; left: 50%; top: 50%; width: 54px; height: 54px; margin: -27px 0 0 -27px; border-radius: 50%;
+    background: rgba(180,230,250,0.55); border: 2px solid rgba(220,245,255,0.75);
+  }
+  #fireBtn {
+    position: absolute; right: 26px; bottom: 30px; width: 92px; height: 92px; border-radius: 50%;
+    background: rgba(255,90,70,0.35); border: 3px solid rgba(255,140,120,0.7);
+    color: #fff; font-family: 'Courier New', monospace; font-weight: bold; font-size: 0.95rem;
+    display: flex; align-items: center; justify-content: center; text-align: center;
+  }
+  #fireBtn.pressed { background: rgba(255,90,70,0.65); }
+  #weaponBtns { position: absolute; right: 30px; bottom: 138px; display: flex; flex-direction: column; gap: 8px; }
+  .weaponBtn {
+    width: 52px; height: 52px; border-radius: 10px; background: rgba(20,40,55,0.65); border: 2px solid rgba(150,220,240,0.5);
+    color: #eafcff; font-size: 1.4rem; display: flex; align-items: center; justify-content: center;
+  }
+  .weaponBtn.selected { border-color: #7fffb0; background: rgba(40,90,70,0.65); }
+  #restartBtnMobile {
+    position: absolute; left: 24px; top: 14px; padding: 8px 12px; border-radius: 8px;
+    background: rgba(20,40,55,0.65); border: 2px solid rgba(150,220,240,0.5); color: #eafcff;
+    font-family: 'Courier New', monospace; font-size: 0.85rem;
+  }
+  #rotatePrompt {
+    position: fixed; inset: 0; z-index: 20; display: none; align-items: center; justify-content: center;
+    flex-direction: column; text-align: center; background: #030a12; color: #eafcff;
+    font-family: 'Courier New', monospace; padding: 20px; box-sizing: border-box;
+  }
+  #rotatePrompt.show { display: flex; }
+  #rotatePrompt .spin { font-size: 2.6rem; margin-bottom: 0.6rem; }
 </style>
 </head>
 <body>
@@ -55,6 +108,21 @@
        Fish Blaster, Harpoon Cannon, and Flamethrower.</p>
     <button id="startBtn">ENTER THE ICE</button>
   </div>
+</div>
+
+<div id="mobileControls">
+  <div id="joyBase" class="touchBtn"><div id="joyKnob"></div></div>
+  <div id="weaponBtns">
+    <div class="touchBtn weaponBtn selected" data-weapon="blaster">&#128031;</div>
+    <div class="touchBtn weaponBtn" data-weapon="harpoon">&#128720;</div>
+    <div class="touchBtn weaponBtn" data-weapon="flamethrower">&#128293;</div>
+  </div>
+  <div id="fireBtn" class="touchBtn">FIRE</div>
+  <div id="restartBtnMobile" class="touchBtn">&#8635; Restart</div>
+</div>
+<div id="rotatePrompt">
+  <div class="spin">&#8635;</div>
+  <p>Rotate your device to landscape<br>to play PENGUOOM.</p>
 </div>
 
 <script>
@@ -320,6 +388,12 @@ const ENEMY_TYPES = {
 // Game state
 // ---------------------------------------------------------------------------
 const canvas = document.getElementById("game");
+// Coarse-pointer devices (phones/tablets) get a lower internal render
+// resolution — the raycaster redraws every screen column every frame, so
+// fewer columns keeps frame rate smooth on weaker mobile GPUs/CPUs. It's
+// still upscaled to fill the screen (see fitCanvas), same pixelated look.
+const isTouch = matchMedia("(pointer: coarse)").matches || navigator.maxTouchPoints > 0;
+if (isTouch) { canvas.width = 640; canvas.height = 384; }
 const ctx = canvas.getContext("2d");
 const SCREEN_W = canvas.width, SCREEN_H = canvas.height;
 const FOV_PLANE = 0.66;
@@ -333,6 +407,43 @@ const weaponEl = document.getElementById("weapon");
 const scoreEl = document.getElementById("score");
 const overlay = document.getElementById("overlay");
 const startBtn = document.getElementById("startBtn");
+const wrapEl = document.getElementById("wrap");
+const hintEl = document.getElementById("hint");
+const mobileControlsEl = document.getElementById("mobileControls");
+const joyBaseEl = document.getElementById("joyBase");
+const joyKnobEl = document.getElementById("joyKnob");
+const fireBtnEl = document.getElementById("fireBtn");
+const weaponBtnEls = Array.from(document.querySelectorAll(".weaponBtn"));
+const restartBtnMobileEl = document.getElementById("restartBtnMobile");
+const rotatePromptEl = document.getElementById("rotatePrompt");
+
+// ---------------------------------------------------------------------------
+// Responsive layout: #wrap is sized to the largest box matching the game's
+// aspect ratio that fits the viewport, and centered by the body's flex
+// styles — so HUD/crosshair/minimap (children of #wrap) always line up with
+// the actual rendered canvas instead of the raw window edges.
+// ---------------------------------------------------------------------------
+function fitCanvas() {
+  const scale = Math.min(window.innerWidth / SCREEN_W, window.innerHeight / SCREEN_H);
+  wrapEl.style.width = Math.floor(SCREEN_W * scale) + "px";
+  wrapEl.style.height = Math.floor(SCREEN_H * scale) + "px";
+}
+function updateOrientationPrompt() {
+  const portrait = window.innerHeight > window.innerWidth;
+  rotatePromptEl.classList.toggle("show", isTouch && portrait);
+}
+function onViewportChange() {
+  fitCanvas();
+  updateOrientationPrompt();
+}
+window.addEventListener("resize", onViewportChange);
+window.addEventListener("orientationchange", () => setTimeout(onViewportChange, 60));
+onViewportChange();
+
+if (isTouch) {
+  mobileControlsEl.classList.add("active");
+  hintEl.textContent = "Left pad: move · drag screen: look (aim up/down matters!) · FIRE button to shoot · tap a weapon icon to switch";
+}
 
 const WEAPONS = {
   blaster: { name: "Fish Blaster", mode: "semi", damage: 1, cooldown: 280, range: 14, bodyColor: "#274b63", barrelColor: "#3a6f8f" },
@@ -503,6 +614,8 @@ function newGame() {
   ambientSpawnAccum = 0;
   levelTransition = false;
   levelTransitionTimer = 0;
+  joyReset();
+  weaponBtnEls.forEach(b => b.classList.toggle("selected", b.dataset.weapon === "blaster"));
   startLevel(0);
 }
 
@@ -555,6 +668,7 @@ document.addEventListener("keydown", e => {
 document.addEventListener("keyup", e => { keys[e.code] = false; });
 
 canvas.addEventListener("mousedown", () => {
+  if (isTouch) return; // touch fires via #fireBtn instead
   if (!document.pointerLockElement) { canvas.requestPointerLock(); return; }
   mouseHeld = true;
   if (WEAPONS[currentWeaponKey].mode === "semi") trySemiShot();
@@ -574,7 +688,109 @@ canvas.addEventListener("wheel", e => {
 startBtn.addEventListener("click", () => {
   overlay.style.display = "none";
   newGame();
-  canvas.requestPointerLock();
+  if (!isTouch) canvas.requestPointerLock();
+});
+
+// ---------------------------------------------------------------------------
+// Touch controls: a virtual joystick for movement, drag-to-look anywhere on
+// the game view (reuses the same mouseDX/mouseDY the mouse path feeds, so
+// turning and vertical aim work identically), a fire button, weapon-select
+// icons, and a restart button (there's no keyboard to press R on).
+// ---------------------------------------------------------------------------
+let joyTouchId = null, joyCenterX = 0, joyCenterY = 0, joyForward = 0, joyStrafe = 0;
+const JOY_RADIUS = 55;
+
+function joyUpdateFromTouch(t) {
+  let dx = t.clientX - joyCenterX, dy = t.clientY - joyCenterY;
+  const dist = Math.hypot(dx, dy);
+  if (dist > JOY_RADIUS) { dx = (dx / dist) * JOY_RADIUS; dy = (dy / dist) * JOY_RADIUS; }
+  joyKnobEl.style.transform = `translate(${dx}px, ${dy}px)`;
+  const nx = dx / JOY_RADIUS, ny = dy / JOY_RADIUS;
+  const deadzone = 0.18;
+  if (Math.hypot(nx, ny) < deadzone) { joyForward = 0; joyStrafe = 0; }
+  else { joyForward = -ny; joyStrafe = nx; }
+}
+function joyReset() {
+  joyTouchId = null; joyForward = 0; joyStrafe = 0;
+  joyKnobEl.style.transform = "translate(0px, 0px)";
+}
+joyBaseEl.addEventListener("touchstart", e => {
+  e.preventDefault();
+  const t = e.changedTouches[0];
+  joyTouchId = t.identifier;
+  const rect = joyBaseEl.getBoundingClientRect();
+  joyCenterX = rect.left + rect.width / 2;
+  joyCenterY = rect.top + rect.height / 2;
+  joyUpdateFromTouch(t);
+}, { passive: false });
+joyBaseEl.addEventListener("touchmove", e => {
+  e.preventDefault();
+  for (const t of e.changedTouches) if (t.identifier === joyTouchId) joyUpdateFromTouch(t);
+}, { passive: false });
+joyBaseEl.addEventListener("touchend", e => {
+  for (const t of e.changedTouches) if (t.identifier === joyTouchId) joyReset();
+});
+joyBaseEl.addEventListener("touchcancel", e => {
+  for (const t of e.changedTouches) if (t.identifier === joyTouchId) joyReset();
+});
+
+// Drag-to-look: any touch that starts on the game canvas itself (i.e. not on
+// one of the control widgets, which are separate elements layered above it).
+let lookTouchId = null, lookLastX = 0, lookLastY = 0;
+canvas.addEventListener("touchstart", e => {
+  e.preventDefault();
+  if (lookTouchId === null) {
+    const t = e.changedTouches[0];
+    lookTouchId = t.identifier;
+    lookLastX = t.clientX; lookLastY = t.clientY;
+  }
+}, { passive: false });
+canvas.addEventListener("touchmove", e => {
+  e.preventDefault();
+  for (const t of e.changedTouches) {
+    if (t.identifier === lookTouchId) {
+      mouseDX += t.clientX - lookLastX;
+      mouseDY += t.clientY - lookLastY;
+      lookLastX = t.clientX; lookLastY = t.clientY;
+    }
+  }
+}, { passive: false });
+canvas.addEventListener("touchend", e => {
+  for (const t of e.changedTouches) if (t.identifier === lookTouchId) lookTouchId = null;
+});
+canvas.addEventListener("touchcancel", e => {
+  for (const t of e.changedTouches) if (t.identifier === lookTouchId) lookTouchId = null;
+});
+
+fireBtnEl.addEventListener("touchstart", e => {
+  e.preventDefault();
+  fireBtnEl.classList.add("pressed");
+  mouseHeld = true;
+  if (WEAPONS[currentWeaponKey].mode === "semi") trySemiShot();
+}, { passive: false });
+fireBtnEl.addEventListener("touchend", e => {
+  e.preventDefault();
+  fireBtnEl.classList.remove("pressed");
+  mouseHeld = false;
+});
+fireBtnEl.addEventListener("touchcancel", () => {
+  fireBtnEl.classList.remove("pressed");
+  mouseHeld = false;
+});
+
+for (const btn of weaponBtnEls) {
+  btn.addEventListener("touchstart", e => {
+    e.preventDefault();
+    currentWeaponKey = btn.dataset.weapon;
+    weaponBtnEls.forEach(b => b.classList.toggle("selected", b === btn));
+    if (player) updateHud();
+  }, { passive: false });
+}
+
+restartBtnMobileEl.addEventListener("touchstart", e => {
+  e.preventDefault();
+  overlay.style.display = "none";
+  newGame();
 });
 
 // ---------------------------------------------------------------------------
@@ -1269,6 +1485,10 @@ function update(dt) {
   if (keys["KeyS"]) { mx -= player.dirX; my -= player.dirY; }
   if (keys["KeyA"]) { mx += player.dirY; my -= player.dirX; }
   if (keys["KeyD"]) { mx -= player.dirY; my += player.dirX; }
+  // Virtual joystick (touch): forward/back and strafe axes in the same
+  // player-relative basis as the WASD contributions above.
+  mx += player.dirX * joyForward - player.dirY * joyStrafe;
+  my += player.dirY * joyForward + player.dirX * joyStrafe;
   const mlen = Math.hypot(mx, my);
   if (mlen > 0) {
     mx = (mx / mlen) * moveSpeed;
