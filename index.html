@@ -565,6 +565,12 @@ function drawStoatFrame(c, s, phase, aggressive) {
   c.beginPath(); c.ellipse(s * 0.42, s * (0.91 + legLift2), s * 0.045, s * 0.03, 0, 0, Math.PI * 2); c.fill();
   c.beginPath(); c.ellipse(s * 0.58, s * (0.91 + legLift1), s * 0.045, s * 0.03, 0, 0, Math.PI * 2); c.fill();
 
+  // everything above the legs rides a bob/arch: mustelids run with a bounding
+  // gait, the spine humping up and down twice per stride while the feet stay
+  // planted, so give it more life than the other enemies' plain leg-lift.
+  c.save();
+  c.translate(0, s * Math.sin(phase * 2) * -0.035);
+
   // tail, curled up behind it — white like the rest of its winter coat, but
   // keeping the black tip real ermines have even after they turn white.
   c.strokeStyle = "#f6f5ef"; c.lineWidth = s * 0.075; c.lineCap = "round";
@@ -614,6 +620,7 @@ function drawStoatFrame(c, s, phase, aggressive) {
   c.strokeStyle = "rgba(120,120,110,0.35)";
   c.lineWidth = 1;
   c.beginPath(); c.ellipse(s * 0.52, s * 0.70, s * 0.34, s * 0.18, 0, 0, Math.PI * 2); c.stroke();
+  c.restore();
 }
 
 const penguinFrames = buildFrameSet(drawPenguinFrame);
