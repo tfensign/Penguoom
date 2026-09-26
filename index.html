@@ -549,12 +549,193 @@ function drawWalrusFrame(c, s, phase, aggressive) {
   c.beginPath(); c.ellipse(s * 0.5, s * 0.64, s * 0.40, s * 0.34, 0, 0, Math.PI * 2); c.stroke();
 }
 
+// Small, low-slung and fast — drawn in profile (unlike the front-on
+// penguin/bear/walrus) with an elongated body and a black-tipped tail so its
+// silhouette reads as a quick weasel-like animal even at its tiny on-screen
+// size.
+function drawStoatFrame(c, s, phase, aggressive) {
+  c.clearRect(0, 0, s, s);
+  const legLift1 = Math.sin(phase * 2) * 0.05;
+  const legLift2 = Math.sin(phase * 2 + Math.PI) * 0.05;
+
+  // quick little legs, high-frequency scurry
+  c.fillStyle = "#c9c4b6";
+  c.beginPath(); c.ellipse(s * 0.34, s * (0.87 + legLift1), s * 0.05, s * 0.035, 0, 0, Math.PI * 2); c.fill();
+  c.beginPath(); c.ellipse(s * 0.66, s * (0.87 + legLift2), s * 0.05, s * 0.035, 0, 0, Math.PI * 2); c.fill();
+  c.beginPath(); c.ellipse(s * 0.42, s * (0.91 + legLift2), s * 0.045, s * 0.03, 0, 0, Math.PI * 2); c.fill();
+  c.beginPath(); c.ellipse(s * 0.58, s * (0.91 + legLift1), s * 0.045, s * 0.03, 0, 0, Math.PI * 2); c.fill();
+
+  // tail, curled up behind it — white like the rest of its winter coat, but
+  // keeping the black tip real ermines have even after they turn white.
+  c.strokeStyle = "#eeece4"; c.lineWidth = s * 0.075; c.lineCap = "round";
+  c.beginPath(); c.moveTo(s * 0.80, s * 0.76); c.quadraticCurveTo(s * 0.97, s * 0.70, s * 0.93, s * 0.50); c.stroke();
+  c.fillStyle = "#181410";
+  c.beginPath(); c.ellipse(s * 0.935, s * 0.485, s * 0.05, s * 0.06, 0.3, 0, Math.PI * 2); c.fill();
+
+  // body: long, low barrel — white winter coat over a slightly brighter belly
+  const bodyGrad = c.createLinearGradient(s * 0.5, s * 0.54, s * 0.5, s * 0.84);
+  bodyGrad.addColorStop(0, "#f7f6f0");
+  bodyGrad.addColorStop(1, "#d6d2c4");
+  c.fillStyle = bodyGrad;
+  c.beginPath(); c.ellipse(s * 0.52, s * 0.70, s * 0.34, s * 0.18, 0, 0, Math.PI * 2); c.fill();
+  c.fillStyle = "#ffffff";
+  c.beginPath(); c.ellipse(s * 0.52, s * 0.80, s * 0.24, s * 0.075, 0, 0, Math.PI * 2); c.fill();
+
+  // head: small and narrow-snouted, alert
+  const headGrad = c.createRadialGradient(s * 0.24, s * 0.48, s * 0.02, s * 0.27, s * 0.52, s * 0.16);
+  headGrad.addColorStop(0, "#fbfaf6");
+  headGrad.addColorStop(1, "#dcd8ca");
+  c.fillStyle = headGrad;
+  c.beginPath(); c.ellipse(s * 0.28, s * 0.52, s * 0.16, s * 0.125, -0.15, 0, Math.PI * 2); c.fill();
+  // ears
+  c.fillStyle = "#d6d2c4";
+  c.beginPath(); c.ellipse(s * 0.22, s * 0.42, s * 0.032, s * 0.032, 0, 0, Math.PI * 2); c.fill();
+  c.beginPath(); c.ellipse(s * 0.33, s * 0.40, s * 0.032, s * 0.032, 0, 0, Math.PI * 2); c.fill();
+  // snout tip / nose
+  c.fillStyle = "#211a12";
+  c.beginPath(); c.ellipse(s * 0.15, s * 0.545, s * 0.028, s * 0.022, 0, 0, Math.PI * 2); c.fill();
+  // whiskers
+  c.strokeStyle = "rgba(30,20,10,0.5)"; c.lineWidth = 0.7;
+  for (const wy of [-0.02, 0, 0.02]) {
+    c.beginPath(); c.moveTo(s * 0.19, s * (0.555 + wy)); c.lineTo(s * 0.05, s * (0.535 + wy)); c.stroke();
+  }
+  // eyes: bright and beady, flare red when it's spotted the player
+  c.fillStyle = aggressive ? "#ff5a3a" : "#1a1410";
+  c.beginPath(); c.ellipse(s * 0.25, s * 0.485, s * 0.025, s * 0.028, 0, 0, Math.PI * 2); c.fill();
+  c.fillStyle = "rgba(255,255,255,0.75)";
+  c.beginPath(); c.ellipse(s * 0.245, s * 0.478, s * 0.008, s * 0.009, 0, 0, Math.PI * 2); c.fill();
+  if (aggressive) {
+    c.fillStyle = "#fff";
+    c.beginPath(); c.moveTo(s * 0.16, s * 0.565); c.lineTo(s * 0.12, s * 0.605); c.lineTo(s * 0.19, s * 0.585); c.closePath(); c.fill();
+  }
+  // subtle outline for definition (also fills anti-aliased edge pixels into
+  // the hit mask) — a cool gray rather than the old brown, so a white coat
+  // still reads as a distinct silhouette against pale snow/ice floors.
+  c.strokeStyle = "rgba(120,120,110,0.35)";
+  c.lineWidth = 1;
+  c.beginPath(); c.ellipse(s * 0.52, s * 0.70, s * 0.34, s * 0.18, 0, 0, Math.PI * 2); c.stroke();
+}
+
 const penguinFrames = buildFrameSet(drawPenguinFrame);
 const polarBearFrames = buildFrameSet(drawPolarBearFrame);
 const walrusFrames = buildFrameSet(drawWalrusFrame);
+const stoatFrames = buildFrameSet(drawStoatFrame);
 const penguinAlphaMask = buildAlphaMask(penguinFrames.neutral[0]);
 const polarBearAlphaMask = buildAlphaMask(polarBearFrames.neutral[0]);
 const walrusAlphaMask = buildAlphaMask(walrusFrames.neutral[0]);
+const stoatAlphaMask = buildAlphaMask(stoatFrames.neutral[0]);
+
+// ---------------------------------------------------------------------------
+// Static decoration props (Christmas trees, gifts, candy canes, ...): drawn
+// once into a canvas the same way an enemy sprite frame is, then billboarded
+// by renderSprites alongside enemies (see levelProps / level.decor) — but
+// with no AI, HP, or collision, since they're purely atmospheric set
+// dressing for the sectors that opt into them.
+// ---------------------------------------------------------------------------
+function makePropCanvas(drawFn) {
+  const canvas = makeSpriteCanvas();
+  drawFn(canvas.getContext("2d"), SPRITE_SIZE);
+  return canvas;
+}
+
+function drawStar(c, cx, cy, outerR, innerR, points) {
+  c.beginPath();
+  for (let i = 0; i < points * 2; i++) {
+    const r = i % 2 === 0 ? outerR : innerR;
+    const a = (Math.PI / points) * i - Math.PI / 2;
+    const x = cx + Math.cos(a) * r, y = cy + Math.sin(a) * r;
+    if (i === 0) c.moveTo(x, y); else c.lineTo(x, y);
+  }
+  c.closePath();
+  c.fill();
+}
+
+function drawTreeProp(c, s) {
+  c.clearRect(0, 0, s, s);
+  c.fillStyle = "#4a2f18";
+  c.fillRect(s * 0.44, s * 0.87, s * 0.12, s * 0.13);
+  const tiers = [
+    { y: 0.87, w: 0.46, h: 0.20 },
+    { y: 0.69, w: 0.36, h: 0.22 },
+    { y: 0.49, w: 0.26, h: 0.24 },
+  ];
+  const lightColors = ["#ff5a4a", "#ffd24a", "#5ac8ff"];
+  let li = 0;
+  for (const t of tiers) {
+    const grad = c.createLinearGradient(s * 0.5, s * (t.y - t.h), s * 0.5, s * t.y);
+    grad.addColorStop(0, "#2f6b3a");
+    grad.addColorStop(1, "#173d20");
+    c.fillStyle = grad;
+    c.beginPath();
+    c.moveTo(s * 0.5, s * (t.y - t.h));
+    c.lineTo(s * (0.5 - t.w), s * t.y);
+    c.lineTo(s * (0.5 + t.w), s * t.y);
+    c.closePath();
+    c.fill();
+    // snow dusting along the tier's lower edge
+    c.fillStyle = "rgba(255,255,255,0.55)";
+    c.beginPath();
+    c.moveTo(s * (0.5 - t.w * 0.9), s * (t.y - 0.01));
+    c.quadraticCurveTo(s * 0.5, s * (t.y - t.h * 0.12), s * (0.5 + t.w * 0.9), s * (t.y - 0.01));
+    c.quadraticCurveTo(s * 0.5, s * (t.y + 0.015), s * (0.5 - t.w * 0.9), s * (t.y - 0.01));
+    c.fill();
+    // ornament lights
+    for (let i = 0; i < 4; i++) {
+      const lx = 0.5 + (Math.random() * 2 - 1) * t.w * 0.7;
+      const ly = t.y - Math.random() * t.h * 0.75 - 0.02;
+      c.fillStyle = lightColors[li % lightColors.length]; li++;
+      c.beginPath(); c.arc(s * lx, s * ly, s * 0.015, 0, Math.PI * 2); c.fill();
+    }
+  }
+  c.fillStyle = "#ffe066";
+  drawStar(c, s * 0.5, s * 0.455, s * 0.05, s * 0.02, 5);
+}
+
+function drawGiftProp(c, s) {
+  c.clearRect(0, 0, s, s);
+  const combos = [["#c9432b", "#ffd24a"], ["#2a6b8a", "#e9dcc0"], ["#3a7d44", "#ffd24a"]];
+  const [boxColor, ribbonColor] = combos[Math.floor(Math.random() * combos.length)];
+  c.fillStyle = boxColor;
+  c.fillRect(s * 0.34, s * 0.66, s * 0.32, s * 0.26);
+  c.fillStyle = ribbonColor;
+  c.fillRect(s * 0.34, s * 0.765, s * 0.32, s * 0.045);
+  c.fillRect(s * 0.475, s * 0.66, s * 0.05, s * 0.26);
+  c.beginPath(); c.ellipse(s * 0.44, s * 0.655, s * 0.045, s * 0.03, 0.5, 0, Math.PI * 2); c.fill();
+  c.beginPath(); c.ellipse(s * 0.56, s * 0.655, s * 0.045, s * 0.03, -0.5, 0, Math.PI * 2); c.fill();
+  c.strokeStyle = "rgba(0,0,0,0.25)"; c.lineWidth = 1;
+  c.strokeRect(s * 0.34, s * 0.66, s * 0.32, s * 0.26);
+}
+
+function drawCandyCaneProp(c, s) {
+  c.clearRect(0, 0, s, s);
+  c.strokeStyle = "#e9e2d4"; c.lineWidth = s * 0.09; c.lineCap = "round";
+  c.beginPath();
+  c.moveTo(s * 0.5, s * 0.92);
+  c.lineTo(s * 0.5, s * 0.5);
+  c.quadraticCurveTo(s * 0.5, s * 0.30, s * 0.36, s * 0.30);
+  c.stroke();
+  c.save();
+  c.setLineDash([s * 0.065, s * 0.065]);
+  c.strokeStyle = "#c9432b"; c.lineWidth = s * 0.09;
+  c.beginPath();
+  c.moveTo(s * 0.5, s * 0.92);
+  c.lineTo(s * 0.5, s * 0.5);
+  c.quadraticCurveTo(s * 0.5, s * 0.30, s * 0.36, s * 0.30);
+  c.stroke();
+  c.restore();
+  // little sprig of holly at the base
+  c.fillStyle = "#2f6b3a";
+  c.beginPath(); c.ellipse(s * 0.44, s * 0.90, s * 0.05, s * 0.03, 0.6, 0, Math.PI * 2); c.fill();
+  c.beginPath(); c.ellipse(s * 0.56, s * 0.90, s * 0.05, s * 0.03, -0.6, 0, Math.PI * 2); c.fill();
+  c.fillStyle = "#c9432b";
+  c.beginPath(); c.arc(s * 0.5, s * 0.905, s * 0.018, 0, Math.PI * 2); c.fill();
+}
+
+const PROP_CANVASES = {
+  tree: makePropCanvas(drawTreeProp),
+  gift: makePropCanvas(drawGiftProp),
+  candycane: makePropCanvas(drawCandyCaneProp),
+};
 
 // Picks the current walk-cycle/expression frame for an enemy: aggressive
 // once it has spotted the player (e.aware, set in the AI update), calm
@@ -575,6 +756,12 @@ const ENEMY_TYPES = {
   // Very slow, but ~3x a polar bear's HP (so ~3x harder to kill) and hits
   // considerably harder — one spawns per sector from Sector 2 onward.
   walrus: { hp: 18, speed: 0.45, damage: 34, detect: 7, attackRange: 1.0, attackCooldown: 1300, frames: walrusFrames, alphaMask: walrusAlphaMask, scale: 1.65, wanderSpeedMult: 0.35, wanderInterval: [3.0, 6.0], wanderPauseChance: 0.45 },
+  // Small, weak (one hit from any weapon kills it) and cheap to have a lot
+  // of, but by far the fastest thing in the game — see the zig-zag "dodge"
+  // steering carved out for e.type === "stoat" in the AI update below. Its
+  // tiny scale also shrinks its pixel-hit alpha mask to match, so it's a
+  // genuinely small target rather than just a reskinned penguin.
+  stoat: { hp: 1, speed: 2.2, damage: 6, detect: 10, attackRange: 0.5, attackCooldown: 450, frames: stoatFrames, alphaMask: stoatAlphaMask, scale: 0.42, wanderSpeedMult: 0.6, wanderInterval: [0.6, 1.6], wanderPauseChance: 0.15 },
 };
 
 // ---------------------------------------------------------------------------
@@ -586,6 +773,13 @@ const canvas = document.getElementById("game");
 // fewer columns keeps frame rate smooth on weaker mobile GPUs/CPUs. It's
 // still upscaled to fill the screen (see fitCanvas), same pixelated look.
 const isTouch = matchMedia("(pointer: coarse)").matches || navigator.maxTouchPoints > 0;
+// isTouch alone false-positives in plenty of non-phone contexts (a desktop
+// browser reporting a coarse pointer/touch points inside an embedded or
+// remote-rendered view, a touchscreen laptop, ...), which is harmless for
+// isTouch's other uses (just adds on-screen controls) but not for the
+// rotate-device prompt below, which actively blocks play — so that one also
+// requires an actual mobile OS in the user agent.
+const isMobileUA = /Android|iPhone|iPad|iPod|Mobi/i.test(navigator.userAgent);
 if (isTouch) { canvas.width = 640; canvas.height = 384; }
 const ctx = canvas.getContext("2d");
 const SCREEN_W = canvas.width, SCREEN_H = canvas.height;
@@ -623,7 +817,7 @@ function fitCanvas() {
 }
 function updateOrientationPrompt() {
   const portrait = window.innerHeight > window.innerWidth;
-  rotatePromptEl.classList.toggle("show", isTouch && portrait);
+  rotatePromptEl.classList.toggle("show", isTouch && isMobileUA && portrait);
 }
 function onViewportChange() {
   fitCanvas();
@@ -662,7 +856,12 @@ const LEVELS = [
     floorSpeckles: [{ color: "rgba(150,190,210,0.5)", count: 90, size: [0.6, 1.8] }],
     floorCracks: { count: 5, color: "rgba(70,100,120,0.35)" },
     ambient: "snow", ambientRate: 12,
-    enemyBonus: 0, bearChance: 0.2,
+    enemyBonus: 0, bearChance: 0.2, stoatChance: 0.18,
+    music: {
+      root: 220, scale: scaleFrom(220, [0, 3, 5, 7, 10, 12]),
+      pattern: [0, null, 2, null, 4, 3, null, 2, null, 0, null, 3, 2, null, null, null],
+      stepMs: 460, padWave: "sine", filterBase: 800, windFreq: 500, windGain: 0.02, timbre: "bell",
+    },
   },
   {
     name: "Frozen Caverns", mazeSize: 19, loosenChance: 0.16,
@@ -672,7 +871,12 @@ const LEVELS = [
     floorSpeckles: [{ color: "rgba(20,26,30,0.5)", count: 70, size: [1, 3] }, { color: "rgba(150,210,230,0.18)", count: 20, size: [0.5, 1.4] }],
     floorCracks: { count: 8, color: "rgba(10,14,16,0.5)" },
     ambient: "drip", ambientRate: 5,
-    enemyBonus: 2, bearChance: 0.3,
+    enemyBonus: 2, bearChance: 0.3, stoatChance: 0.20,
+    music: {
+      root: 165, scale: scaleFrom(165, [0, 3, 5, 7, 10, 12]),
+      pattern: [null, 0, null, null, 2, null, 3, null, null, 0, null, 2, null, null, 3, null],
+      stepMs: 520, padWave: "sine", filterBase: 550, windFreq: 350, windGain: 0.012, timbre: "bell",
+    },
   },
   {
     name: "Blizzard Wastes", mazeSize: 21, loosenChance: 0.3,
@@ -682,7 +886,12 @@ const LEVELS = [
     floorSpeckles: [{ color: "rgba(255,255,255,0.6)", count: 60, size: [0.6, 1.6] }],
     floorCracks: { count: 0, color: "transparent" },
     ambient: "snowstorm", ambientRate: 55,
-    enemyBonus: 3, bearChance: 0.35,
+    enemyBonus: 3, bearChance: 0.35, stoatChance: 0.22,
+    music: {
+      root: 247, scale: scaleFrom(247, [0, 3, 5, 7, 10, 12]),
+      pattern: [0, 2, null, 3, 0, null, 2, 4, null, 3, 2, null, 0, 2, null, 4],
+      stepMs: 380, padWave: "sine", filterBase: 1000, windFreq: 700, windGain: 0.04, timbre: "bell",
+    },
   },
   {
     name: "Emperor's Keep", mazeSize: 19, loosenChance: 0.2,
@@ -692,7 +901,107 @@ const LEVELS = [
     floorSpeckles: [{ color: "rgba(255,140,60,0.28)", count: 40, size: [0.6, 1.6] }, { color: "rgba(0,0,0,0.4)", count: 60, size: [1, 2.4] }],
     floorCracks: { count: 10, color: "rgba(0,0,0,0.5)" },
     ambient: "embers", ambientRate: 16,
-    enemyBonus: 5, bearChance: 0.45,
+    enemyBonus: 5, bearChance: 0.45, stoatChance: 0.24,
+    music: {
+      root: 130.5, scale: scaleFrom(130.5, [0, 3, 5, 7, 10, 12]),
+      pattern: [0, null, null, 3, null, 2, null, null, 5, null, 3, null, null, 2, null, 0],
+      stepMs: 420, padWave: "sine", filterBase: 600, windFreq: 260, windGain: 0.02, timbre: "bell",
+    },
+  },
+  {
+    name: "Frozen Harbor", mazeSize: 21, loosenChance: 0.24,
+    sky: ["#0a1c22", "#1d3540"], floorColor: "#5a6b6e", floorShade: "#33403f",
+    wallLow: [70, 110, 120], wallHigh: [120, 168, 175],
+    fogColor: [8, 18, 22], fogDensity: 12,
+    floorSpeckles: [{ color: "rgba(190,150,110,0.3)", count: 40, size: [0.8, 2.2] }, { color: "rgba(200,230,235,0.35)", count: 50, size: [0.6, 1.6] }],
+    floorCracks: { count: 9, color: "rgba(15,25,25,0.4)" },
+    ambient: "drip", ambientRate: 8,
+    enemyBonus: 6, bearChance: 0.42, stoatChance: 0.26,
+    music: {
+      root: 196, scale: scaleFrom(196, [0, 3, 5, 7, 10, 12]),
+      pattern: [0, null, 3, 2, null, 0, null, 5, 3, null, 2, null, 0, null, null, 2],
+      stepMs: 430, padWave: "sine", filterBase: 700, windFreq: 420, windGain: 0.025, timbre: "bell",
+    },
+  },
+  {
+    name: "Crystal Caverns", mazeSize: 21, loosenChance: 0.18,
+    sky: ["#050b18", "#0e1c33"], floorColor: "#2a3550", floorShade: "#151b2c",
+    wallLow: [60, 90, 160], wallHigh: [110, 150, 230],
+    fogColor: [6, 10, 20], fogDensity: 9,
+    floorSpeckles: [{ color: "rgba(120,170,255,0.4)", count: 60, size: [0.5, 1.6] }],
+    floorCracks: { count: 6, color: "rgba(90,140,230,0.3)" },
+    ambient: "drip", ambientRate: 6,
+    enemyBonus: 7, bearChance: 0.48, stoatChance: 0.28,
+    music: {
+      root: 174.6, scale: scaleFrom(174.6, [0, 3, 5, 7, 10, 12]),
+      pattern: [null, 2, null, 4, null, 5, null, 4, null, 2, null, 0, null, null, 2, null],
+      stepMs: 500, padWave: "sine", filterBase: 500, windFreq: 900, windGain: 0.01, timbre: "bell",
+    },
+  },
+  {
+    name: "Aurora Tundra", mazeSize: 23, loosenChance: 0.34,
+    sky: ["#0c2a24", "#123a52"], floorColor: "#dfeaf0", floorShade: "#b8ccd6",
+    wallLow: [150, 200, 190], wallHigh: [200, 240, 220],
+    fogColor: [150, 210, 195], fogDensity: 9,
+    floorSpeckles: [{ color: "rgba(180,255,220,0.35)", count: 50, size: [0.6, 1.8] }],
+    floorCracks: { count: 0, color: "transparent" },
+    ambient: "snowstorm", ambientRate: 60,
+    enemyBonus: 8, bearChance: 0.5, stoatChance: 0.28,
+    music: {
+      root: 261.63, scale: scaleFrom(261.63, [0, 3, 5, 7, 10, 12]),
+      pattern: [0, 2, 4, null, 3, 2, null, 0, 5, null, 4, 2, null, 3, null, 0],
+      stepMs: 360, padWave: "sine", filterBase: 1100, windFreq: 750, windGain: 0.045, timbre: "bell",
+    },
+  },
+  {
+    name: "Christmas Village", mazeSize: 21, loosenChance: 0.26,
+    sky: ["#0b1f2e", "#142a1f"], floorColor: "#6b4226", floorShade: "#3f2717",
+    wallLow: [40, 90, 60], wallHigh: [90, 160, 105],
+    fogColor: [10, 20, 15], fogDensity: 11,
+    floorSpeckles: [{ color: "rgba(255,214,120,0.35)", count: 30, size: [0.6, 1.6] }, { color: "rgba(255,255,255,0.4)", count: 50, size: [0.6, 1.6] }],
+    floorCracks: { count: 4, color: "rgba(40,25,15,0.35)" },
+    ambient: "snow", ambientRate: 16,
+    enemyBonus: 7, bearChance: 0.48, stoatChance: 0.26,
+    decor: [
+      { type: "tree", count: 12, scale: 1.9 },
+      { type: "gift", count: 10, scale: 0.5 },
+      { type: "candycane", count: 8, scale: 1.1 },
+    ],
+    music: {
+      root: 196, scale: scaleFrom(196, [0, 2, 4, 7, 9, 12]),
+      pattern: [0, null, 3, 2, 3, null, 4, null, 0, null, 3, 2, 3, 4, 3, null],
+      stepMs: 340, padWave: "triangle", filterBase: 1300, windFreq: 600, windGain: 0.012, timbre: "sleigh",
+    },
+  },
+  {
+    name: "Northern Lights Ruins", mazeSize: 23, loosenChance: 0.2,
+    sky: ["#0a0a20", "#241238"], floorColor: "#463a55", floorShade: "#241c30",
+    wallLow: [90, 70, 140], wallHigh: [150, 120, 210],
+    fogColor: [12, 8, 22], fogDensity: 10,
+    floorSpeckles: [{ color: "rgba(150,230,220,0.3)", count: 45, size: [0.6, 1.6] }],
+    floorCracks: { count: 10, color: "rgba(10,5,20,0.5)" },
+    ambient: "drip", ambientRate: 7,
+    enemyBonus: 9, bearChance: 0.55, stoatChance: 0.30,
+    music: {
+      root: 146.8, scale: scaleFrom(146.8, [0, 3, 5, 7, 10, 12]),
+      pattern: [0, null, null, 4, 3, null, 2, null, null, 5, null, 3, null, 2, null, null],
+      stepMs: 470, padWave: "sine", filterBase: 620, windFreq: 480, windGain: 0.018, timbre: "bell",
+    },
+  },
+  {
+    name: "The Frozen Throne", mazeSize: 23, loosenChance: 0.18,
+    sky: ["#120404", "#2c0808"], floorColor: "#1c0c0c", floorShade: "#0c0505",
+    wallLow: [140, 40, 40], wallHigh: [210, 80, 70],
+    fogColor: [15, 5, 5], fogDensity: 12,
+    floorSpeckles: [{ color: "rgba(255,120,60,0.3)", count: 45, size: [0.6, 1.8] }, { color: "rgba(0,0,0,0.4)", count: 55, size: [1, 2.4] }],
+    floorCracks: { count: 12, color: "rgba(0,0,0,0.55)" },
+    ambient: "embers", ambientRate: 22,
+    enemyBonus: 11, bearChance: 0.62, stoatChance: 0.32,
+    music: {
+      root: 116.5, scale: scaleFrom(116.5, [0, 1, 3, 6, 7, 10]),
+      pattern: [0, null, 3, null, 2, null, 5, null, 3, null, 0, null, 2, null, 3, null],
+      stepMs: 320, padWave: "sine", filterBase: 480, windFreq: 300, windGain: 0.02, timbre: "bell",
+    },
   },
 ];
 
@@ -899,18 +1208,43 @@ function flameLoopSetActive(active) {
   }
 }
 
-// Wintry background music: a slow, sparse bell melody over an icy pad drone
-// and a thin layer of wind noise, all generated rather than loaded from a file.
-const MUSIC_SCALE = [220.0, 261.63, 293.66, 329.63, 392.0, 440.0]; // A minor pentatonic
-const MUSIC_PATTERN = [
-  0, null, 2, null, 4, 3, null, 2, null, 0, null, 3, 2, null, null, null,
-  5, null, 4, null, 3, 2, null, 4, null, 5, null, 3, 2, null, null, null,
-];
-const MUSIC_STEP_MS = 460;
-let musicStep = 0;
+// Wintry background music: a slow, sparse melody over an icy pad drone and a
+// thin layer of wind noise, all generated rather than loaded from a file.
+// Each sector supplies its own `music` config (root pitch, scale, rhythmic
+// pattern, tempo, pad/wind character, note timbre) so every sector has a
+// distinct track while sharing the same synthesis engine — see
+// startMusicForLevel, called from startLevel whenever the sector changes.
+function scaleFrom(root, semitoneSteps) {
+  return semitoneSteps.map(st => root * Math.pow(2, st / 12));
+}
 
-function playBell(freq) {
+function playMelodyNote(freq, timbre) {
   const t0 = audioCtx.currentTime;
+  if (timbre === "sleigh") {
+    // Bright, quick jingle-bell hit — fast metallic attack/decay plus a
+    // high-passed noise "shake" transient, instead of the slow bell swell.
+    const osc = audioCtx.createOscillator();
+    osc.type = "square";
+    osc.frequency.setValueAtTime(freq * 2, t0);
+    const g = audioCtx.createGain();
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(0.13, t0 + 0.005);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.22);
+    osc.connect(g); g.connect(musicGain);
+    osc.start(t0); osc.stop(t0 + 0.24);
+    const shimmer = audioCtx.createOscillator();
+    shimmer.type = "sine";
+    shimmer.frequency.setValueAtTime(freq * 4.02, t0);
+    const g2 = audioCtx.createGain();
+    g2.gain.setValueAtTime(0.0001, t0);
+    g2.gain.exponentialRampToValueAtTime(0.06, t0 + 0.004);
+    g2.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.16);
+    shimmer.connect(g2); g2.connect(musicGain);
+    shimmer.start(t0); shimmer.stop(t0 + 0.18);
+    playNoise({ duration: 0.05, gain: 0.05, filterFreq: 6000, filterType: "highpass" });
+    return;
+  }
+  // Default "bell" timbre: an icy sine plus a detuned shimmer overtone.
   const osc = audioCtx.createOscillator();
   osc.type = "sine";
   osc.frequency.setValueAtTime(freq, t0);
@@ -931,16 +1265,35 @@ function playBell(freq) {
   shimmer.start(t0); shimmer.stop(t0 + 1.1);
 }
 
-function startMusic() {
-  // Icy pad drone: two sines a fifth apart under a slowly breathing lowpass filter.
+// Currently-playing pad/wind oscillators plus the melody's setInterval id,
+// torn down by stopMusic() before the next sector's track starts.
+let musicNodes = [];
+let musicIntervalId = null;
+
+function stopMusic() {
+  if (musicIntervalId !== null) { clearInterval(musicIntervalId); musicIntervalId = null; }
+  if (audioCtx) {
+    const t = audioCtx.currentTime;
+    for (const node of musicNodes) {
+      try { node.stop(t + 0.05); } catch (err) { /* already stopped */ }
+    }
+  }
+  musicNodes = [];
+}
+
+function startMusicForLevel(level) {
+  stopMusic();
+  const cfg = level.music;
+
+  // Pad drone: root + a fifth above, under a slowly breathing lowpass filter.
   const padOsc1 = audioCtx.createOscillator();
   const padOsc2 = audioCtx.createOscillator();
-  padOsc1.type = "sine"; padOsc2.type = "sine";
-  padOsc1.frequency.value = 110; // A2
-  padOsc2.frequency.value = 110 * Math.pow(2, 7 / 12); // E3
+  padOsc1.type = cfg.padWave; padOsc2.type = cfg.padWave;
+  padOsc1.frequency.value = cfg.root;
+  padOsc2.frequency.value = cfg.root * Math.pow(2, 7 / 12);
   const padFilter = audioCtx.createBiquadFilter();
   padFilter.type = "lowpass";
-  padFilter.frequency.value = 800;
+  padFilter.frequency.value = cfg.filterBase;
   const padGain = audioCtx.createGain();
   padGain.gain.value = 0.05;
   padOsc1.connect(padFilter); padOsc2.connect(padFilter);
@@ -960,22 +1313,24 @@ function startMusic() {
   windSrc.loop = true;
   const windFilter = audioCtx.createBiquadFilter();
   windFilter.type = "bandpass";
-  windFilter.frequency.value = 500;
+  windFilter.frequency.value = cfg.windFreq;
   windFilter.Q.value = 0.5;
   const windGain = audioCtx.createGain();
-  windGain.gain.value = 0.02;
+  windGain.gain.value = cfg.windGain;
   windSrc.connect(windFilter); windFilter.connect(windGain); windGain.connect(musicGain);
   windSrc.start();
 
-  // Sparse bell melody, looped by re-triggering on an interval.
-  musicStep = 0;
+  musicNodes = [padOsc1, padOsc2, lfo, windSrc];
+
+  // Sparse melody, looped by re-triggering on an interval.
+  let step = 0;
   const playStep = () => {
-    const degree = MUSIC_PATTERN[musicStep % MUSIC_PATTERN.length];
-    musicStep++;
-    if (degree !== null) playBell(MUSIC_SCALE[degree]);
+    const degree = cfg.pattern[step % cfg.pattern.length];
+    step++;
+    if (degree !== null) playMelodyNote(cfg.scale[degree], cfg.timbre);
   };
   playStep();
-  setInterval(playStep, MUSIC_STEP_MS);
+  musicIntervalId = setInterval(playStep, cfg.stepMs);
 }
 
 function ensureAudio() {
@@ -988,7 +1343,6 @@ function ensureAudio() {
   sfxGain.gain.value = 0.6;
   sfxGain.connect(audioCtx.destination);
   initFlameLoop();
-  startMusic();
 }
 
 let player, enemies, mouseDX, mouseDY, scrollTurn, running, gameOver, won;
@@ -1003,6 +1357,7 @@ let levelTransition = false;
 let levelTransitionTimer = 0;
 let ambientParticles = [];
 let ambientSpawnAccum = 0;
+let levelProps = [];
 
 function distance(x1, y1, x2, y2) { return Math.hypot(x2 - x1, y2 - y1); }
 
@@ -1029,6 +1384,7 @@ function newGame() {
   won = false;
   lastShotTime = { blaster: 0, harpoon: 0 };
   recoilOffset = 0;
+  hurtFlash = 0;
   flameShakeX = 0;
   sparkParticles = [];
   flameParticles = [];
@@ -1043,12 +1399,21 @@ function newGame() {
   startLevel(0);
 }
 
+// Rolls the base roster type for a regular (non-walrus) spawn: a chance of
+// a polar bear, then a chance of a stoat, otherwise a plain penguin.
+function pickBaseEnemyType(level) {
+  const r = Math.random();
+  if (r < level.bearChance) return "polarbear";
+  if (r < level.bearChance + (level.stoatChance || 0)) return "stoat";
+  return "penguin";
+}
+
 function makeEnemy(type, x, y) {
   const stats = ENEMY_TYPES[type];
   return {
     type, x: x + 0.5, y: y + 0.5, hp: stats.hp, alive: true, hitFlash: 0, lastAttack: 0,
     hunting: false, aware: false, wanderDirX: 0, wanderDirY: 0, wanderTimer: Math.random() * 2,
-    animPhase: Math.random() * 4,
+    animPhase: Math.random() * 4, zigzagPhase: Math.random() * Math.PI * 2,
   };
 }
 
@@ -1068,7 +1433,7 @@ function startLevel(idx) {
   const candidates = openCells.filter(([x, y]) => distance(x, y, player.x, player.y) > 4);
   const shuffled = candidates.sort(() => Math.random() - 0.5);
   const count = Math.min(18, Math.max(7, Math.floor(shuffled.length / 6)) + level.enemyBonus);
-  enemies = shuffled.slice(0, count).map(([x, y]) => makeEnemy(Math.random() < level.bearChance ? "polarbear" : "penguin", x, y));
+  enemies = shuffled.slice(0, count).map(([x, y]) => makeEnemy(pickBaseEnemyType(level), x, y));
 
   // Exactly one walrus per sector from Sector 2 onward: slow, very tanky,
   // very hard-hitting — placed on a leftover cell so it doesn't just spawn
@@ -1080,6 +1445,26 @@ function startLevel(idx) {
     enemies.push(makeEnemy("walrus", wx, wy));
   }
 
+  // Static decorative billboards (Christmas trees, gifts, ...) for sectors
+  // that define a `decor` list — walkable through (no collision), just
+  // depth-sorted into the sprite pass like everything else. Placed away
+  // from the player and off the enemy roster's cells so nothing spawns
+  // visually stacked with a tree.
+  levelProps = [];
+  if (level.decor) {
+    const usedCells = new Set(enemies.map(e => mapIdx(Math.floor(e.x), Math.floor(e.y))));
+    const propCandidates = openCells.filter(([x, y]) => distance(x, y, player.x, player.y) > 1.5 && !usedCells.has(mapIdx(x, y)));
+    const shuffledProps = propCandidates.sort(() => Math.random() - 0.5);
+    let ci = 0;
+    for (const spec of level.decor) {
+      for (let i = 0; i < spec.count && ci < shuffledProps.length; i++, ci++) {
+        const [x, y] = shuffledProps[ci];
+        levelProps.push({ x: x + 0.5, y: y + 0.5, canvas: PROP_CANVASES[spec.type], scale: spec.scale });
+      }
+    }
+  }
+
+  if (audioCtx) startMusicForLevel(level);
   updateHud();
 }
 
@@ -1396,7 +1781,75 @@ function hasLineOfSight(x0, y0, x1, y1) {
   return true;
 }
 
+// ---------------------------------------------------------------------------
+// Enemy pathing: a BFS "flow field" out from the player's cell, recomputed
+// once per frame and shared by every hunting enemy. Each reachable open cell
+// gets `nextIdx`, the neighboring cell one step closer to the player — so a
+// chasing enemy always steps toward an actually-connected adjacent cell
+// instead of lunging straight at the player's (x, y) and wedging itself into
+// a corner whenever the direct line clips a wall. `hasLineOfSight` above is
+// still used only to decide whether an enemy has *spotted* the player
+// (`aware`), not to steer movement, since a raycast sampled at discrete
+// points can bleed through the exact corner of a wall cell in a way a body
+// actually walking the grid cannot.
+// ---------------------------------------------------------------------------
+function computeFlowField(originX, originY) {
+  const size = MAP_SIZE;
+  const total = size * size;
+  const dist = new Int32Array(total).fill(-1);
+  const nextIdx = new Int32Array(total).fill(-1);
+  const originIdx = mapIdx(originX, originY);
+  if (MAP[originIdx] === 1) return { dist, nextIdx };
+  dist[originIdx] = 0;
+  const queue = [originIdx];
+  let qi = 0;
+  while (qi < queue.length) {
+    const cur = queue[qi++];
+    const cx = cur % size, cy = (cur / size) | 0;
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const nx = cx + dx, ny = cy + dy;
+      if (nx < 0 || ny < 0 || nx >= size || ny >= size) continue;
+      const nIdx = ny * size + nx;
+      if (MAP[nIdx] === 1 || dist[nIdx] !== -1) continue;
+      dist[nIdx] = dist[cur] + 1;
+      nextIdx[nIdx] = cur;
+      queue.push(nIdx);
+    }
+  }
+  return { dist, nextIdx };
+}
+
+let frameFlowField = null;
+function getFlowField() {
+  if (!frameFlowField) frameFlowField = computeFlowField(Math.floor(player.x), Math.floor(player.y));
+  return frameFlowField;
+}
+
+// Waypoint (world-space) a hunting enemy at (ex, ey) should walk toward this
+// frame: straight at the player once in the same or an adjacent cell (for a
+// precise final approach), otherwise the center of the flow field's next
+// cell. Falls back to the player's own position if the maze loosening ever
+// produced an unreachable pocket (shouldn't happen — the maze is carved as
+// one connected tree before loosening only adds shortcuts).
+function chaseWaypoint(ex, ey) {
+  const flow = getFlowField();
+  const ecx = Math.floor(ex), ecy = Math.floor(ey);
+  const eIdx = mapIdx(ecx, ecy);
+  const pcx = Math.floor(player.x), pcy = Math.floor(player.y);
+  if ((ecx === pcx && ecy === pcy) || flow.dist[eIdx] === 1 || flow.dist[eIdx] === 0) {
+    return [player.x, player.y];
+  }
+  if (flow.dist[eIdx] > 0) {
+    const nIdx = flow.nextIdx[eIdx];
+    const nx = nIdx % MAP_SIZE, ny = (nIdx / MAP_SIZE) | 0;
+    return [nx + 0.5, ny + 0.5];
+  }
+  return [player.x, player.y];
+}
+
 let muzzleFlash = 0;
+const HURT_FLASH_PEAK = 20;
+let hurtFlash = 0;
 let recoilOffset = 0;
 let flameShakeX = 0;
 let sparkParticles = [];
@@ -1414,7 +1867,7 @@ function spawnMuzzleSparks(weaponKey) {
     const speed = isHarpoon ? 100 + Math.random() * 70 : 150 + Math.random() * 130;
     sparkParticles.push({
       x: SCREEN_W / 2 + (Math.random() - 0.5) * 8,
-      y: SCREEN_H * 0.76 - recoilOffset + pitch,
+      y: muzzleScreenY(),
       vx: Math.cos(angle) * speed,
       vy: Math.sin(angle) * speed,
       life: 0.16 + Math.random() * 0.1,
@@ -1456,7 +1909,7 @@ function spawnFlameParticles(dt) {
     const spread = (Math.random() - 0.5) * 30;
     flameParticles.push({
       x: SCREEN_W / 2 + spread * 0.35,
-      y: SCREEN_H * 0.74 - recoilOffset + pitch,
+      y: muzzleScreenY(),
       vx: spread * 2.2 + (Math.random() - 0.5) * 24,
       vy: -160 - Math.random() * 100,
       life: 0,
@@ -1505,7 +1958,7 @@ function drawFlameParticles() {
 // ---------------------------------------------------------------------------
 let tracers = [];
 function spawnTracer(weaponKey) {
-  const nozzleY = SCREEN_H * 0.62 - recoilOffset + pitch;
+  const nozzleY = muzzleScreenY();
   tracers.push({
     x: SCREEN_W / 2 + (Math.random() - 0.5) * 3,
     y0: nozzleY,
@@ -1657,6 +2110,16 @@ function drawAmbient() {
 // ---------------------------------------------------------------------------
 // Weapon silhouette drawing
 // ---------------------------------------------------------------------------
+// Local-space y of each gun's actual muzzle opening (see drawXGun below —
+// the same coordinate its barrel tip/ellipse is drawn at), so muzzle
+// flashes, sparks, tracers and flame all originate from the barrel itself
+// instead of an independent guessed offset. The harpoon's barbed point
+// sticks out further than the other two barrels, hence the taller offset.
+const MUZZLE_TIP_Y = { blaster: -140, harpoon: -182, flamethrower: -142 };
+function muzzleScreenY() {
+  return SCREEN_H - recoilOffset + pitch + MUZZLE_TIP_Y[currentWeaponKey];
+}
+
 function drawWeapon(key, recoil, shakeX) {
   const w = WEAPONS[key];
   ctx.save();
@@ -1904,6 +2367,7 @@ function update(dt) {
   if (levelTransition) {
     levelTransitionTimer -= dt;
     if (muzzleFlash > 0) muzzleFlash--;
+    if (hurtFlash > 0) hurtFlash--;
     updateSparkParticles(dt);
     updateFlameParticles(dt);
     updateTracers(dt);
@@ -1975,6 +2439,7 @@ function update(dt) {
 
   // Enemy AI
   const now = performance.now();
+  frameFlowField = null;
   for (const e of enemies) {
     if (!e.alive) continue;
     if (e.hitFlash > 0) e.hitFlash--;
@@ -1997,16 +2462,32 @@ function update(dt) {
 
     if (hunting) {
       e.hunting = true;
+      const [wx, wy] = chaseWaypoint(e.x, e.y);
+      let wdx = wx - e.x, wdy = wy - e.y;
+      let wdist = Math.hypot(wdx, wdy) || 1;
+      if (e.type === "stoat") {
+        // Erratic dodge: weave side to side across its approach line rather
+        // than beelining, so it's a much harder target to land a shot on.
+        // The weave narrows as it closes in (scaled by dist) so it can still
+        // actually reach the player and bite instead of orbiting forever.
+        e.zigzagPhase += dt * 10;
+        const perpX = -wdy / wdist, perpY = wdx / wdist;
+        const weave = Math.sin(e.zigzagPhase) * Math.min(1.1, dist * 0.4);
+        wdx += perpX * weave;
+        wdy += perpY * weave;
+        wdist = Math.hypot(wdx, wdy) || 1;
+      }
       const speed = stats.speed * dt;
-      const nx = e.x + (dx / dist) * speed;
-      const ny = e.y + (dy / dist) * speed;
+      const nx = e.x + (wdx / wdist) * speed;
+      const ny = e.y + (wdy / wdist) * speed;
       if (isOpen(nx, e.y)) e.x = nx;
       if (isOpen(e.x, ny)) e.y = ny;
     } else {
       e.hunting = false;
-      if (dist <= stats.attackRange && now - e.lastAttack > stats.attackCooldown) {
+      if (aware && dist <= stats.attackRange && now - e.lastAttack > stats.attackCooldown) {
         e.lastAttack = now;
         player.hp -= stats.damage;
+        hurtFlash = HURT_FLASH_PEAK;
         sfxPlayerHurt();
         if (player.hp <= 0) { player.hp = 0; gameOver = true; sfxGameOver(); }
         updateHud();
@@ -2052,6 +2533,7 @@ function update(dt) {
   }
 
   if (muzzleFlash > 0) muzzleFlash--;
+  if (hurtFlash > 0) hurtFlash--;
   recoilOffset = Math.max(0, recoilOffset - 46 * dt);
   if (!(mouseHeld && currentWeaponKey === "flamethrower")) flameShakeX = 0;
   updateSparkParticles(dt);
@@ -2181,28 +2663,47 @@ function render() {
     ctx.restore();
   }
 
+  // Damage vignette: a red glow pulsing in from the screen edges each time
+  // the player is hit, fading over HURT_FLASH_PEAK frames.
+  if (hurtFlash > 0) {
+    const t = hurtFlash / HURT_FLASH_PEAK;
+    const vignette = ctx.createRadialGradient(SCREEN_W / 2, SCREEN_H / 2, SCREEN_H * 0.25, SCREEN_W / 2, SCREEN_H / 2, SCREEN_H * 0.75);
+    vignette.addColorStop(0, "rgba(160,0,0,0)");
+    vignette.addColorStop(1, `rgba(160,0,0,${t * 0.6})`);
+    ctx.save();
+    ctx.fillStyle = vignette;
+    ctx.fillRect(0, 0, SCREEN_W, SCREEN_H);
+    ctx.restore();
+  }
+
   renderMinimap();
 }
 
 function renderSprites() {
-  const sorted = enemies
-    .filter(e => e.alive)
-    .map(e => {
-      const dx = e.x - player.x, dy = e.y - player.y;
-      return { e, dist: dx * dx + dy * dy };
-    })
-    .sort((a, b) => b.dist - a.dist);
+  const items = [];
+  for (const e of enemies) {
+    if (!e.alive) continue;
+    const dx = e.x - player.x, dy = e.y - player.y;
+    items.push({ kind: "enemy", e, dist: dx * dx + dy * dy });
+  }
+  for (const p of levelProps) {
+    const dx = p.x - player.x, dy = p.y - player.y;
+    items.push({ kind: "prop", p, dist: dx * dx + dy * dy });
+  }
+  items.sort((a, b) => b.dist - a.dist);
 
   const invDet = 1.0 / (player.planeX * player.dirY - player.dirX * player.planeY);
 
-  for (const { e } of sorted) {
-    const stats = ENEMY_TYPES[e.type];
-    const proj = projectSprite(e, stats, invDet);
+  for (const item of items) {
+    const isEnemy = item.kind === "enemy";
+    const stats = isEnemy ? ENEMY_TYPES[item.e.type] : { scale: item.p.scale };
+    const target = isEnemy ? item.e : item.p;
+    const proj = projectSprite(target, stats, invDet);
     if (!proj) continue;
     const { drawStartX, drawEndX, drawStartY, spriteWidth, spriteHeight, transformY } = proj;
     if (drawEndX < 0 || drawStartX > SCREEN_W) continue;
 
-    const spriteCanvas = currentSpriteFrame(stats, e);
+    const spriteCanvas = isEnemy ? currentSpriteFrame(stats, item.e) : item.p.canvas;
 
     // Find contiguous unoccluded column runs against the depth buffer.
     let runStart = null;
@@ -2211,11 +2712,21 @@ function renderSprites() {
       if (visible && runStart === null) runStart = sx;
       if ((!visible || sx === Math.min(SCREEN_W - 1, drawEndX)) && runStart !== null) {
         const runEnd = visible ? sx + 1 : sx;
-        drawSpriteRun(e, spriteCanvas, drawStartX, drawStartY, spriteWidth, spriteHeight, runStart, runEnd);
+        if (isEnemy) drawSpriteRun(item.e, spriteCanvas, drawStartX, drawStartY, spriteWidth, spriteHeight, runStart, runEnd);
+        else drawPropRun(spriteCanvas, drawStartX, drawStartY, spriteWidth, spriteHeight, runStart, runEnd);
         runStart = null;
       }
     }
   }
+}
+
+function drawPropRun(canvas, drawStartX, drawStartY, spriteWidth, spriteHeight, runStart, runEnd) {
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(runStart, drawStartY, runEnd - runStart, spriteHeight);
+  ctx.clip();
+  ctx.drawImage(canvas, drawStartX, drawStartY, spriteWidth, spriteHeight);
+  ctx.restore();
 }
 
 // Scratch canvas used to composite the hit-flash tint so it only lands on
@@ -2260,9 +2771,9 @@ function renderMinimap() {
   }
   for (const e of enemies) {
     if (!e.alive) continue;
-    mmCtx.fillStyle = e.type === "walrus" ? "#c9a878" : e.type === "polarbear" ? "#ffffff" : "#7fe8ff";
+    mmCtx.fillStyle = e.type === "walrus" ? "#c9a878" : e.type === "polarbear" ? "#ffffff" : e.type === "stoat" ? "#cfe6e8" : "#7fe8ff";
     mmCtx.beginPath();
-    mmCtx.arc(e.x * scale, e.y * scale, e.type === "walrus" ? 4 : e.type === "polarbear" ? 3 : 2, 0, Math.PI * 2);
+    mmCtx.arc(e.x * scale, e.y * scale, e.type === "walrus" ? 4 : e.type === "polarbear" ? 3 : e.type === "stoat" ? 1.4 : 2, 0, Math.PI * 2);
     mmCtx.fill();
   }
   mmCtx.fillStyle = "#7fffb0";
