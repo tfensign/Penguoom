@@ -30,8 +30,40 @@
   }
   #hud {
     position: absolute; left: 0; right: 0; bottom: 0; display: flex; justify-content: space-between;
-    padding: 10px 18px; font-family: 'Courier New', monospace; color: #eafcff; font-size: 1.1rem;
-    text-shadow: 1px 1px 2px #000; pointer-events: none;
+    align-items: flex-end; gap: 10px; padding: 10px 16px; font-family: 'Courier New', monospace;
+    color: #eafcff; font-size: 0.85rem; text-shadow: 0 0 6px rgba(120,220,255,0.55); pointer-events: none;
+  }
+  /* Shared "frosted ice pane" chip: translucent navy glass with a cyan glow,
+     used for every HUD readout so the text reads clearly over any floor/wall
+     color instead of the old bare white text. */
+  .hudPanel {
+    background: linear-gradient(180deg, rgba(24,58,80,0.6), rgba(6,18,28,0.7));
+    border: 1px solid rgba(150,225,255,0.45); border-radius: 8px;
+    padding: 6px 12px; box-shadow: 0 0 10px rgba(90,200,255,0.22), inset 0 0 6px rgba(150,225,255,0.12);
+    white-space: nowrap;
+  }
+  #level { border-left: 3px solid #7fe8ff; }
+  #weapon { border-left: 3px solid #ffd27f; }
+  #score { border-left: 3px solid #7fffb0; }
+  /* HP panel: an icy bar whose bottom edge is clipped into a row of icicles.
+     The clip-path sits on the wrap so the jagged silhouette stays put while
+     the fill color underneath recedes as HP drops. */
+  #hpPanel { display: flex; flex-direction: column; gap: 5px; min-width: 190px; padding: 7px 12px 11px; }
+  #hpTopRow { display: flex; justify-content: space-between; font-weight: bold; letter-spacing: 0.5px; }
+  #hpBarWrap {
+    position: relative; width: 100%; height: 20px; background: rgba(6,16,24,0.85);
+    clip-path: polygon(0% 0%, 100% 0%, 100% 55%, 92% 100%, 84% 50%, 76% 100%, 68% 50%, 60% 100%,
+                        52% 50%, 44% 100%, 36% 50%, 28% 100%, 20% 50%, 12% 100%, 4% 50%, 0% 55%);
+  }
+  #hpBarFill {
+    position: absolute; inset: 0; width: 100%;
+    background: linear-gradient(180deg, #d8f8ff 0%, #63c9ee 45%, #1c6fa0 100%);
+    transition: width 0.25s ease, background 0.25s ease;
+  }
+  #hpBarWrap.low #hpBarFill { background: linear-gradient(180deg, #ffe2d8 0%, #ff8f70 45%, #b03824 100%); }
+  #hpBarGloss {
+    position: absolute; left: 0; right: 0; top: 0; height: 45%; pointer-events: none;
+    background: linear-gradient(180deg, rgba(255,255,255,0.5), rgba(255,255,255,0));
   }
   #crosshair {
     position: absolute; top: 50%; left: 50%; width: 18px; height: 18px; margin: -9px 0 0 -9px;
@@ -99,10 +131,16 @@
   <div id="crosshair"></div>
   <div id="hint">WASD move · mouse to look (aim up/down matters!) · scroll to turn · hold click to fire · 1/2/3 weapon · R restart</div>
   <div id="hud">
-    <div id="hp">HP: 100</div>
-    <div id="level">Sector 1: Ice Fortress</div>
-    <div id="weapon">Weapon: Fish Blaster</div>
-    <div id="score">Enemies defeated: 0 / 0</div>
+    <div id="hpPanel" class="hudPanel">
+      <div id="hpTopRow"><span>HP</span><span id="hpValue">100</span></div>
+      <div id="hpBarWrap">
+        <div id="hpBarFill"></div>
+        <div id="hpBarGloss"></div>
+      </div>
+    </div>
+    <div id="level" class="hudPanel">Sector 1: Ice Fortress</div>
+    <div id="weapon" class="hudPanel">Weapon: Fish Blaster</div>
+    <div id="score" class="hudPanel">Enemies defeated: 0 / 0</div>
   </div>
   <div id="overlay">
     <h1>PENGU&Oslash;&Oslash;M</h1>
@@ -738,11 +776,85 @@ function drawCandyCaneProp(c, s) {
   c.beginPath(); c.arc(s * 0.5, s * 0.905, s * 0.018, 0, Math.PI * 2); c.fill();
 }
 
+function drawSalmonProp(c, s) {
+  c.clearRect(0, 0, s, s);
+  // tail fin
+  c.fillStyle = "#d9704f";
+  c.beginPath();
+  c.moveTo(s * 0.76, s * 0.50); c.lineTo(s * 0.94, s * 0.34); c.lineTo(s * 0.90, s * 0.50);
+  c.lineTo(s * 0.94, s * 0.66); c.closePath(); c.fill();
+  // body
+  const bodyGrad = c.createLinearGradient(s * 0.5, s * 0.37, s * 0.5, s * 0.67);
+  bodyGrad.addColorStop(0, "#e8896a");
+  bodyGrad.addColorStop(1, "#f2b89a");
+  c.fillStyle = bodyGrad;
+  c.beginPath();
+  c.ellipse(s * 0.46, s * 0.52, s * 0.30, s * 0.15, -0.1, 0, Math.PI * 2);
+  c.fill();
+  // dorsal fin
+  c.fillStyle = "#d9704f";
+  c.beginPath();
+  c.moveTo(s * 0.42, s * 0.39); c.lineTo(s * 0.50, s * 0.25); c.lineTo(s * 0.56, s * 0.39); c.closePath(); c.fill();
+  // belly highlight
+  c.fillStyle = "rgba(255,235,220,0.65)";
+  c.beginPath();
+  c.ellipse(s * 0.44, s * 0.58, s * 0.22, s * 0.06, -0.08, 0, Math.PI * 2);
+  c.fill();
+  // eye
+  c.fillStyle = "#211a12";
+  c.beginPath(); c.arc(s * 0.22, s * 0.47, s * 0.02, 0, Math.PI * 2); c.fill();
+  // outline
+  c.strokeStyle = "rgba(90,40,25,0.4)"; c.lineWidth = 1;
+  c.beginPath();
+  c.ellipse(s * 0.46, s * 0.52, s * 0.30, s * 0.15, -0.1, 0, Math.PI * 2);
+  c.stroke();
+}
+
+function drawHerringProp(c, s) {
+  c.clearRect(0, 0, s, s);
+  function fish(cx, cy, scale) {
+    c.fillStyle = "#8fa3b5";
+    c.beginPath();
+    c.moveTo(cx + s * 0.14 * scale, cy);
+    c.lineTo(cx + s * 0.24 * scale, cy - s * 0.06 * scale);
+    c.lineTo(cx + s * 0.24 * scale, cy + s * 0.06 * scale);
+    c.closePath(); c.fill();
+    c.fillStyle = "#b9c9d6";
+    c.beginPath();
+    c.ellipse(cx, cy, s * 0.16 * scale, s * 0.07 * scale, 0, 0, Math.PI * 2);
+    c.fill();
+    c.fillStyle = "rgba(255,255,255,0.5)";
+    c.beginPath();
+    c.ellipse(cx - s * 0.02 * scale, cy + s * 0.025 * scale, s * 0.10 * scale, s * 0.025 * scale, 0, 0, Math.PI * 2);
+    c.fill();
+    c.fillStyle = "#1a1e22";
+    c.beginPath(); c.arc(cx - s * 0.09 * scale, cy - s * 0.01 * scale, s * 0.013 * scale, 0, Math.PI * 2); c.fill();
+  }
+  fish(s * 0.36, s * 0.58, 1.0);
+  fish(s * 0.62, s * 0.40, 0.85);
+}
+
 const PROP_CANVASES = {
   tree: makePropCanvas(drawTreeProp),
   gift: makePropCanvas(drawGiftProp),
   candycane: makePropCanvas(drawCandyCaneProp),
+  salmon: makePropCanvas(drawSalmonProp),
+  herring: makePropCanvas(drawHerringProp),
 };
+
+// Scattered health pickups (see startLevel's placement and update()'s pickup
+// check): salmon is the rarer, bigger heal; herring is the common small
+// top-up. Weights must sum to 1.
+const FOOD_TYPES = [
+  { type: "salmon", canvas: PROP_CANVASES.salmon, scale: 0.55, heal: 25, weight: 0.4 },
+  { type: "herring", canvas: PROP_CANVASES.herring, scale: 0.4, heal: 12, weight: 0.6 },
+];
+function pickFoodType() {
+  const r = Math.random();
+  let acc = 0;
+  for (const f of FOOD_TYPES) { acc += f.weight; if (r < acc) return f; }
+  return FOOD_TYPES[FOOD_TYPES.length - 1];
+}
 
 // Picks the current walk-cycle/expression frame for an enemy: aggressive
 // once it has spotted the player (e.aware, set in the AI update), calm
@@ -759,10 +871,15 @@ function currentSpriteFrame(stats, e) {
 // charge is literally 2x its own lumber speed, per wanderSpeedMult: 0.5.
 const ENEMY_TYPES = {
   penguin: { hp: 2, speed: 1.1, damage: 8, detect: 8, attackRange: 0.6, attackCooldown: 700, frames: penguinFrames, alphaMask: penguinAlphaMask, scale: 0.9, wanderSpeedMult: 0.35, wanderInterval: [1.2, 3.0], wanderPauseChance: 0.25 },
-  polarbear: { hp: 6, speed: 0.85, damage: 20, detect: 9, attackRange: 0.85, attackCooldown: 900, frames: polarBearFrames, alphaMask: polarBearAlphaMask, scale: 1.35, wanderSpeedMult: 0.5, wanderInterval: [2.0, 4.0], wanderPauseChance: 0.35 },
-  // Very slow, but ~3x a polar bear's HP (so ~3x harder to kill) and hits
-  // considerably harder — one spawns per sector from Sector 2 onward.
-  walrus: { hp: 18, speed: 0.45, damage: 34, detect: 7, attackRange: 1.0, attackCooldown: 1300, frames: walrusFrames, alphaMask: walrusAlphaMask, scale: 1.65, wanderSpeedMult: 0.35, wanderInterval: [3.0, 6.0], wanderPauseChance: 0.45 },
+  // hp: 10 sits just under the ~12.5 damage a full flamethrower tank can
+  // dump on one target (dps 5 * 2.5s of fuel before it runs dry) — so the
+  // flamethrower alone *can* still solo a bear, but only by burning nearly
+  // the whole tank with no misses, making the harpoon (4 dmg/hit) the more
+  // reliable choice.
+  polarbear: { hp: 10, speed: 0.85, damage: 20, detect: 9, attackRange: 0.85, attackCooldown: 900, frames: polarBearFrames, alphaMask: polarBearAlphaMask, scale: 1.35, wanderSpeedMult: 0.5, wanderInterval: [2.0, 4.0], wanderPauseChance: 0.35 },
+  // Very slow and hits considerably harder than a bear — one spawns per
+  // sector from Sector 2 onward. Kept at 2x a bear's HP (20 vs 10).
+  walrus: { hp: 20, speed: 0.45, damage: 34, detect: 7, attackRange: 1.0, attackCooldown: 1300, frames: walrusFrames, alphaMask: walrusAlphaMask, scale: 1.65, wanderSpeedMult: 0.35, wanderInterval: [3.0, 6.0], wanderPauseChance: 0.45 },
   // Small, weak (one hit from any weapon kills it) and cheap to have a lot
   // of, but by far the fastest thing in the game — see the zig-zag "dodge"
   // steering carved out for e.type === "stoat" in the AI update below. Its
@@ -795,7 +912,9 @@ const FOV_PLANE = 0.66;
 const mmCanvas = document.getElementById("minimap");
 const mmCtx = mmCanvas.getContext("2d");
 
-const hpEl = document.getElementById("hp");
+const hpValueEl = document.getElementById("hpValue");
+const hpFillEl = document.getElementById("hpBarFill");
+const hpBarWrapEl = document.getElementById("hpBarWrap");
 const levelEl = document.getElementById("level");
 const weaponEl = document.getElementById("weapon");
 const scoreEl = document.getElementById("score");
@@ -1125,6 +1244,10 @@ function playNoise({ duration = 0.2, gain = 0.4, filterFreq = 1200, filterType =
 }
 
 function sfxClick() { playTone({ freq: 900, endFreq: 700, type: "square", duration: 0.05, gain: 0.15 }); }
+function sfxPickup() {
+  playTone({ freq: 520, endFreq: 780, type: "sine", duration: 0.09, gain: 0.22 });
+  playTone({ freq: 780, endFreq: 1040, type: "sine", duration: 0.12, gain: 0.18, delay: 0.06 });
+}
 function sfxBlaster() { playTone({ freq: 950, endFreq: 220, type: "square", duration: 0.09, gain: 0.22 }); }
 function sfxHarpoon() {
   playTone({ freq: 190, endFreq: 60, type: "sawtooth", duration: 0.22, gain: 0.3 });
@@ -1365,6 +1488,7 @@ let levelTransitionTimer = 0;
 let ambientParticles = [];
 let ambientSpawnAccum = 0;
 let levelProps = [];
+let pickups = [];
 
 function distance(x1, y1, x2, y2) { return Math.hypot(x2 - x1, y2 - y1); }
 
@@ -1456,19 +1580,34 @@ function startLevel(idx) {
   // that define a `decor` list — walkable through (no collision), just
   // depth-sorted into the sprite pass like everything else. Placed away
   // from the player and off the enemy roster's cells so nothing spawns
-  // visually stacked with a tree.
+  // visually stacked with a tree. usedCells keeps growing as decor and food
+  // get placed below so nothing lands stacked on anything else either.
+  const usedCells = new Set(enemies.map(e => mapIdx(Math.floor(e.x), Math.floor(e.y))));
   levelProps = [];
   if (level.decor) {
-    const usedCells = new Set(enemies.map(e => mapIdx(Math.floor(e.x), Math.floor(e.y))));
     const propCandidates = openCells.filter(([x, y]) => distance(x, y, player.x, player.y) > 1.5 && !usedCells.has(mapIdx(x, y)));
     const shuffledProps = propCandidates.sort(() => Math.random() - 0.5);
     let ci = 0;
     for (const spec of level.decor) {
       for (let i = 0; i < spec.count && ci < shuffledProps.length; i++, ci++) {
         const [x, y] = shuffledProps[ci];
+        usedCells.add(mapIdx(x, y));
         levelProps.push({ x: x + 0.5, y: y + 0.5, canvas: PROP_CANVASES[spec.type], scale: spec.scale });
       }
     }
+  }
+
+  // Scattered arctic-food pickups (salmon, herring): 5-7 per sector, walking
+  // over one heals the player (see the pickup check in update()).
+  pickups = [];
+  const foodCandidates = openCells.filter(([x, y]) => distance(x, y, player.x, player.y) > 1.5 && !usedCells.has(mapIdx(x, y)));
+  const shuffledFood = foodCandidates.sort(() => Math.random() - 0.5);
+  const foodCount = Math.min(shuffledFood.length, 5 + Math.floor(Math.random() * 3));
+  for (let i = 0; i < foodCount; i++) {
+    const [x, y] = shuffledFood[i];
+    usedCells.add(mapIdx(x, y));
+    const food = pickFoodType();
+    pickups.push({ x: x + 0.5, y: y + 0.5, canvas: food.canvas, scale: food.scale, heal: food.heal, alive: true });
   }
 
   if (audioCtx) startMusicForLevel(level);
@@ -1476,7 +1615,10 @@ function startLevel(idx) {
 }
 
 function updateHud() {
-  hpEl.textContent = "HP: " + Math.max(0, Math.round(player.hp));
+  const hpShown = Math.max(0, Math.round(player.hp));
+  hpValueEl.textContent = hpShown;
+  hpFillEl.style.width = Math.max(0, Math.min(100, player.hp)) + "%";
+  hpBarWrapEl.classList.toggle("low", player.hp <= 30);
   const alive = enemies.filter(e => e.alive).length;
   const total = enemies.length;
   scoreEl.textContent = "Enemies defeated: " + (total - alive) + " / " + total;
@@ -2437,6 +2579,19 @@ function update(dt) {
     if (isOpen(player.x, player.y + my + Math.sign(my) * pad)) player.y += my;
   }
 
+  // Food pickups: walking within range consumes it and restores HP (capped
+  // at 100), even if some heal goes to waste — simpler and more predictable
+  // than making the player fish for exact timing to avoid overhealing.
+  for (const p of pickups) {
+    if (!p.alive) continue;
+    if (distance(player.x, player.y, p.x, p.y) < 0.45) {
+      p.alive = false;
+      player.hp = Math.min(100, player.hp + p.heal);
+      sfxPickup();
+      updateHud();
+    }
+  }
+
   // Weapon firing / fuel
   const curWeapon = WEAPONS[currentWeaponKey];
   if (mouseHeld && curWeapon.mode === "auto") tickFlamethrower(dt);
@@ -2699,6 +2854,11 @@ function renderSprites() {
     items.push({ kind: "enemy", e, dist: dx * dx + dy * dy });
   }
   for (const p of levelProps) {
+    const dx = p.x - player.x, dy = p.y - player.y;
+    items.push({ kind: "prop", p, dist: dx * dx + dy * dy });
+  }
+  for (const p of pickups) {
+    if (!p.alive) continue;
     const dx = p.x - player.x, dy = p.y - player.y;
     items.push({ kind: "prop", p, dist: dx * dx + dy * dy });
   }
