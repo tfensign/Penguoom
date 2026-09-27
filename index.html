@@ -1289,6 +1289,12 @@ if (isTouch) {
   // (including touch-laptops) keeps the keyboard/mouse hint below.
   if (isMobileUA) {
     hintEl.textContent = "Left pad: move · drag screen: look · FIRE button: shoot · tap a weapon icon: switch · tap restart: play again · tap speaker: mute";
+  } else {
+    // A touch-capable but non-mobile device (touchscreen laptop/desktop)
+    // already has a real keyboard and mouse, so the movement joystick and
+    // fire button are redundant clutter — only true phones/tablets need them.
+    joyBaseEl.classList.add("hidden");
+    fireBtnEl.classList.add("hidden");
   }
 }
 
@@ -1895,6 +1901,11 @@ function formatClockTime(ms) {
 let runStartTime = 0;
 let lastRunNewRecord = false;
 function recordRunEnd(didWin) {
+  // Pointer lock hides the cursor and freezes its screen position, so the
+  // desktop restart button couldn't actually be clicked while the game held
+  // the lock from play — release it once a run ends so the mouse is free
+  // to click again.
+  if (document.pointerLockElement === canvas) document.exitPointerLock();
   const sectorReached = didWin ? LEVELS.length : levelIndex + 1;
   const elapsedMs = performance.now() - runStartTime;
   lastRunNewRecord = false;
@@ -2057,7 +2068,9 @@ function updateHud() {
 // ---------------------------------------------------------------------------
 document.addEventListener("keydown", e => {
   keys[e.code] = true;
-  if (e.code === "KeyR") newGame();
+  // Locked out during live gameplay so a stray R doesn't force an accidental
+  // restart — only live once the run has actually ended.
+  if (e.code === "KeyR" && (gameOver || won)) newGame();
   if (e.code === "KeyM") toggleMute();
   if (e.code === "Digit1") currentWeaponKey = "blaster";
   if (e.code === "Digit2") currentWeaponKey = "harpoon";
@@ -2277,6 +2290,7 @@ restartBtnMobileEl.addEventListener("touchstart", e => {
 
 restartBtnDesktopEl.addEventListener("click", () => {
   newGame();
+  tryPointerLock();
 });
 
 muteBtnEl.addEventListener("click", () => toggleMute());
