@@ -17,6 +17,34 @@
 <meta name="mobile-web-app-capable" content="yes">
 
 <style>
+  /* Self-hosted (not a CDN link) so the service worker can cache it and the
+     title/banners still render correctly offline once installed. Audiowide
+     only ships one weight (400) - it's already a heavy, wide-stroked display
+     face by design, so it doesn't need a bold cut. */
+  @font-face {
+    font-family: 'Audiowide';
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url('fonts/audiowide-regular.woff2') format('woff2');
+  }
+  :root {
+    /* Chunky electronic/sci-fi display face for headlines only (title,
+       win/lose banner, sector-clear banner) - used with restraint. */
+    --font-display: 'Audiowide', 'Segoe UI', system-ui, sans-serif;
+    /* A cleaner, more legible monospace than Courier New for every HUD
+       readout, button, and paragraph - still monospace so numbers don't
+       jiggle, but native to each OS instead of a fixed system font. */
+    --font-ui: ui-monospace, 'SF Mono', 'Cascadia Code', Consolas, 'Liberation Mono', monospace;
+    /* Shared HUD glass/accent palette - centralizes colors that used to be
+       repeated ad hoc across the HUD panels, minimap, and crosshair. */
+    --hud-glass-top: rgba(24,58,80,0.6);
+    --hud-glass-bottom: rgba(6,18,28,0.7);
+    --hud-border: rgba(150,225,255,0.45);
+    --accent-cyan: #7fe8ff;
+    --accent-amber: #ffd27f;
+    --accent-mint: #7fffb0;
+  }
   html, body {
     margin: 0; background: #000; overflow: hidden; height: 100%;
     overscroll-behavior: none; touch-action: none;
@@ -31,10 +59,10 @@
   #minimap { image-rendering: pixelated; }
   #overlay {
     position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
-    flex-direction: column; color: #eafcff; font-family: 'Courier New', monospace; text-align: center;
+    flex-direction: column; color: #eafcff; font-family: var(--font-ui); text-align: center;
     background: rgba(0,10,20,0.75); z-index: 10; padding: 16px; box-sizing: border-box;
   }
-  #overlay h1 { font-size: 3rem; letter-spacing: 0.3rem; margin-bottom: 0.2rem; color: #7fe8ff; text-shadow: 0 0 12px #2ad; }
+  #overlay h1 { font-family: var(--font-display); font-weight: normal; font-size: 3rem; letter-spacing: 0.3rem; margin-bottom: 0.2rem; color: #7fe8ff; text-shadow: 0 0 12px #2ad; }
   #overlay p { max-width: 560px; line-height: 1.5; }
   #bestStats { color: #9fd8e6; font-size: 0.9rem; margin-top: -0.4rem; }
   #overlay button {
@@ -43,21 +71,21 @@
   }
   #hud {
     position: absolute; left: 0; right: 0; bottom: 0; display: flex; justify-content: space-between;
-    align-items: flex-end; gap: 10px; padding: 10px 16px; font-family: 'Courier New', monospace;
+    align-items: flex-end; gap: 10px; padding: 10px 16px; font-family: var(--font-ui);
     color: #eafcff; font-size: 0.85rem; text-shadow: 0 0 6px rgba(120,220,255,0.55); pointer-events: none;
   }
   /* Shared "frosted ice pane" chip: translucent navy glass with a cyan glow,
      used for every HUD readout so the text reads clearly over any floor/wall
      color instead of the old bare white text. */
   .hudPanel {
-    background: linear-gradient(180deg, rgba(24,58,80,0.6), rgba(6,18,28,0.7));
-    border: 1px solid rgba(150,225,255,0.45); border-radius: 8px;
+    background: linear-gradient(180deg, var(--hud-glass-top), var(--hud-glass-bottom));
+    border: 1px solid var(--hud-border); border-radius: 8px;
     padding: 6px 12px; box-shadow: 0 0 10px rgba(90,200,255,0.22), inset 0 0 6px rgba(150,225,255,0.12);
     white-space: nowrap;
   }
-  #level { border-left: 3px solid #7fe8ff; }
-  #weapon { border-left: 3px solid #ffd27f; }
-  #score { border-left: 3px solid #7fffb0; }
+  #level { border-left: 3px solid var(--accent-cyan); }
+  #weapon { border-left: 3px solid var(--accent-amber); }
+  #score { border-left: 3px solid var(--accent-mint); }
   /* HP panel: an icy bar whose bottom edge is clipped into a row of icicles.
      The clip-path sits on the wrap so the jagged silhouette stays put while
      the fill color underneath recedes as HP drops. */
@@ -78,15 +106,38 @@
     position: absolute; left: 0; right: 0; top: 0; height: 45%; pointer-events: none;
     background: linear-gradient(180deg, rgba(255,255,255,0.5), rgba(255,255,255,0));
   }
+  /* Fuel meter for the flamethrower - same "ice pane" bar language as the HP
+     bar (gradient fill + gloss highlight) but a plain rounded bar rather than
+     the icicle clip-path, so it doesn't read as a second HP readout. */
+  #fuelBarWrap {
+    position: relative; width: 100%; height: 8px; margin-top: 5px; border-radius: 4px;
+    overflow: hidden; background: rgba(6,16,24,0.85);
+  }
+  #fuelBarFill {
+    position: absolute; inset: 0; width: 100%;
+    background: linear-gradient(180deg, #ffe2a8 0%, #ff9d3d 45%, #b35a12 100%);
+    transition: width 0.2s ease;
+  }
+  #fuelBarGloss {
+    position: absolute; left: 0; right: 0; top: 0; height: 45%; pointer-events: none;
+    background: linear-gradient(180deg, rgba(255,255,255,0.5), rgba(255,255,255,0));
+  }
+  .hidden { display: none !important; }
   #crosshair {
     position: absolute; top: 50%; left: 50%; width: 18px; height: 18px; margin: -9px 0 0 -9px;
-    pointer-events: none;
+    pointer-events: none; transition: transform 0.08s ease;
   }
-  #crosshair::before, #crosshair::after { content: ""; position: absolute; background: #7fffb0; }
+  #crosshair.hit { transform: scale(1.4); }
+  #crosshair::before, #crosshair::after {
+    content: ""; position: absolute; background: var(--accent-mint);
+    transition: background 0.08s ease;
+  }
+  #crosshair.hit::before, #crosshair.hit::after { background: #fff; }
   #crosshair::before { left: 8px; top: 0; width: 2px; height: 18px; }
   #crosshair::after { top: 8px; left: 0; width: 18px; height: 2px; }
-  #minimap { position: absolute; top: 12px; right: 12px; border: 2px solid #7fe8ff88; background: rgba(0,10,20,0.5); }
-  #hint { position: absolute; top: 12px; left: 12px; color: #cfefff; font-family: 'Courier New', monospace; font-size: 0.8rem; opacity: 0.8; max-width: 60%; }
+  #minimapFrame { position: absolute; top: 12px; right: 12px; padding: 4px; }
+  #minimap { display: block; background: rgba(0,10,20,0.5); }
+  #hint { position: absolute; top: 12px; left: 12px; color: #cfefff; font-family: var(--font-ui); font-size: 0.8rem; opacity: 0.8; max-width: 60%; }
 
   /* Touch controls sit outside #wrap, pinned to the true screen edges (fixed,
      full viewport) so thumbs can reach them regardless of letterbox size. */
@@ -113,7 +164,7 @@
   #fireBtn {
     position: absolute; right: 26px; bottom: 30px; width: 92px; height: 92px; border-radius: 50%;
     background: rgba(255,90,70,0.35); border: 3px solid rgba(255,140,120,0.7);
-    color: #fff; font-family: 'Courier New', monospace; font-weight: bold; font-size: 0.95rem;
+    color: #fff; font-family: var(--font-ui); font-weight: bold; font-size: 0.95rem;
     display: flex; align-items: center; justify-content: center; text-align: center;
   }
   #fireBtn.pressed { background: rgba(255,90,70,0.65); }
@@ -137,12 +188,12 @@
   #restartBtnMobile {
     position: absolute; left: 24px; top: 14px; padding: 8px 12px; border-radius: 8px;
     background: rgba(20,40,55,0.65); border: 2px solid rgba(150,220,240,0.5); color: #eafcff;
-    font-family: 'Courier New', monospace; font-size: 0.85rem;
+    font-family: var(--font-ui); font-size: 0.85rem;
   }
   #rotatePrompt {
     position: fixed; inset: 0; z-index: 20; display: none; align-items: center; justify-content: center;
     flex-direction: column; text-align: center; background: #030a12; color: #eafcff;
-    font-family: 'Courier New', monospace; padding: 20px; box-sizing: border-box;
+    font-family: var(--font-ui); padding: 20px; box-sizing: border-box;
   }
   #rotatePrompt.show { display: flex; }
   #rotatePrompt .spin { font-size: 2.6rem; margin-bottom: 0.6rem; }
@@ -150,12 +201,12 @@
     position: fixed; left: 50%; top: 14px; transform: translateX(-50%) translateY(-140%);
     z-index: 30; display: flex; align-items: center; gap: 10px;
     background: rgba(10,25,35,0.92); border: 2px solid rgba(150,220,240,0.6); border-radius: 10px;
-    color: #eafcff; font-family: 'Courier New', monospace; font-size: 0.85rem;
+    color: #eafcff; font-family: var(--font-ui); font-size: 0.85rem;
     padding: 10px 14px; box-sizing: border-box; transition: transform 0.25s ease-out;
   }
   #updateBanner.show { transform: translateX(-50%) translateY(0); }
   #updateBanner button {
-    font-family: 'Courier New', monospace; font-size: 0.85rem; font-weight: bold;
+    font-family: var(--font-ui); font-size: 0.85rem; font-weight: bold;
     padding: 6px 12px; border-radius: 6px; border: none; background: #1b6; color: #012; cursor: pointer;
   }
 </style>
@@ -167,7 +218,7 @@
 </div>
 <div id="wrap">
   <canvas id="game" width="800" height="480"></canvas>
-  <canvas id="minimap" width="150" height="150"></canvas>
+  <div id="minimapFrame" class="hudPanel"><canvas id="minimap" width="150" height="150"></canvas></div>
   <div id="crosshair"></div>
   <div id="hint">WASD move · mouse to look (aim up/down matters!) · scroll to turn · hold click to fire · 1/2/3 weapon · R restart · M mute</div>
   <div id="hud">
@@ -179,7 +230,13 @@
       </div>
     </div>
     <div id="level" class="hudPanel">Sector 1: Ice Fortress</div>
-    <div id="weapon" class="hudPanel">Weapon: Fish Blaster</div>
+    <div id="weapon" class="hudPanel">
+      <span id="weaponText">Weapon: Fish Blaster</span>
+      <div id="fuelBarWrap" class="hidden">
+        <div id="fuelBarFill"></div>
+        <div id="fuelBarGloss"></div>
+      </div>
+    </div>
     <div id="score" class="hudPanel">Enemies defeated: 0 / 0</div>
   </div>
   <div id="overlay">
@@ -292,7 +349,7 @@ function buildLevel(levelConfig) {
 // single-canvas version, just picking from a small array instead of a
 // constant.
 // ---------------------------------------------------------------------------
-const SPRITE_SIZE = 64;
+const SPRITE_SIZE = 128;
 const ANIM_FRAME_COUNT = 4;
 
 function makeSpriteCanvas() {
@@ -1104,6 +1161,26 @@ const isMobileUA = /Android|iPhone|iPad|iPod|Mobi/i.test(navigator.userAgent);
 if (isTouch) { canvas.width = 640; canvas.height = 384; }
 const ctx = canvas.getContext("2d");
 const SCREEN_W = canvas.width, SCREEN_H = canvas.height;
+
+// Canvas text can't reference the CSS custom properties, so the same two
+// font stacks (--font-display / --font-ui) are spelled out again here for
+// the handful of headline/label strings drawn directly on the canvas.
+const FONT_DISPLAY = "'Audiowide', 'Segoe UI', system-ui, sans-serif";
+const FONT_UI = "ui-monospace, 'SF Mono', 'Cascadia Code', Consolas, 'Liberation Mono', monospace";
+
+// Audiowide is a wide display face, and the touch canvas is narrower (640px)
+// than desktop (800px) - a fixed pixel size can run the headline text off
+// the edge of the canvas (no auto-wrap/shrink like DOM text gets). Shrinks
+// the font until the string actually fits, so nothing gets clipped on
+// either canvas size. Sets ctx.font as a side effect, ready to fillText with.
+function fitDisplayFont(text, maxWidth, baseSize) {
+  let size = baseSize;
+  ctx.font = `${size}px ${FONT_DISPLAY}`;
+  while (size > 12 && ctx.measureText(text).width > maxWidth) {
+    size -= 1;
+    ctx.font = `${size}px ${FONT_DISPLAY}`;
+  }
+}
 const FOV_PLANE = 0.66;
 
 const mmCanvas = document.getElementById("minimap");
@@ -1113,13 +1190,16 @@ const hpValueEl = document.getElementById("hpValue");
 const hpFillEl = document.getElementById("hpBarFill");
 const hpBarWrapEl = document.getElementById("hpBarWrap");
 const levelEl = document.getElementById("level");
-const weaponEl = document.getElementById("weapon");
+const weaponEl = document.getElementById("weaponText");
+const fuelBarWrapEl = document.getElementById("fuelBarWrap");
+const fuelBarFillEl = document.getElementById("fuelBarFill");
 const scoreEl = document.getElementById("score");
 const overlay = document.getElementById("overlay");
 const bestStatsEl = document.getElementById("bestStats");
 const startBtn = document.getElementById("startBtn");
 const wrapEl = document.getElementById("wrap");
 const hintEl = document.getElementById("hint");
+const crosshairEl = document.getElementById("crosshair");
 const mobileControlsEl = document.getElementById("mobileControls");
 const joyBaseEl = document.getElementById("joyBase");
 const joyKnobEl = document.getElementById("joyKnob");
@@ -1913,7 +1993,10 @@ function updateHud() {
   const total = enemies.length;
   scoreEl.textContent = "Enemies defeated: " + (total - alive) + " / " + total;
   const w = WEAPONS[currentWeaponKey];
-  weaponEl.textContent = "Weapon: " + w.name + (currentWeaponKey === "flamethrower" ? " (fuel " + Math.round(fuel) + "%)" : "");
+  const isFlamethrower = currentWeaponKey === "flamethrower";
+  weaponEl.textContent = "Weapon: " + w.name + (isFlamethrower ? " (fuel " + Math.round(fuel) + "%)" : "");
+  fuelBarWrapEl.classList.toggle("hidden", !isFlamethrower);
+  if (isFlamethrower) fuelBarFillEl.style.width = Math.max(0, Math.min(100, fuel)) + "%";
   levelEl.textContent = "Sector " + (levelIndex + 1) + ": " + LEVELS[levelIndex].name;
 }
 
@@ -2242,10 +2325,17 @@ function trySemiShot() {
   if (target) {
     target.hp -= w.damage;
     target.hitFlash = 8;
+    crosshairEl.classList.add("hit");
+    crosshairHitTimer = 6;
     spawnImpactParticles(SCREEN_W / 2, SCREEN_H / 2, target.type);
     const wasAlive = target.alive;
     killIfDead(target);
-    if (wasAlive && !target.alive) sfxKill(target.type); else sfxHit(target.type);
+    if (wasAlive && !target.alive) {
+      spawnDeathBurst(SCREEN_W / 2, SCREEN_H / 2, target.type);
+      sfxKill(target.type);
+    } else {
+      sfxHit(target.type);
+    }
     updateHud();
   }
 }
@@ -2267,14 +2357,17 @@ function tickFlamethrower(dt) {
     if (!proj) continue;
     e.hp -= w.dps * dt;
     e.hitFlash = 6;
+    const hitX = Math.min(SCREEN_W - 1, Math.max(0, proj.spriteScreenX));
+    const hitY = proj.drawStartY + proj.spriteHeight * (0.35 + Math.random() * 0.3);
     if (Math.random() < dt * 14) {
-      const ix = Math.min(SCREEN_W - 1, Math.max(0, proj.spriteScreenX));
-      const iy = proj.drawStartY + proj.spriteHeight * (0.35 + Math.random() * 0.3);
-      spawnImpactParticles(ix, iy, e.type);
+      spawnImpactParticles(hitX, hitY, e.type);
     }
     const wasAlive = e.alive;
     killIfDead(e);
-    if (wasAlive && !e.alive) sfxKill(e.type);
+    if (wasAlive && !e.alive) {
+      spawnDeathBurst(hitX, hitY, e.type);
+      sfxKill(e.type);
+    }
   }
   updateHud();
 }
@@ -2357,6 +2450,7 @@ function chaseWaypoint(ex, ey) {
 let muzzleFlash = 0;
 const HURT_FLASH_PEAK = 20;
 let hurtFlash = 0;
+let crosshairHitTimer = 0;
 let recoilOffset = 0;
 let flameShakeX = 0;
 // Screen shake: "trauma" model (Squirrel Eiserloh) — amount decays linearly
@@ -2512,6 +2606,14 @@ function drawTracers() {
 // happens at the hit location (a foot shot kicks up its burst down low).
 // ---------------------------------------------------------------------------
 let impactParticles = [];
+// Shared per-type color picker so a hit's impact particles and a kill's death
+// burst always agree on enemy coloring instead of drifting out of sync.
+function impactColor(enemyType) {
+  if (enemyType === "walrus") return Math.random() < 0.6 ? "#8d7359" : "#e8dcb8";
+  if (enemyType === "polarbear") return Math.random() < 0.5 ? "#f4f4f4" : "#d9dde0";
+  return Math.random() < 0.6 ? "#1a1f22" : "#ff9d2f";
+}
+
 function spawnImpactParticles(x, y, enemyType) {
   const isBear = enemyType === "polarbear";
   const isWalrus = enemyType === "walrus";
@@ -2526,11 +2628,29 @@ function spawnImpactParticles(x, y, enemyType) {
       life: 0.22 + Math.random() * 0.22,
       maxLife: 0.44,
       size: isBear || isWalrus ? 2 + Math.random() * 2.6 : 1.4 + Math.random() * 2,
-      color: isWalrus
-        ? (Math.random() < 0.6 ? "#8d7359" : "#e8dcb8")
-        : isBear
-        ? (Math.random() < 0.5 ? "#f4f4f4" : "#d9dde0")
-        : (Math.random() < 0.6 ? "#1a1f22" : "#ff9d2f"),
+      color: impactColor(enemyType),
+    });
+  }
+}
+
+// Bigger, wider-spread burst for a killing blow so a kill visibly reads as
+// different from a graze — reuses the same impactParticles array/update/draw
+// path as spawnImpactParticles rather than standing up a separate system.
+function spawnDeathBurst(x, y, enemyType) {
+  const isBear = enemyType === "polarbear";
+  const isWalrus = enemyType === "walrus";
+  const count = 24 + Math.floor(Math.random() * 7);
+  for (let i = 0; i < count; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 90 + Math.random() * 260;
+    impactParticles.push({
+      x, y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed - 70,
+      life: 0.3 + Math.random() * 0.3,
+      maxLife: 0.6,
+      size: isBear || isWalrus ? 2.4 + Math.random() * 3.2 : 1.8 + Math.random() * 2.6,
+      color: impactColor(enemyType),
     });
   }
 }
@@ -2881,6 +3001,7 @@ function update(dt) {
     levelTransitionTimer -= dt;
     if (muzzleFlash > 0) muzzleFlash--;
     if (hurtFlash > 0) hurtFlash--;
+    if (crosshairHitTimer > 0 && --crosshairHitTimer === 0) crosshairEl.classList.remove("hit");
     updateSparkParticles(dt);
     updateFlameParticles(dt);
     updateTracers(dt);
@@ -3061,6 +3182,7 @@ function update(dt) {
 
   if (muzzleFlash > 0) muzzleFlash--;
   if (hurtFlash > 0) hurtFlash--;
+  if (crosshairHitTimer > 0 && --crosshairHitTimer === 0) crosshairEl.classList.remove("hit");
   recoilOffset = Math.max(0, recoilOffset - 46 * dt);
   if (!(mouseHeld && currentWeaponKey === "flamethrower")) flameShakeX = 0;
   updateSparkParticles(dt);
@@ -3121,6 +3243,34 @@ function render() {
     ctx.fillRect(0, Math.max(0, horizon), SCREEN_W, SCREEN_H - Math.max(0, horizon));
     ctx.restore();
   }
+
+  // Distance fog on floor/ceiling: cheap radial-gradient approximation (a true
+  // per-row raycast fog would mean an extra ~240-row inner loop) centered on
+  // the vanishing point, fading to the sector's fog color at the edges so the
+  // ground/sky read as fogged out at the same range the walls do.
+  const fogRadius = SCREEN_H * 0.95;
+  const fogRgba = `rgba(${level.fogColor[0] | 0}, ${level.fogColor[1] | 0}, ${level.fogColor[2] | 0}`;
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(0, Math.max(0, horizon), SCREEN_W, SCREEN_H - Math.max(0, horizon));
+  ctx.clip();
+  const floorFog = ctx.createRadialGradient(SCREEN_W / 2, horizon, 0, SCREEN_W / 2, horizon, fogRadius);
+  floorFog.addColorStop(0, fogRgba + ", 0)");
+  floorFog.addColorStop(1, fogRgba + ", 0.55)");
+  ctx.fillStyle = floorFog;
+  ctx.fillRect(0, Math.max(0, horizon), SCREEN_W, SCREEN_H - Math.max(0, horizon));
+  ctx.restore();
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(0, 0, SCREEN_W, Math.max(0, horizon));
+  ctx.clip();
+  const ceilFog = ctx.createRadialGradient(SCREEN_W / 2, horizon, 0, SCREEN_W / 2, horizon, fogRadius);
+  ceilFog.addColorStop(0, fogRgba + ", 0)");
+  ceilFog.addColorStop(1, fogRgba + ", 0.55)");
+  ctx.fillStyle = ceilFog;
+  ctx.fillRect(0, 0, SCREEN_W, Math.max(0, horizon));
+  ctx.restore();
 
   for (let x = 0; x < SCREEN_W; x++) {
     const cameraX = (2 * x) / SCREEN_W - 1;
@@ -3253,7 +3403,7 @@ function renderSprites() {
       if (visible && runStart === null) runStart = sx;
       if ((!visible || sx === Math.min(SCREEN_W - 1, drawEndX)) && runStart !== null) {
         const runEnd = visible ? sx + 1 : sx;
-        if (isEnemy) drawSpriteRun(item.e, spriteCanvas, drawStartX, drawStartY, spriteWidth, spriteHeight, runStart, runEnd);
+        if (isEnemy) drawSpriteRun(item.e, spriteCanvas, drawStartX, drawStartY, spriteWidth, spriteHeight, runStart, runEnd, transformY);
         else drawPropRun(spriteCanvas, drawStartX, drawStartY, spriteWidth, spriteHeight, runStart, runEnd);
         runStart = null;
       }
@@ -3278,18 +3428,34 @@ spriteScratchCanvas.width = SPRITE_SIZE;
 spriteScratchCanvas.height = SPRITE_SIZE;
 const spriteScratchCtx = spriteScratchCanvas.getContext("2d");
 
-function drawSpriteRun(e, spriteCanvas, drawStartX, drawStartY, spriteWidth, spriteHeight, runStart, runEnd) {
+function drawSpriteRun(e, spriteCanvas, drawStartX, drawStartY, spriteWidth, spriteHeight, runStart, runEnd, dist) {
   ctx.save();
   ctx.beginPath();
   ctx.rect(runStart, drawStartY, runEnd - runStart, spriteHeight);
   ctx.clip();
-  if (e.hitFlash > 0) {
+
+  // Same fog falloff as the wall raycaster (see the `fogT` blend in render()),
+  // so a distant enemy dims/fogs out at the same rate as the wall behind it
+  // instead of always rendering full-bright. Capped below 1 so enemies stay
+  // readable/targetable even at max fog density.
+  const level = LEVELS[levelIndex];
+  const fogT = Math.min(1, Math.max(0, (dist - level.fogDensity * 0.55) / (level.fogDensity * 0.9))) * 0.85;
+
+  if (e.hitFlash > 0 || fogT > 0.02) {
     spriteScratchCtx.clearRect(0, 0, SPRITE_SIZE, SPRITE_SIZE);
     spriteScratchCtx.drawImage(spriteCanvas, 0, 0);
-    spriteScratchCtx.globalCompositeOperation = "source-atop";
-    spriteScratchCtx.globalAlpha = Math.min(1, e.hitFlash / 8) * 0.9;
-    spriteScratchCtx.fillStyle = "#ff3b3b";
-    spriteScratchCtx.fillRect(0, 0, SPRITE_SIZE, SPRITE_SIZE);
+    if (fogT > 0.02) {
+      spriteScratchCtx.globalCompositeOperation = "source-atop";
+      spriteScratchCtx.globalAlpha = fogT;
+      spriteScratchCtx.fillStyle = `rgb(${level.fogColor[0] | 0}, ${level.fogColor[1] | 0}, ${level.fogColor[2] | 0})`;
+      spriteScratchCtx.fillRect(0, 0, SPRITE_SIZE, SPRITE_SIZE);
+    }
+    if (e.hitFlash > 0) {
+      spriteScratchCtx.globalCompositeOperation = "source-atop";
+      spriteScratchCtx.globalAlpha = Math.min(1, e.hitFlash / 8) * 0.9;
+      spriteScratchCtx.fillStyle = "#ff3b3b";
+      spriteScratchCtx.fillRect(0, 0, SPRITE_SIZE, SPRITE_SIZE);
+    }
     spriteScratchCtx.globalAlpha = 1;
     spriteScratchCtx.globalCompositeOperation = "source-over";
     ctx.drawImage(spriteScratchCanvas, drawStartX, drawStartY, spriteWidth, spriteHeight);
@@ -3332,13 +3498,14 @@ function renderEndState() {
   ctx.fillStyle = "rgba(0,0,0,0.6)";
   ctx.fillRect(0, 0, SCREEN_W, SCREEN_H);
   ctx.fillStyle = won ? "#7fffb0" : "#ff6b6b";
-  ctx.font = "bold 40px 'Courier New', monospace";
+  const bannerText = won ? "ALL SECTORS CLEARED" : "YOU HAVE BEEN WADDLED ON";
+  fitDisplayFont(bannerText, SCREEN_W - 40, 40);
   ctx.textAlign = "center";
-  ctx.fillText(won ? "ALL SECTORS CLEARED" : "YOU HAVE BEEN WADDLED ON", SCREEN_W / 2, SCREEN_H / 2 - 10);
-  ctx.font = "20px 'Courier New', monospace";
+  ctx.fillText(bannerText, SCREEN_W / 2, SCREEN_H / 2 - 10);
+  ctx.font = `20px ${FONT_UI}`;
   ctx.fillStyle = "#eafcff";
-  ctx.fillText("Press R to play again", SCREEN_W / 2, SCREEN_H / 2 + 30);
-  ctx.font = "16px 'Courier New', monospace";
+  ctx.fillText(isTouch ? "Click the Restart button to play again" : "Press R to play again", SCREEN_W / 2, SCREEN_H / 2 + 30);
+  ctx.font = `16px ${FONT_UI}`;
   ctx.fillStyle = lastRunNewRecord ? "#ffe27f" : "#9fd8e6";
   ctx.fillText((lastRunNewRecord ? "NEW BEST!  " : "") + bestStatsText(), SCREEN_W / 2, SCREEN_H / 2 + 58);
   ctx.textAlign = "left";
@@ -3348,10 +3515,10 @@ function renderLevelTransition() {
   ctx.fillStyle = "rgba(0,0,0,0.55)";
   ctx.fillRect(0, 0, SCREEN_W, SCREEN_H);
   ctx.fillStyle = "#7fffb0";
-  ctx.font = "bold 32px 'Courier New', monospace";
+  fitDisplayFont("SECTOR CLEARED", SCREEN_W - 40, 32);
   ctx.textAlign = "center";
   ctx.fillText("SECTOR CLEARED", SCREEN_W / 2, SCREEN_H / 2 - 14);
-  ctx.font = "20px 'Courier New', monospace";
+  ctx.font = `20px ${FONT_UI}`;
   ctx.fillStyle = "#eafcff";
   ctx.fillText("Entering " + LEVELS[levelIndex + 1].name, SCREEN_W / 2, SCREEN_H / 2 + 22);
   ctx.textAlign = "left";

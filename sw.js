@@ -1,4 +1,4 @@
-const CACHE = "penguoom-v5";
+const CACHE = "penguoom-v8";
 const ASSETS = [
   "./",
   "./index.html",
@@ -7,6 +7,7 @@ const ASSETS = [
   "./icons/icon-512.png",
   "./icons/icon-512-maskable.png",
   "./icons/apple-touch-icon.png",
+  "./fonts/audiowide-regular.woff2",
 ];
 
 self.addEventListener("install", (e) => {
