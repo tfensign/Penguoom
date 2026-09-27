@@ -69,6 +69,17 @@
     margin-top: 1.2rem; font-size: 1.3rem; padding: 0.6rem 1.6rem; cursor: pointer;
     background: #1b6; border: none; border-radius: 6px; color: #012; font-weight: bold;
   }
+  /* Secondary CTA (Install App) - deliberately smaller/outlined so it reads
+     as a lesser action than the primary green "ENTER THE ICE" button. */
+  #overlay button.secondary {
+    display: block; margin: 0.7rem auto 0; font-size: 1rem; font-weight: normal;
+    padding: 0.45rem 1.2rem; background: transparent; color: var(--accent-cyan);
+    border: 2px solid var(--accent-cyan); border-radius: 6px;
+  }
+  #installHint {
+    max-width: 420px; margin: 0.6rem auto 0; font-size: 0.8rem; line-height: 1.5;
+    color: #9fd8e6;
+  }
   #hud {
     position: absolute; left: 0; right: 0; bottom: 0; display: flex; justify-content: space-between;
     align-items: flex-end; gap: 10px; padding: 10px 16px; font-family: var(--font-ui);
@@ -261,6 +272,8 @@
        Fish Blaster, Harpoon Cannon, and Flamethrower.</p>
     <p id="bestStats"></p>
     <button id="startBtn">ENTER THE ICE</button>
+    <button id="installBtn" class="secondary hidden">&#128241; Install App</button>
+    <p id="installHint" class="hidden"></p>
   </div>
 </div>
 
@@ -3559,6 +3572,69 @@ function frame(now) {
 bestStatsEl.textContent = bestStatsText();
 applyMuteState();
 requestAnimationFrame(frame);
+
+// ---------------------------------------------------------------------------
+// "Install App" button — adapts to what the browser actually supports, since
+// there's no universal API for this:
+//   - Chrome/Edge/Samsung Internet fire `beforeinstallprompt`, which lets a
+//     page-owned button trigger the real native install dialog directly.
+//   - iOS Safari has no such API at all (Apple doesn't expose one) - the
+//     best available is auto-detecting iOS and showing the exact manual
+//     steps (Share -> Add to Home Screen) instead of a fake button.
+//   - Everything else (e.g. Firefox for Android) gets a generic manual hint.
+//   - Already-installed (standalone/fullscreen launch) hides this entirely.
+// ---------------------------------------------------------------------------
+const installBtnEl = document.getElementById("installBtn");
+const installHintEl = document.getElementById("installHint");
+
+const isStandaloneInstalled = window.matchMedia("(display-mode: standalone)").matches
+  || window.matchMedia("(display-mode: fullscreen)").matches
+  || window.navigator.standalone === true;
+
+const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+  || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+const isRealSafari = isIOS && /Safari/.test(navigator.userAgent) && !/CriOS|FxiOS|EdgiOS/.test(navigator.userAgent);
+
+let deferredInstallPrompt = null;
+
+if (!isStandaloneInstalled) {
+  if (isIOS) {
+    installHintEl.textContent = isRealSafari
+      ? "Tap the Share icon below, then \"Add to Home Screen\" to install Penguoom."
+      : "Open this page in Safari, then tap Share → \"Add to Home Screen\" to install Penguoom.";
+    installHintEl.classList.remove("hidden");
+  } else {
+    window.addEventListener("beforeinstallprompt", (e) => {
+      e.preventDefault();
+      deferredInstallPrompt = e;
+      installBtnEl.classList.remove("hidden");
+    });
+
+    // Chromium fires beforeinstallprompt almost immediately if it's going to
+    // fire at all; if nothing shows up shortly, this browser (e.g. Firefox
+    // for Android) doesn't support a scripted install, so fall back to a
+    // generic manual hint instead of leaving the button looking broken.
+    setTimeout(() => {
+      if (!deferredInstallPrompt) {
+        installHintEl.textContent = "Add Penguoom to your home screen from your browser's menu (look for \"Install app\" or \"Add to Home screen\").";
+        installHintEl.classList.remove("hidden");
+      }
+    }, 2500);
+
+    installBtnEl.addEventListener("click", async () => {
+      if (!deferredInstallPrompt) return;
+      installBtnEl.classList.add("hidden");
+      deferredInstallPrompt.prompt();
+      await deferredInstallPrompt.userChoice;
+      deferredInstallPrompt = null;
+    });
+
+    window.addEventListener("appinstalled", () => {
+      installBtnEl.classList.add("hidden");
+      installHintEl.classList.add("hidden");
+    });
+  }
+}
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
