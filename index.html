@@ -1234,10 +1234,15 @@ onViewportChange();
 
 if (isTouch) {
   mobileControlsEl.classList.add("active");
-  // isTouch is a device guess that also fires on touchscreen-equipped PCs, so
-  // this only adds the touch controls to the hint rather than replacing the
-  // keyboard/mouse ones — both schemes work at once regardless of the guess.
-  hintEl.textContent = "WASD or left pad: move · mouse or drag screen: look · click, tap, or FIRE button: shoot · 1/2/3 or tap a weapon icon · R restart · tap speaker to mute";
+  // isTouch is a device guess that also fires on touchscreen-equipped PCs
+  // (which still have a keyboard/mouse), so the on-screen controls show up
+  // for any touch-capable device — but the hint text itself uses the
+  // stricter isMobileUA check so it names only the controls that actually
+  // apply: a true phone/tablet gets touch-only wording, everything else
+  // (including touch-laptops) keeps the keyboard/mouse hint below.
+  if (isMobileUA) {
+    hintEl.textContent = "Left pad: move · drag screen: look · FIRE button: shoot · tap a weapon icon: switch · tap restart: play again · tap speaker: mute";
+  }
 }
 
 const WEAPONS = {
