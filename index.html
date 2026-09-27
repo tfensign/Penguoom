@@ -1157,7 +1157,7 @@ if (isTouch) {
   // isTouch is a device guess that also fires on touchscreen-equipped PCs, so
   // this only adds the touch controls to the hint rather than replacing the
   // keyboard/mouse ones — both schemes work at once regardless of the guess.
-  hintEl.textContent = "WASD or left pad: move · mouse or drag screen: look · click or FIRE button: shoot · 1/2/3 or tap a weapon icon · R restart · tap speaker to mute";
+  hintEl.textContent = "WASD or left pad: move · mouse or drag screen: look · click, tap, or FIRE button: shoot · 1/2/3 or tap a weapon icon · R restart · tap speaker to mute";
 }
 
 const WEAPONS = {
@@ -2012,27 +2012,60 @@ joyBaseEl.addEventListener("touchcancel", e => {
 
 // Drag-to-look: any touch that starts on the game canvas itself (i.e. not on
 // one of the control widgets, which are separate elements layered above it).
+//
+// Touch drags cover far fewer physical pixels than a mouse flick, so raw
+// deltas (same sensitivity as mouse movementX/Y) felt like "drag a bunch to
+// turn a little". TOUCH_LOOK_BASE re-scales every touch delta up, and
+// TOUCH_LOOK_VELOCITY_BOOST adds extra on top of that for fast swipes (small
+// careful drags stay close to the base rate; a fast flick turns much
+// quicker) - mouse look is untouched, this only scales touch deltas.
+const TOUCH_LOOK_BASE = 1.8;
+const TOUCH_LOOK_VELOCITY_BOOST = 2.2;
+const TOUCH_LOOK_VELOCITY_REF = 16; // px moved in one touchmove event to reach max boost
+function scaleTouchDelta(d) {
+  const speedT = Math.min(1, Math.abs(d) / TOUCH_LOOK_VELOCITY_REF);
+  return d * (TOUCH_LOOK_BASE + TOUCH_LOOK_VELOCITY_BOOST * speedT);
+}
+
+// A touch that barely moved and didn't linger counts as a tap: fire the
+// current (semi-auto) weapon instead of/as well as looking, so aiming and
+// shooting are one continuous thumb motion instead of drag-then-relocate-to
+// the separate FIRE button. Longer or larger touches are a pure look-drag.
+const TAP_MAX_DIST = 12; // px
+const TAP_MAX_DURATION = 250; // ms
+
 let lookTouchId = null, lookLastX = 0, lookLastY = 0;
+let lookStartX = 0, lookStartY = 0, lookStartTime = 0;
 canvas.addEventListener("touchstart", e => {
   e.preventDefault();
   if (lookTouchId === null) {
     const t = e.changedTouches[0];
     lookTouchId = t.identifier;
     lookLastX = t.clientX; lookLastY = t.clientY;
+    lookStartX = t.clientX; lookStartY = t.clientY;
+    lookStartTime = performance.now();
   }
 }, { passive: false });
 canvas.addEventListener("touchmove", e => {
   e.preventDefault();
   for (const t of e.changedTouches) {
     if (t.identifier === lookTouchId) {
-      mouseDX += t.clientX - lookLastX;
-      mouseDY += t.clientY - lookLastY;
+      mouseDX += scaleTouchDelta(t.clientX - lookLastX);
+      mouseDY += scaleTouchDelta(t.clientY - lookLastY);
       lookLastX = t.clientX; lookLastY = t.clientY;
     }
   }
 }, { passive: false });
 canvas.addEventListener("touchend", e => {
-  for (const t of e.changedTouches) if (t.identifier === lookTouchId) lookTouchId = null;
+  for (const t of e.changedTouches) {
+    if (t.identifier !== lookTouchId) continue;
+    const dist = Math.hypot(t.clientX - lookStartX, t.clientY - lookStartY);
+    const duration = performance.now() - lookStartTime;
+    if (dist <= TAP_MAX_DIST && duration <= TAP_MAX_DURATION && WEAPONS[currentWeaponKey].mode === "semi") {
+      trySemiShot();
+    }
+    lookTouchId = null;
+  }
 });
 canvas.addEventListener("touchcancel", e => {
   for (const t of e.changedTouches) if (t.identifier === lookTouchId) lookTouchId = null;
@@ -2119,9 +2152,18 @@ function pixelHitTestAtScreen(stats, proj, screenX, screenY) {
   return stats.alphaMask[sy * SPRITE_SIZE + sx] === 1;
 }
 
+// A few extra crosshair-adjacent sample points, checked only on touch, so an
+// imprecise thumb-drag that lands just next to an enemy still counts as a
+// hit. Kept small and PC is untouched - desktop only ever checks the exact
+// center pixel via AIM_ASSIST_OFFSETS below.
+const AIM_ASSIST_OFFSETS = isTouch
+  ? [[0, 0], [6, 0], [-6, 0], [0, 6], [0, -6]]
+  : [[0, 0]];
+
 // Finds the closest enemy whose actual sprite pixel sits under the crosshair
-// and is not behind a wall (checked against the same zBuffer the renderer
-// used this frame), for the precise semi-auto weapons.
+// (or, on touch, near it - see AIM_ASSIST_OFFSETS) and is not behind a wall
+// (checked against the same zBuffer the renderer used this frame), for the
+// precise semi-auto weapons.
 function findPixelTarget(range) {
   const cx = SCREEN_W / 2, cy = SCREEN_H / 2;
   const col = Math.min(SCREEN_W - 1, Math.max(0, Math.round(cx)));
@@ -2134,7 +2176,8 @@ function findPixelTarget(range) {
     const proj = projectSprite(e, stats, invDet);
     if (!proj) continue;
     if (proj.transformY >= zBuffer[col]) continue; // occluded by a wall
-    if (!pixelHitTestAtScreen(stats, proj, cx, cy)) continue;
+    const hit = AIM_ASSIST_OFFSETS.some(([ox, oy]) => pixelHitTestAtScreen(stats, proj, cx + ox, cy + oy));
+    if (!hit) continue;
     if (proj.transformY < bestDepth) { best = e; bestDepth = proj.transformY; }
   }
   return best;
