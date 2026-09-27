@@ -134,9 +134,25 @@
   }
   #rotatePrompt.show { display: flex; }
   #rotatePrompt .spin { font-size: 2.6rem; margin-bottom: 0.6rem; }
+  #updateBanner {
+    position: fixed; left: 50%; top: 14px; transform: translateX(-50%) translateY(-140%);
+    z-index: 30; display: flex; align-items: center; gap: 10px;
+    background: rgba(10,25,35,0.92); border: 2px solid rgba(150,220,240,0.6); border-radius: 10px;
+    color: #eafcff; font-family: 'Courier New', monospace; font-size: 0.85rem;
+    padding: 10px 14px; box-sizing: border-box; transition: transform 0.25s ease-out;
+  }
+  #updateBanner.show { transform: translateX(-50%) translateY(0); }
+  #updateBanner button {
+    font-family: 'Courier New', monospace; font-size: 0.85rem; font-weight: bold;
+    padding: 6px 12px; border-radius: 6px; border: none; background: #1b6; color: #012; cursor: pointer;
+  }
 </style>
 </head>
 <body>
+<div id="updateBanner">
+  <span>New version ready</span>
+  <button id="updateBtn">Reload</button>
+</div>
 <div id="wrap">
   <canvas id="game" width="800" height="480"></canvas>
   <canvas id="minimap" width="150" height="150"></canvas>
@@ -3203,7 +3219,41 @@ requestAnimationFrame(frame);
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("sw.js").catch(() => {});
+    navigator.serviceWorker.register("sw.js").then((reg) => {
+      const banner = document.getElementById("updateBanner");
+      const updateBtn = document.getElementById("updateBtn");
+
+      function promptUpdate(worker) {
+        updateBtn.onclick = () => {
+          worker.postMessage({ type: "SKIP_WAITING" });
+        };
+        banner.classList.add("show");
+      }
+
+      // An update was already downloaded and is waiting from a previous visit.
+      if (reg.waiting && navigator.serviceWorker.controller) {
+        promptUpdate(reg.waiting);
+      }
+
+      // A new version finished downloading during this visit.
+      reg.addEventListener("updatefound", () => {
+        const newWorker = reg.installing;
+        if (!newWorker) return;
+        newWorker.addEventListener("statechange", () => {
+          if (newWorker.state === "installed" && navigator.serviceWorker.controller) {
+            promptUpdate(newWorker);
+          }
+        });
+      });
+    }).catch(() => {});
+
+    // Reload once the new service worker actually takes control.
+    let reloaded = false;
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      if (reloaded) return;
+      reloaded = true;
+      window.location.reload();
+    });
   });
 }
 </script>

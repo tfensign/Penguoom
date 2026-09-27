@@ -1,4 +1,4 @@
-const CACHE = "penguoom-v1";
+const CACHE = "penguoom-v2";
 const ASSETS = [
   "./",
   "./index.html",
@@ -11,7 +11,12 @@ const ASSETS = [
 
 self.addEventListener("install", (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(ASSETS)));
-  self.skipWaiting();
+  // Stay in "waiting" (don't skipWaiting here) so the page can offer the
+  // player a Reload prompt instead of swapping assets out from under them.
+});
+
+self.addEventListener("message", (e) => {
+  if (e.data && e.data.type === "SKIP_WAITING") self.skipWaiting();
 });
 
 self.addEventListener("activate", (e) => {
