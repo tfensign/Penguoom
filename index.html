@@ -169,6 +169,15 @@
   #crosshair.hit::before, #crosshair.hit::after { background: #fff; }
   #crosshair::before { left: 8px; top: 0; width: 2px; height: 18px; }
   #crosshair::after { top: 8px; left: 0; width: 18px; height: 2px; }
+  /* Desktop-only restart button shown over the game-over/win banner (mobile
+     has its own always-on restart chip top-left, untouched - see
+     #restartBtnMobile). Positioned as a percentage of the canvas so it lines
+     up under the canvas-drawn banner/stats text regardless of window size. */
+  #restartBtnDesktop {
+    position: absolute; left: 50%; top: 70%; transform: translateX(-50%);
+    padding: 0.5rem 1.4rem; font-size: 1.1rem; font-weight: bold; cursor: pointer;
+    background: #1b6; border: none; border-radius: 6px; color: #012; font-family: var(--font-ui);
+  }
   #minimapFrame { position: absolute; top: 12px; right: 12px; padding: 4px; }
   #minimap { display: block; background: rgba(0,10,20,0.5); }
   #hint { position: absolute; top: 12px; left: 12px; color: #cfefff; font-family: var(--font-ui); font-size: 0.8rem; opacity: 0.8; max-width: 60%; }
@@ -254,6 +263,7 @@
   <canvas id="game" width="800" height="480"></canvas>
   <div id="minimapFrame" class="hudPanel"><canvas id="minimap" width="150" height="150"></canvas></div>
   <div id="crosshair"></div>
+  <button id="restartBtnDesktop" class="hidden">&#8635; Restart</button>
   <div id="hint">WASD move · mouse to look (aim up/down matters!) · scroll to turn · hold click to fire · 1/2/3 weapon · R restart · M mute</div>
   <div id="hud">
     <div id="hpPanel" class="hudPanel">
@@ -1242,6 +1252,7 @@ const joyKnobEl = document.getElementById("joyKnob");
 const fireBtnEl = document.getElementById("fireBtn");
 const weaponBtnEls = Array.from(document.querySelectorAll(".weaponBtn"));
 const restartBtnMobileEl = document.getElementById("restartBtnMobile");
+const restartBtnDesktopEl = document.getElementById("restartBtnDesktop");
 const muteBtnEl = document.getElementById("muteBtn");
 const rotatePromptEl = document.getElementById("rotatePrompt");
 
@@ -2154,15 +2165,29 @@ function scaleTouchDelta(d) {
 // A touch that barely moved and didn't linger counts as a tap: fire the
 // current semi-auto weapon (blaster/harpoon), so aiming and shooting are one
 // continuous thumb motion instead of drag-then-relocate-to the separate FIRE
-// button. Longer or larger touches are a pure look-drag. The flamethrower
-// never fires from a canvas touch at all (tap or drag/hold) - only the
-// dedicated FIRE button sprays it, so aiming with the flamethrower equipped
-// never accidentally triggers it.
+// button. Longer or larger touches are a pure look-drag.
+//
+// The flamethrower can't use a tap (it's hold-to-fire, not one-shot), but a
+// canvas touch can't just fire it immediately either, or aiming alone sprays
+// it. Compromise: the first FLAME_COMMIT_WINDOW ms of a touch is a "commit
+// window" - if the finger has drifted no more than FLAME_COMMIT_MAX_DIST px
+// by the end of it, the touch commits to firing (flamethrower only) and can
+// then sweep freely for the rest of the touch. If it's already moved past
+// that threshold before the window closes, this touch is a pure look and
+// will never fire, no matter how still it goes afterward.
 const TAP_MAX_DIST = 12; // px
 const TAP_MAX_DURATION = 250; // ms
+const FLAME_COMMIT_WINDOW = 150; // ms
+const FLAME_COMMIT_MAX_DIST = 10; // px
 
 let lookTouchId = null, lookLastX = 0, lookLastY = 0;
 let lookStartX = 0, lookStartY = 0, lookStartTime = 0;
+let flameCommitTimer = null;
+let flameDisqualified = false;
+// True only once THIS touch is the one that armed mouseHeld, so releasing it
+// doesn't stomp on an independent hold from the FIRE button (a second finger
+// can hold FIRE while this one drags to aim without the two interfering).
+let flameArmedByCanvas = false;
 canvas.addEventListener("touchstart", e => {
   e.preventDefault();
   if (lookTouchId === null) {
@@ -2171,6 +2196,15 @@ canvas.addEventListener("touchstart", e => {
     lookLastX = t.clientX; lookLastY = t.clientY;
     lookStartX = t.clientX; lookStartY = t.clientY;
     lookStartTime = performance.now();
+    flameDisqualified = false;
+    clearTimeout(flameCommitTimer);
+    flameCommitTimer = setTimeout(() => {
+      if (lookTouchId === null || flameDisqualified) return;
+      if (WEAPONS[currentWeaponKey].mode === "auto") {
+        mouseHeld = true;
+        flameArmedByCanvas = true;
+      }
+    }, FLAME_COMMIT_WINDOW);
   }
 }, { passive: false });
 canvas.addEventListener("touchmove", e => {
@@ -2180,6 +2214,10 @@ canvas.addEventListener("touchmove", e => {
       mouseDX += scaleTouchDelta(t.clientX - lookLastX);
       mouseDY += scaleTouchDelta(t.clientY - lookLastY);
       lookLastX = t.clientX; lookLastY = t.clientY;
+      if (!flameDisqualified && !mouseHeld) {
+        const driftDist = Math.hypot(t.clientX - lookStartX, t.clientY - lookStartY);
+        if (driftDist > FLAME_COMMIT_MAX_DIST) flameDisqualified = true;
+      }
     }
   }
 }, { passive: false });
@@ -2192,12 +2230,16 @@ canvas.addEventListener("touchend", e => {
       trySemiShot();
     }
     lookTouchId = null;
+    clearTimeout(flameCommitTimer);
+    if (flameArmedByCanvas) { mouseHeld = false; flameArmedByCanvas = false; }
   }
 });
 canvas.addEventListener("touchcancel", e => {
   for (const t of e.changedTouches) {
     if (t.identifier !== lookTouchId) continue;
     lookTouchId = null;
+    clearTimeout(flameCommitTimer);
+    if (flameArmedByCanvas) { mouseHeld = false; flameArmedByCanvas = false; }
   }
 });
 
@@ -2230,6 +2272,10 @@ for (const btn of weaponBtnEls) {
 restartBtnMobileEl.addEventListener("touchstart", e => {
   e.preventDefault();
   overlay.style.display = "none";
+  newGame();
+});
+
+restartBtnDesktopEl.addEventListener("click", () => {
   newGame();
 });
 
@@ -3540,7 +3586,7 @@ function renderEndState() {
   ctx.fillText(bannerText, SCREEN_W / 2, SCREEN_H / 2 - 10);
   ctx.font = `20px ${FONT_UI}`;
   ctx.fillStyle = "#eafcff";
-  ctx.fillText(isTouch ? "Click the Restart button to play again" : "Press R to play again", SCREEN_W / 2, SCREEN_H / 2 + 30);
+  ctx.fillText(isTouch ? "Click the Restart button to play again" : "Click Restart or press R to play again", SCREEN_W / 2, SCREEN_H / 2 + 30);
   ctx.font = `16px ${FONT_UI}`;
   ctx.fillStyle = lastRunNewRecord ? "#ffe27f" : "#9fd8e6";
   ctx.fillText((lastRunNewRecord ? "NEW BEST!  " : "") + bestStatsText(), SCREEN_W / 2, SCREEN_H / 2 + 58);
@@ -3572,6 +3618,7 @@ function frame(now) {
     render();
     if (gameOver || won) renderEndState();
     else if (levelTransition) renderLevelTransition();
+    restartBtnDesktopEl.classList.toggle("hidden", isTouch || !(gameOver || won));
   }
   requestAnimationFrame(frame);
 }
