@@ -58,10 +58,18 @@
   canvas#game { image-rendering: pixelated; background: #000; display: block; width: 100%; height: 100%; }
   #minimap { image-rendering: pixelated; }
   #overlay {
-    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: flex-start;
     flex-direction: column; color: #eafcff; font-family: var(--font-ui); text-align: center;
     background: rgba(0,10,20,0.75); z-index: 10; padding: 16px; box-sizing: border-box;
+    /* The title/description/buttons can be taller than a short mobile
+       landscape viewport. justify-content: center (the old value) clips the
+       overflow with no way to reach it - flex-start plus these auto-margin
+       spacers keeps everything vertically centered when it fits, but lets
+       the content start from the top and scroll into view instead of
+       disappearing off-screen when it doesn't. */
+    overflow-y: auto; -webkit-overflow-scrolling: touch;
   }
+  #overlay::before, #overlay::after { content: ""; margin: auto 0; }
   #overlay h1 { font-family: var(--font-display); font-weight: normal; font-size: 3rem; letter-spacing: 0.3rem; margin-bottom: 0.2rem; color: #7fe8ff; text-shadow: 0 0 12px #2ad; }
   #overlay p { max-width: 560px; line-height: 1.5; }
   #bestStats { color: #9fd8e6; font-size: 0.9rem; margin-top: -0.4rem; }
