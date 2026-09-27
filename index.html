@@ -74,6 +74,17 @@
     align-items: flex-end; gap: 10px; padding: 10px 16px; font-family: var(--font-ui);
     color: #eafcff; font-size: 0.85rem; text-shadow: 0 0 6px rgba(120,220,255,0.55); pointer-events: none;
   }
+  /* On touch (narrower canvas, and the on-screen controls already claim
+     screen space) the four HUD chips at full desktop size don't all fit on
+     one row - the rightmost ones (weapon/score) would overflow past the
+     canvas edge, worse once the flamethrower's longer "(fuel NN%)" text is
+     showing. Shrink the chips to buy back room, and let the row wrap as a
+     hard guarantee that nothing renders off-screen even on narrower phones. */
+  .touch #hud {
+    font-size: 0.68rem; gap: 6px; padding: 6px 8px; flex-wrap: wrap; row-gap: 6px;
+  }
+  .touch .hudPanel { padding: 4px 8px; }
+  .touch #hpPanel { min-width: 130px; padding: 5px 8px 8px; }
   /* Shared "frosted ice pane" chip: translucent navy glass with a cyan glow,
      used for every HUD readout so the text reads clearly over any floor/wall
      color instead of the old bare white text. */
@@ -1234,6 +1245,7 @@ onViewportChange();
 
 if (isTouch) {
   mobileControlsEl.classList.add("active");
+  document.documentElement.classList.add("touch");
   // isTouch is a device guess that also fires on touchscreen-equipped PCs
   // (which still have a keyboard/mouse), so the on-screen controls show up
   // for any touch-capable device — but the hint text itself uses the
