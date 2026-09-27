@@ -54,7 +54,7 @@
   /* #wrap is sized in JS (fitCanvas) to exactly match the letterboxed game
      rect, so everything inside it (HUD, crosshair, minimap) stays visually
      locked to the actual rendered canvas instead of the raw viewport edges. */
-  #wrap { position: relative; width: 800px; height: 480px; }
+  #wrap { position: relative; width: 800px; height: 480px; container-type: inline-size; }
   canvas#game { image-rendering: pixelated; background: #000; display: block; width: 100%; height: 100%; }
   #minimap { image-rendering: pixelated; }
   #overlay {
@@ -84,18 +84,22 @@
     position: absolute; left: 0; right: 0; bottom: 0; display: flex; justify-content: space-between;
     align-items: flex-end; gap: 10px; padding: 10px 16px; font-family: var(--font-ui);
     color: #eafcff; font-size: 0.85rem; text-shadow: 0 0 6px rgba(120,220,255,0.55); pointer-events: none;
+    /* Unconditional safety net: if the chips ever don't fit on one row (any
+       screen, any device), wrap to a second line instead of overflowing past
+       the canvas edge and disappearing. */
+    flex-wrap: wrap; row-gap: 6px;
   }
-  /* On touch (narrower canvas, and the on-screen controls already claim
-     screen space) the four HUD chips at full desktop size don't all fit on
-     one row - the rightmost ones (weapon/score) would overflow past the
-     canvas edge, worse once the flamethrower's longer "(fuel NN%)" text is
-     showing. Shrink the chips to buy back room, and let the row wrap as a
-     hard guarantee that nothing renders off-screen even on narrower phones. */
-  .touch #hud {
-    font-size: 0.68rem; gap: 6px; padding: 6px 8px; flex-wrap: wrap; row-gap: 6px;
+  /* Sized off #wrap's own rendered width via a container query rather than
+     an isTouch/device guess - isTouch fires on plenty of touch-capable
+     desktops/laptops too, which was shrinking the HUD on machines with a
+     full-size canvas for no reason. This instead reacts to the canvas
+     actually being small (the 640px touch resolution, or a narrow desktop
+     browser window), which is the real constraint that matters. */
+  @container (max-width: 700px) {
+    #hud { font-size: 0.68rem; gap: 6px; padding: 6px 8px; }
+    .hudPanel { padding: 4px 8px; }
+    #hpPanel { min-width: 130px; padding: 5px 8px 8px; }
   }
-  .touch .hudPanel { padding: 4px 8px; }
-  .touch #hpPanel { min-width: 130px; padding: 5px 8px 8px; }
   /* Shared "frosted ice pane" chip: translucent navy glass with a cyan glow,
      used for every HUD readout so the text reads clearly over any floor/wall
      color instead of the old bare white text. */
@@ -1258,7 +1262,6 @@ onViewportChange();
 
 if (isTouch) {
   mobileControlsEl.classList.add("active");
-  document.documentElement.classList.add("touch");
   // isTouch is a device guess that also fires on touchscreen-equipped PCs
   // (which still have a keyboard/mouse), so the on-screen controls show up
   // for any touch-capable device — but the hint text itself uses the
