@@ -3136,6 +3136,46 @@ function drawBlasterGun(w) {
   // top sight rail highlight
   ctx.fillStyle = "rgba(220,245,255,0.35)";
   ctx.fillRect(-2, -142, 4, 2);
+
+  // under-barrel accessory rail: short ridge teeth for a mounted-rail look
+  ctx.fillStyle = "#0d1318";
+  for (let ry = -132; ry <= -92; ry += 8) { ctx.fillRect(-6, ry, 12, 3); }
+
+  // cooling fin stack along the barrel flanks, tied to the same energy pulse
+  // as the core/vents so the whole barrel reads as actively venting heat
+  ctx.fillStyle = `rgba(90,150,170,${0.5 + pulse * 0.3})`;
+  for (const fy of [-134, -128, -122, -116, -110, -104, -98, -92]) {
+    ctx.fillRect(-15, fy, 4, 2);
+    ctx.fillRect(11, fy, 4, 2);
+  }
+
+  // stubby foregrip, angled forward under the body
+  ctx.save();
+  ctx.translate(-2, -78);
+  ctx.rotate(0.18);
+  const foreGrad = ctx.createLinearGradient(-8, 0, 8, 0);
+  foreGrad.addColorStop(0, "#0d1318");
+  foreGrad.addColorStop(1, "#2a3a44");
+  ctx.fillStyle = foreGrad;
+  ctx.fillRect(-8, 0, 16, 22);
+  ctx.strokeStyle = "rgba(0,0,0,0.4)"; ctx.lineWidth = 1;
+  for (let gy = 4; gy < 20; gy += 5) { ctx.beginPath(); ctx.moveTo(-7, gy); ctx.lineTo(7, gy); ctx.stroke(); }
+  ctx.restore();
+
+  // status readout screen on the body, reporting a pulsing charge bar
+  ctx.fillStyle = "#0a1216";
+  ctx.fillRect(-16, -52, 20, 12);
+  ctx.strokeStyle = "rgba(140,235,255,0.5)"; ctx.lineWidth = 1;
+  ctx.strokeRect(-16, -52, 20, 12);
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
+  ctx.fillStyle = `rgba(140,235,255,${0.35 + pulse * 0.45})`;
+  ctx.fillRect(-14, -50, 16 * (0.4 + pulse * 0.6), 8);
+  ctx.restore();
+
+  // sling loop at the base of the grip
+  ctx.strokeStyle = "#3a4a54"; ctx.lineWidth = 2.5;
+  ctx.beginPath(); ctx.ellipse(-11, 4, 3, 4, 0, 0, Math.PI * 2); ctx.stroke();
 }
 
 function drawHarpoonGun(w) {
@@ -3261,6 +3301,42 @@ function drawHarpoonGun(w) {
   ctx.moveTo(-42, -54);
   ctx.quadraticCurveTo(-22, -62, -6, -150);
   ctx.stroke();
+
+  // wood-grain striations on the stock
+  ctx.strokeStyle = "rgba(90,60,30,0.3)"; ctx.lineWidth = 1;
+  for (const gx of [-11, -6, -1]) {
+    ctx.beginPath();
+    ctx.moveTo(gx, -28);
+    ctx.quadraticCurveTo(gx + 2, -14, gx, 4);
+    ctx.stroke();
+  }
+
+  // bolt-action cocking lever off the block's right flank
+  ctx.strokeStyle = "#1a120a"; ctx.lineWidth = 4;
+  ctx.beginPath(); ctx.moveTo(38, -62); ctx.lineTo(50, -54); ctx.stroke();
+  ctx.fillStyle = "#3a2814";
+  ctx.beginPath(); ctx.ellipse(51, -53, 4, 4, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = "rgba(0,0,0,0.4)"; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.ellipse(51, -53, 4, 4, 0, 0, Math.PI * 2); ctx.stroke();
+
+  // side-mounted spyglass scope, bracketed off the body's left shoulder,
+  // tucked into the gap between the two barrel reinforcement bands
+  ctx.fillStyle = "#241708";
+  ctx.fillRect(-34, -98, 6, 34);
+  const scopeGrad = ctx.createLinearGradient(-34, 0, -12, 0);
+  scopeGrad.addColorStop(0, "#3a2814");
+  scopeGrad.addColorStop(0.5, "#6a4a2c");
+  scopeGrad.addColorStop(1, "#3a2814");
+  ctx.fillStyle = scopeGrad;
+  ctx.fillRect(-34, -118, 22, 11);
+  ctx.strokeStyle = "rgba(20,12,5,0.6)"; ctx.lineWidth = 1.5;
+  ctx.strokeRect(-34, -118, 22, 11);
+  ctx.fillStyle = "#1a120a";
+  ctx.beginPath(); ctx.ellipse(-32, -112.5, 3.5, 5, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = "rgba(180,220,255,0.6)";
+  ctx.beginPath(); ctx.ellipse(-11, -112.5, 3, 4.2, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = "rgba(255,255,255,0.5)";
+  ctx.beginPath(); ctx.ellipse(-12, -114, 1, 1.4, 0, 0, Math.PI * 2); ctx.fill();
 }
 
 function drawFlamethrowerGun(w) {
@@ -3344,6 +3420,52 @@ function drawFlamethrowerGun(w) {
   ctx.fillStyle = `rgba(255,220,150,${0.3 + flick * 0.3})`;
   ctx.beginPath(); ctx.ellipse(0, -145, 8 + flick * 2, 8 + flick * 2, 0, 0, Math.PI * 2); ctx.fill();
   ctx.restore();
+
+  // heat-guard cage around the nozzle tip, framing the pilot flame
+  ctx.strokeStyle = "#111"; ctx.lineWidth = 2;
+  for (const a of [-0.9, -0.3, 0.3, 0.9]) {
+    ctx.beginPath();
+    ctx.moveTo(Math.cos(a) * 10, -140 + Math.sin(a) * 6);
+    ctx.lineTo(Math.cos(a) * 16, -150 + Math.sin(a) * 9);
+    ctx.stroke();
+  }
+  ctx.beginPath(); ctx.ellipse(0, -152, 15, 8, 0, 0, Math.PI * 2); ctx.stroke();
+
+  // pressure valve wheel, mounted atop the left fuel tank
+  const vx = -46, vy = -122;
+  ctx.strokeStyle = "#2a2a2a"; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(vx, -116); ctx.lineTo(vx, vy + 8); ctx.stroke();
+  const wheelGrad = ctx.createRadialGradient(vx, vy, 1, vx, vy, 8);
+  wheelGrad.addColorStop(0, "#8a8a8a");
+  wheelGrad.addColorStop(1, "#2a2a2a");
+  ctx.fillStyle = wheelGrad;
+  ctx.beginPath(); ctx.ellipse(vx, vy, 8, 8, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = "#111"; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.ellipse(vx, vy, 8, 8, 0, 0, Math.PI * 2); ctx.stroke();
+  for (let a = 0; a < 4; a++) {
+    const ang = a * Math.PI / 2 + 0.3;
+    ctx.beginPath();
+    ctx.moveTo(vx + Math.cos(ang) * 2.5, vy + Math.sin(ang) * 2.5);
+    ctx.lineTo(vx + Math.cos(ang) * 7, vy + Math.sin(ang) * 7);
+    ctx.stroke();
+  }
+
+  // support straps binding each tank to the central body
+  for (const side of [-1, 1]) {
+    ctx.strokeStyle = "#1a1a1a"; ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.moveTo(side * 30, -78); ctx.lineTo(side * 58, -78); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(side * 30, -42); ctx.lineTo(side * 58, -42); ctx.stroke();
+    ctx.strokeStyle = "rgba(255,255,255,0.1)"; ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.moveTo(side * 30, -79); ctx.lineTo(side * 58, -79); ctx.stroke();
+  }
+
+  // ignition dial, calibrated like the weapon's heat settings
+  ctx.fillStyle = "#0d0705";
+  ctx.beginPath(); ctx.ellipse(-15, -70, 6, 6, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = "#3a3a3a"; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.ellipse(-15, -70, 6, 6, 0, 0, Math.PI * 2); ctx.stroke();
+  ctx.fillStyle = "#c9432b";
+  ctx.beginPath(); ctx.ellipse(-15, -74, 1.3, 1.3, 0, 0, Math.PI * 2); ctx.fill();
 }
 
 // ---------------------------------------------------------------------------
