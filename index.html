@@ -36,6 +36,7 @@
   }
   #overlay h1 { font-size: 3rem; letter-spacing: 0.3rem; margin-bottom: 0.2rem; color: #7fe8ff; text-shadow: 0 0 12px #2ad; }
   #overlay p { max-width: 560px; line-height: 1.5; }
+  #bestStats { color: #9fd8e6; font-size: 0.9rem; margin-top: -0.4rem; }
   #overlay button {
     margin-top: 1.2rem; font-size: 1.3rem; padding: 0.6rem 1.6rem; cursor: pointer;
     background: #1b6; border: none; border-radius: 6px; color: #012; font-weight: bold;
@@ -122,6 +123,17 @@
     color: #eafcff; font-size: 1.4rem; display: flex; align-items: center; justify-content: center;
   }
   .weaponBtn.selected { border-color: #7fffb0; background: rgba(40,90,70,0.65); }
+  /* Pinned to the true screen edge like the rest of the touch controls (not
+     inside #wrap, so it can't ever land on top of the letterboxed minimap).
+     Sits well clear above the weapon-select column with a deliberate gap so
+     it doesn't read as a 4th weapon choice. */
+  #muteBtn {
+    position: fixed; right: 30px; bottom: 372px; z-index: 7;
+    width: 52px; height: 44px; display: flex; align-items: center; justify-content: center;
+    border-radius: 10px; background: rgba(20,40,55,0.65); border: 2px solid rgba(150,220,240,0.5);
+    font-size: 1.3rem; line-height: 1; cursor: pointer; pointer-events: auto; user-select: none;
+  }
+  #muteBtn.muted { opacity: 0.6; }
   #restartBtnMobile {
     position: absolute; left: 24px; top: 14px; padding: 8px 12px; border-radius: 8px;
     background: rgba(20,40,55,0.65); border: 2px solid rgba(150,220,240,0.5); color: #eafcff;
@@ -157,7 +169,7 @@
   <canvas id="game" width="800" height="480"></canvas>
   <canvas id="minimap" width="150" height="150"></canvas>
   <div id="crosshair"></div>
-  <div id="hint">WASD move · mouse to look (aim up/down matters!) · scroll to turn · hold click to fire · 1/2/3 weapon · R restart</div>
+  <div id="hint">WASD move · mouse to look (aim up/down matters!) · scroll to turn · hold click to fire · 1/2/3 weapon · R restart · M mute</div>
   <div id="hud">
     <div id="hpPanel" class="hudPanel">
       <div id="hpTopRow"><span>HP</span><span id="hpValue">100</span></div>
@@ -172,17 +184,19 @@
   </div>
   <div id="overlay">
     <h1>PENGU&Oslash;&Oslash;M</h1>
-    <p>The Emperor's Guard has seized four sectors of the Ice Fortress, and they brought
-       polar bears. Clear every hostile from each sector before advancing to the next —
-       they get harder, and colder, the deeper you go. Starting on Sector 2, one walrus
-       lurks in every sector: slow, but armored like a tank and hits far harder than a
-       bear — don't get cornered by it.
+    <p>The Emperor's Guard has locked down ten sectors of the Ice Fortress — polar
+       bears, armored walruses, and swarms of vicious stoats stand between you and
+       the throne. Every sector you clear turns colder and meaner: walruses are slow
+       but armored like tanks and hit far harder than a bear, while stoats are fast,
+       fragile, and relentless.
        Click to lock your mouse and begin. Press 1/2/3 to switch between the
        Fish Blaster, Harpoon Cannon, and Flamethrower.</p>
+    <p id="bestStats"></p>
     <button id="startBtn">ENTER THE ICE</button>
   </div>
 </div>
 
+<div id="muteBtn" title="Mute audio (M)">&#128266;</div>
 <div id="mobileControls">
   <div id="joyBase" class="touchBtn"><div id="joyKnob"></div></div>
   <div id="weaponBtns">
@@ -1102,6 +1116,7 @@ const levelEl = document.getElementById("level");
 const weaponEl = document.getElementById("weapon");
 const scoreEl = document.getElementById("score");
 const overlay = document.getElementById("overlay");
+const bestStatsEl = document.getElementById("bestStats");
 const startBtn = document.getElementById("startBtn");
 const wrapEl = document.getElementById("wrap");
 const hintEl = document.getElementById("hint");
@@ -1111,6 +1126,7 @@ const joyKnobEl = document.getElementById("joyKnob");
 const fireBtnEl = document.getElementById("fireBtn");
 const weaponBtnEls = Array.from(document.querySelectorAll(".weaponBtn"));
 const restartBtnMobileEl = document.getElementById("restartBtnMobile");
+const muteBtnEl = document.getElementById("muteBtn");
 const rotatePromptEl = document.getElementById("rotatePrompt");
 
 // ---------------------------------------------------------------------------
@@ -1141,7 +1157,7 @@ if (isTouch) {
   // isTouch is a device guess that also fires on touchscreen-equipped PCs, so
   // this only adds the touch controls to the hint rather than replacing the
   // keyboard/mouse ones — both schemes work at once regardless of the guess.
-  hintEl.textContent = "WASD or left pad: move · mouse or drag screen: look · click or FIRE button: shoot · 1/2/3 or tap a weapon icon · R restart";
+  hintEl.textContent = "WASD or left pad: move · mouse or drag screen: look · click or FIRE button: shoot · 1/2/3 or tap a weapon icon · R restart · tap speaker to mute";
 }
 
 const WEAPONS = {
@@ -1423,6 +1439,22 @@ buildLevelAssets();
 // ---------------------------------------------------------------------------
 let audioCtx = null, musicGain = null, sfxGain = null;
 let flameNoiseGain = null, flameFilter = null;
+const MUSIC_VOL = 0.5;
+const SFX_VOL = 0.6;
+const MUTE_KEY = "penguoom_muted_v1";
+let muted = localStorage.getItem(MUTE_KEY) === "1";
+function applyMuteState() {
+  if (musicGain) musicGain.gain.value = muted ? 0 : MUSIC_VOL;
+  if (sfxGain) sfxGain.gain.value = muted ? 0 : SFX_VOL;
+  muteBtnEl.textContent = muted ? "\u{1F507}" : "\u{1F50A}";
+  muteBtnEl.classList.toggle("muted", muted);
+  muteBtnEl.title = (muted ? "Unmute" : "Mute") + " audio (M)";
+}
+function toggleMute() {
+  muted = !muted;
+  try { localStorage.setItem(MUTE_KEY, muted ? "1" : "0"); } catch (err) { /* storage unavailable — mute still works for this session */ }
+  applyMuteState();
+}
 
 function noiseBuffer(duration) {
   const n = Math.max(1, Math.floor(audioCtx.sampleRate * duration));
@@ -1682,11 +1714,10 @@ function ensureAudio() {
   if (audioCtx) { if (audioCtx.state === "suspended") audioCtx.resume(); return; }
   audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   musicGain = audioCtx.createGain();
-  musicGain.gain.value = 0.5;
   musicGain.connect(audioCtx.destination);
   sfxGain = audioCtx.createGain();
-  sfxGain.gain.value = 0.6;
   sfxGain.connect(audioCtx.destination);
+  applyMuteState();
   initFlameLoop();
 }
 
@@ -1704,6 +1735,47 @@ let ambientParticles = [];
 let ambientSpawnAccum = 0;
 let levelProps = [];
 let pickups = [];
+
+// ---------------------------------------------------------------------------
+// High scores: best sector reached and fastest full clear, kept in
+// localStorage so they persist between visits (and between app launches once
+// installed as a PWA). Purely a local personal-best — there's no server, so
+// this never leaves the device.
+// ---------------------------------------------------------------------------
+const HIGHSCORE_KEY = "penguoom_highscores_v1";
+function loadHighScores() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(HIGHSCORE_KEY));
+    if (parsed && typeof parsed.bestSector === "number") return parsed;
+  } catch (err) { /* corrupt or unavailable storage — fall back to defaults */ }
+  return { bestSector: 0, bestTimeMs: null };
+}
+let highScores = loadHighScores();
+function saveHighScores() {
+  try { localStorage.setItem(HIGHSCORE_KEY, JSON.stringify(highScores)); } catch (err) { /* storage unavailable (e.g. private browsing) — best score just won't persist */ }
+}
+function formatClockTime(ms) {
+  const totalSec = Math.floor(ms / 1000);
+  const m = Math.floor(totalSec / 60);
+  const s = totalSec % 60;
+  return m + ":" + String(s).padStart(2, "0");
+}
+let runStartTime = 0;
+let lastRunNewRecord = false;
+function recordRunEnd(didWin) {
+  const sectorReached = didWin ? LEVELS.length : levelIndex + 1;
+  const elapsedMs = performance.now() - runStartTime;
+  lastRunNewRecord = false;
+  if (sectorReached > highScores.bestSector) { highScores.bestSector = sectorReached; lastRunNewRecord = true; }
+  if (didWin && (highScores.bestTimeMs === null || elapsedMs < highScores.bestTimeMs)) { highScores.bestTimeMs = elapsedMs; lastRunNewRecord = true; }
+  if (lastRunNewRecord) saveHighScores();
+}
+function bestStatsText() {
+  if (highScores.bestSector <= 0) return "No runs yet — best starts with this one.";
+  let text = "Best: Sector " + highScores.bestSector + " / " + LEVELS.length;
+  if (highScores.bestTimeMs !== null) text += "  ·  Fastest clear: " + formatClockTime(highScores.bestTimeMs);
+  return text;
+}
 
 function distance(x1, y1, x2, y2) { return Math.hypot(x2 - x1, y2 - y1); }
 
@@ -1731,7 +1803,10 @@ function newGame() {
   lastShotTime = { blaster: 0, harpoon: 0 };
   recoilOffset = 0;
   hurtFlash = 0;
+  shakeTrauma = 0;
   flameShakeX = 0;
+  runStartTime = performance.now();
+  lastRunNewRecord = false;
   sparkParticles = [];
   flameParticles = [];
   tracers = [];
@@ -1848,6 +1923,7 @@ function updateHud() {
 document.addEventListener("keydown", e => {
   keys[e.code] = true;
   if (e.code === "KeyR") newGame();
+  if (e.code === "KeyM") toggleMute();
   if (e.code === "Digit1") currentWeaponKey = "blaster";
   if (e.code === "Digit2") currentWeaponKey = "harpoon";
   if (e.code === "Digit3") currentWeaponKey = "flamethrower";
@@ -1994,6 +2070,12 @@ restartBtnMobileEl.addEventListener("touchstart", e => {
   newGame();
 });
 
+muteBtnEl.addEventListener("click", () => toggleMute());
+muteBtnEl.addEventListener("touchstart", e => {
+  e.preventDefault();
+  toggleMute();
+});
+
 // ---------------------------------------------------------------------------
 // Sprite screen projection + pixel-accurate hit testing.
 //
@@ -2075,6 +2157,7 @@ function flameCatchesEnemy(e, stats, invDet, halfWidth, range) {
 function killIfDead(e) {
   if (e.hp <= 0 && e.alive) {
     e.alive = false;
+    addShake(0.08 + ENEMY_TYPES[e.type].hp * 0.012);
     if (enemies.every(x => !x.alive)) {
       if (levelIndex < LEVELS.length - 1) {
         levelTransition = true;
@@ -2082,6 +2165,7 @@ function killIfDead(e) {
         sfxLevelClear();
       } else {
         won = true;
+        recordRunEnd(true);
         sfxWin();
       }
     }
@@ -2221,6 +2305,11 @@ const HURT_FLASH_PEAK = 20;
 let hurtFlash = 0;
 let recoilOffset = 0;
 let flameShakeX = 0;
+// Screen shake: "trauma" model (Squirrel Eiserloh) — amount decays linearly
+// over time, but the actual pixel offset is trauma^2 so small bumps stay
+// subtle and only big hits/kills really rattle the view.
+let shakeTrauma = 0;
+function addShake(amount) { shakeTrauma = Math.min(1, shakeTrauma + amount); }
 let sparkParticles = [];
 let flameParticles = [];
 let flameSpawnAccum = 0;
@@ -2733,6 +2822,7 @@ function drawFlamethrowerGun(w) {
 // Update loop
 // ---------------------------------------------------------------------------
 function update(dt) {
+  if (shakeTrauma > 0) shakeTrauma = Math.max(0, shakeTrauma - dt * 2.5);
   if (levelTransition) {
     levelTransitionTimer -= dt;
     if (muzzleFlash > 0) muzzleFlash--;
@@ -2870,8 +2960,9 @@ function update(dt) {
         e.lastAttack = now;
         player.hp -= stats.damage;
         hurtFlash = HURT_FLASH_PEAK;
+        addShake(0.1 + stats.damage * 0.006);
         sfxPlayerHurt();
-        if (player.hp <= 0) { player.hp = 0; gameOver = true; sfxGameOver(); }
+        if (player.hp <= 0) { player.hp = 0; gameOver = true; recordRunEnd(false); sfxGameOver(); }
         updateHud();
       } else if (!aware) {
         // Idle roaming: penguins waddle, polar bears lumber, walruses barely
@@ -2940,6 +3031,15 @@ function rotatePlayer(rot) {
 const zBuffer = new Array(SCREEN_W);
 
 function render() {
+  if (shakeTrauma > 0) {
+    const shake = shakeTrauma * shakeTrauma;
+    const sx = (Math.random() * 2 - 1) * 14 * shake;
+    const sy = (Math.random() * 2 - 1) * 9 * shake;
+    canvas.style.transform = `translate(${sx.toFixed(1)}px, ${sy.toFixed(1)}px)`;
+  } else if (canvas.style.transform) {
+    canvas.style.transform = "";
+  }
+
   const level = LEVELS[levelIndex];
   // Horizon shifts with vertical look (pitch) — walls, sprites and the
   // sky/floor split all move together so aiming up/down is consistent.
@@ -3184,6 +3284,9 @@ function renderEndState() {
   ctx.font = "20px 'Courier New', monospace";
   ctx.fillStyle = "#eafcff";
   ctx.fillText("Press R to play again", SCREEN_W / 2, SCREEN_H / 2 + 30);
+  ctx.font = "16px 'Courier New', monospace";
+  ctx.fillStyle = lastRunNewRecord ? "#ffe27f" : "#9fd8e6";
+  ctx.fillText((lastRunNewRecord ? "NEW BEST!  " : "") + bestStatsText(), SCREEN_W / 2, SCREEN_H / 2 + 58);
   ctx.textAlign = "left";
 }
 
@@ -3215,6 +3318,8 @@ function frame(now) {
   }
   requestAnimationFrame(frame);
 }
+bestStatsEl.textContent = bestStatsText();
+applyMuteState();
 requestAnimationFrame(frame);
 
 if ("serviceWorker" in navigator) {
