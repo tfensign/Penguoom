@@ -286,10 +286,11 @@
   <div id="overlay">
     <h1>PENGU&Oslash;&Oslash;M</h1>
     <p>The Emperor's Guard has locked down ten sectors of the Ice Fortress — polar
-       bears, armored walruses, and swarms of vicious stoats stand between you and
-       the throne. Every sector you clear turns colder and meaner: walruses are slow
-       but armored like tanks and hit far harder than a bear, while stoats are fast,
-       fragile, and relentless.
+       bears, armored walruses, swarms of vicious stoats, and diving snow owls stand
+       between you and the throne. Every sector you clear turns colder and meaner:
+       walruses are slow but armored like tanks and hit far harder than a bear, stoats
+       are fast, fragile, and relentless, and owls stoop out of the air to strike
+       before wheeling back up out of reach.
        Click to lock your mouse and begin. Press 1/2/3 to switch between the
        Fish Blaster, Harpoon Cannon, and Flamethrower.</p>
     <p id="bestStats"></p>
@@ -304,7 +305,7 @@
   <div id="joyBase" class="touchBtn"><div id="joyKnob"></div></div>
   <div id="weaponBtns">
     <div class="touchBtn weaponBtn selected" data-weapon="blaster">&#128031;</div>
-    <div class="touchBtn weaponBtn" data-weapon="harpoon">&#128720;</div>
+    <div class="touchBtn weaponBtn" data-weapon="harpoon">&#127993;</div>
     <div class="touchBtn weaponBtn" data-weapon="flamethrower">&#128293;</div>
   </div>
   <div id="fireBtn" class="touchBtn">FIRE</div>
@@ -806,14 +807,130 @@ function drawStoatFrame(c, s, phase, aggressive) {
   c.restore();
 }
 
+// Front-on like the penguin/bear/walrus, wings spread and flapping instead of
+// legs striding — this is the only enemy the AI update ever keeps airborne
+// (see the owl dive-cycle for e.type === "owl"), so its gait phase drives a
+// wingbeat instead of a walk cycle. `aggressive` here means "currently
+// diving in to strike" (see currentSpriteFrame's owl special-case) rather
+// than merely aware: talons swing forward into a striking pose, the eyes
+// flare orange, and the wingbeat deepens, only while it's actually stooping.
+function drawOwlFrame(c, s, phase, aggressive) {
+  c.clearRect(0, 0, s, s);
+  // A dive's animPhase already advances faster than a hover's (see the AI
+  // update), so the beat is quicker on its own — deepen the stroke too, for
+  // a harder, more powerful-looking flap while it's actually swooping in.
+  const flapAmp = aggressive ? 0.85 : 0.55;
+  const wingFlap = Math.sin(phase * 2);
+  const wingAngleL = -0.15 + wingFlap * flapAmp;
+  const wingAngleR = 0.15 - wingFlap * flapAmp;
+  const bodyBob = Math.abs(wingFlap) * s * (aggressive ? 0.045 : 0.03);
+
+  // tail feathers, fanned out behind/below the body
+  c.fillStyle = "#d8d8d0";
+  c.beginPath();
+  c.moveTo(s * 0.5, s * 0.60 + bodyBob);
+  c.lineTo(s * 0.40, s * 0.86 + bodyBob);
+  c.lineTo(s * 0.5, s * 0.80 + bodyBob);
+  c.lineTo(s * 0.60, s * 0.86 + bodyBob);
+  c.closePath();
+  c.fill();
+
+  // wings — broad, sweeping through a full beat cycle each way
+  const wingGrad = c.createLinearGradient(0, s * 0.30, 0, s * 0.66);
+  wingGrad.addColorStop(0, "#f7f7f2");
+  wingGrad.addColorStop(1, "#c9c9c0");
+  for (const side of [-1, 1]) {
+    c.save();
+    c.translate(s * (0.5 + side * 0.20), s * 0.46 + bodyBob);
+    c.rotate(side < 0 ? wingAngleL : wingAngleR);
+    c.fillStyle = wingGrad;
+    c.beginPath();
+    c.ellipse(side * s * 0.16, s * 0.02, s * 0.20, s * 0.09, side * -0.2, 0, Math.PI * 2);
+    c.fill();
+    c.strokeStyle = "rgba(70,70,65,0.35)"; c.lineWidth = 1;
+    for (let i = 0; i < 3; i++) {
+      c.beginPath();
+      c.moveTo(side * s * 0.10, s * (-0.02 + i * 0.02));
+      c.lineTo(side * s * 0.34, s * (-0.01 + i * 0.025));
+      c.stroke();
+    }
+    c.restore();
+  }
+
+  // body: round, snowy-white
+  const bodyGrad = c.createRadialGradient(s * 0.44, s * 0.42, s * 0.05, s * 0.5, s * 0.54, s * 0.28);
+  bodyGrad.addColorStop(0, "#ffffff");
+  bodyGrad.addColorStop(1, "#dfe4e2");
+  c.fillStyle = bodyGrad;
+  c.beginPath(); c.ellipse(s * 0.5, s * 0.56 + bodyBob, s * 0.22, s * 0.28, 0, 0, Math.PI * 2); c.fill();
+
+  // sparse dark barring, like a snowy owl's flecked plumage
+  c.strokeStyle = "rgba(60,60,55,0.35)"; c.lineWidth = 1.2;
+  for (const [dx, dy, w] of [[-0.06, 0.42, 0.08], [0.08, 0.48, 0.09], [-0.03, 0.56, 0.07], [0.06, 0.64, 0.08]]) {
+    c.beginPath(); c.ellipse(s * (0.5 + dx), s * dy + bodyBob, s * w, s * 0.018, 0, 0, Math.PI); c.stroke();
+  }
+
+  // talons: tucked while calm, thrust forward into a striking pose once aggressive
+  c.fillStyle = "#e0a030";
+  if (aggressive) {
+    for (const side of [-1, 1]) {
+      c.beginPath(); c.ellipse(s * (0.5 + side * 0.10), s * 0.84 + bodyBob, s * 0.05, s * 0.03, side * 0.3, 0, Math.PI * 2); c.fill();
+      c.strokeStyle = "#3a2c1c"; c.lineWidth = s * 0.015;
+      c.beginPath(); c.moveTo(s * (0.5 + side * 0.10), s * 0.86 + bodyBob); c.lineTo(s * (0.5 + side * 0.15), s * 0.93 + bodyBob); c.stroke();
+    }
+  } else {
+    c.beginPath(); c.ellipse(s * 0.46, s * 0.80 + bodyBob, s * 0.045, s * 0.03, 0, 0, Math.PI * 2); c.fill();
+    c.beginPath(); c.ellipse(s * 0.54, s * 0.80 + bodyBob, s * 0.045, s * 0.03, 0, 0, Math.PI * 2); c.fill();
+  }
+
+  // facial disc
+  const faceGrad = c.createRadialGradient(s * 0.5, s * 0.28, s * 0.02, s * 0.5, s * 0.28, s * 0.19);
+  faceGrad.addColorStop(0, "#ffffff");
+  faceGrad.addColorStop(1, "#e8e8e0");
+  c.fillStyle = faceGrad;
+  c.beginPath(); c.ellipse(s * 0.5, s * 0.28, s * 0.19, s * 0.17, 0, 0, Math.PI * 2); c.fill();
+
+  // big round eyes, flaring a hotter orange when it's spotted the player
+  c.fillStyle = aggressive ? "#ff8c1a" : "#f0b429";
+  c.beginPath(); c.ellipse(s * 0.42, s * 0.27, s * 0.055, s * 0.06, 0, 0, Math.PI * 2); c.fill();
+  c.beginPath(); c.ellipse(s * 0.58, s * 0.27, s * 0.055, s * 0.06, 0, 0, Math.PI * 2); c.fill();
+  c.fillStyle = "#000";
+  const pupil = aggressive ? 0.032 : 0.024;
+  c.beginPath(); c.ellipse(s * 0.42, s * 0.27, s * pupil, s * pupil, 0, 0, Math.PI * 2); c.fill();
+  c.beginPath(); c.ellipse(s * 0.58, s * 0.27, s * pupil, s * pupil, 0, 0, Math.PI * 2); c.fill();
+  c.fillStyle = "rgba(255,255,255,0.8)";
+  c.beginPath(); c.ellipse(s * 0.405, s * 0.26, s * 0.01, s * 0.012, 0, 0, Math.PI * 2); c.fill();
+  c.beginPath(); c.ellipse(s * 0.565, s * 0.26, s * 0.01, s * 0.012, 0, 0, Math.PI * 2); c.fill();
+  if (aggressive) {
+    c.strokeStyle = "#c9c9c0"; c.lineWidth = s * 0.02; c.lineCap = "round";
+    c.beginPath(); c.moveTo(s * 0.34, s * 0.19); c.lineTo(s * 0.46, s * 0.22); c.stroke();
+    c.beginPath(); c.moveTo(s * 0.66, s * 0.19); c.lineTo(s * 0.54, s * 0.22); c.stroke();
+  }
+
+  // small hooked black beak
+  c.fillStyle = "#2a2420";
+  c.beginPath();
+  c.moveTo(s * 0.5, s * 0.315);
+  c.quadraticCurveTo(s * 0.455, s * 0.35, s * 0.5, s * 0.375);
+  c.quadraticCurveTo(s * 0.545, s * 0.35, s * 0.5, s * 0.315);
+  c.closePath();
+  c.fill();
+
+  // outline for definition (also fills anti-aliased edge pixels into the hit mask)
+  c.strokeStyle = "rgba(120,120,110,0.3)"; c.lineWidth = 1;
+  c.beginPath(); c.ellipse(s * 0.5, s * 0.56 + bodyBob, s * 0.22, s * 0.28, 0, 0, Math.PI * 2); c.stroke();
+}
+
 const penguinFrames = buildFrameSet(drawPenguinFrame);
 const polarBearFrames = buildFrameSet(drawPolarBearFrame);
 const walrusFrames = buildFrameSet(drawWalrusFrame);
 const stoatFrames = buildFrameSet(drawStoatFrame);
+const owlFrames = buildFrameSet(drawOwlFrame);
 const penguinAlphaMask = buildAlphaMask(penguinFrames.neutral[0]);
 const polarBearAlphaMask = buildAlphaMask(polarBearFrames.neutral[0]);
 const walrusAlphaMask = buildAlphaMask(walrusFrames.neutral[0]);
 const stoatAlphaMask = buildAlphaMask(stoatFrames.neutral[0]);
+const owlAlphaMask = buildAlphaMask(owlFrames.neutral[0]);
 
 // ---------------------------------------------------------------------------
 // Static decoration props (Christmas trees, gifts, candy canes, ...): drawn
@@ -1158,9 +1275,14 @@ function pickFoodType() {
 
 // Picks the current walk-cycle/expression frame for an enemy: aggressive
 // once it has spotted the player (e.aware, set in the AI update), calm
-// otherwise, stepping through the gait frames as e.animPhase advances.
+// otherwise, stepping through the gait frames as e.animPhase advances. The
+// owl is a special case — it stays "aware" (and thus visibly alert) for the
+// whole hover/retreat cycle, so its aggressive pose (talons thrust forward,
+// deeper wingbeat) is tied to its dive state instead, only showing while
+// it's actually stooping in to strike.
 function currentSpriteFrame(stats, e) {
-  const frames = stats.frames[e.aware ? "aggressive" : "neutral"];
+  const isAggressivePose = e.type === "owl" ? e.owlState === "dive" : e.aware;
+  const frames = stats.frames[isAggressivePose ? "aggressive" : "neutral"];
   const t = e.animPhase - Math.floor(e.animPhase);
   const idx = Math.min(ANIM_FRAME_COUNT - 1, Math.floor(t * ANIM_FRAME_COUNT));
   return frames[idx];
@@ -1186,6 +1308,13 @@ const ENEMY_TYPES = {
   // tiny scale also shrinks its pixel-hit alpha mask to match, so it's a
   // genuinely small target rather than just a reskinned penguin.
   stoat: { hp: 1, speed: 2.2, damage: 6, detect: 10, attackRange: 0.5, attackCooldown: 450, frames: stoatFrames, alphaMask: stoatAlphaMask, scale: 0.42, wanderSpeedMult: 0.6, wanderInterval: [0.6, 1.6], wanderPauseChance: 0.15 },
+  // Airborne: cruises at hoverAlt between attacks (see the owl dive-cycle
+  // carved out for e.type === "owl" in the AI update below), stooping to
+  // ground level to strike then climbing away again rather than staying in
+  // biting range like every other enemy. Faster than a penguin but not
+  // quite a stoat; hits harder than a stoat but not as often, and not as
+  // hard as a penguin.
+  owl: { hp: 2, speed: 1.8, damage: 7, detect: 10, attackRange: 0.55, attackCooldown: 1100, frames: owlFrames, alphaMask: owlAlphaMask, scale: 0.62, wanderSpeedMult: 0.55, wanderInterval: [1.0, 2.4], wanderPauseChance: 0.1, hoverAlt: 0.5, diveSpeedMult: 1.6, retreatSpeedMult: 1.3, retreatDuration: 0.9 },
 };
 
 // ---------------------------------------------------------------------------
@@ -1319,7 +1448,7 @@ const LEVELS = [
     floorSpeckles: [{ color: "rgba(150,190,210,0.5)", count: 90, size: [0.6, 1.8] }],
     floorCracks: { count: 5, color: "rgba(70,100,120,0.35)" },
     ambient: "snow", ambientRate: 12,
-    enemyBonus: 0, bearChance: 0.2, stoatChance: 0.35,
+    enemyBonus: 0, bearChance: 0.2, stoatChance: 0.35, owlChance: 0.2,
     decor: [
       { type: "icespike", count: 10, scale: 1.3 },
       { type: "bannerIce", count: 4, scale: 1.3 },
@@ -1338,7 +1467,7 @@ const LEVELS = [
     floorSpeckles: [{ color: "rgba(20,26,30,0.5)", count: 70, size: [1, 3] }, { color: "rgba(150,210,230,0.18)", count: 20, size: [0.5, 1.4] }],
     floorCracks: { count: 8, color: "rgba(10,14,16,0.5)" },
     ambient: "drip", ambientRate: 5,
-    enemyBonus: 2, bearChance: 0.3, stoatChance: 0.35,
+    enemyBonus: 2, bearChance: 0.3, stoatChance: 0.35, owlChance: 0.2,
     decor: [
       { type: "icespike", count: 12, scale: 1.2 },
     ],
@@ -1356,7 +1485,7 @@ const LEVELS = [
     floorSpeckles: [{ color: "rgba(255,255,255,0.6)", count: 60, size: [0.6, 1.6] }],
     floorCracks: { count: 0, color: "transparent" },
     ambient: "snowstorm", ambientRate: 55,
-    enemyBonus: 3, bearChance: 0.35, stoatChance: 0.35,
+    enemyBonus: 3, bearChance: 0.35, stoatChance: 0.35, owlChance: 0.2,
     decor: [
       { type: "crate", count: 6, scale: 0.9 },
       { type: "barrel", count: 6, scale: 0.85 },
@@ -1375,7 +1504,7 @@ const LEVELS = [
     floorSpeckles: [{ color: "rgba(255,140,60,0.28)", count: 40, size: [0.6, 1.6] }, { color: "rgba(0,0,0,0.4)", count: 60, size: [1, 2.4] }],
     floorCracks: { count: 10, color: "rgba(0,0,0,0.5)" },
     ambient: "embers", ambientRate: 16,
-    enemyBonus: 5, bearChance: 0.45, stoatChance: 0.35,
+    enemyBonus: 5, bearChance: 0.45, stoatChance: 0.35, owlChance: 0.2,
     decor: [
       { type: "brazier", count: 8, scale: 1.1 },
       { type: "bannerImperial", count: 5, scale: 1.3 },
@@ -1394,7 +1523,7 @@ const LEVELS = [
     floorSpeckles: [{ color: "rgba(190,150,110,0.3)", count: 40, size: [0.8, 2.2] }, { color: "rgba(200,230,235,0.35)", count: 50, size: [0.6, 1.6] }],
     floorCracks: { count: 9, color: "rgba(15,25,25,0.4)" },
     ambient: "drip", ambientRate: 8,
-    enemyBonus: 6, bearChance: 0.42, stoatChance: 0.38,
+    enemyBonus: 6, bearChance: 0.42, stoatChance: 0.38, owlChance: 0.2,
     decor: [
       { type: "crate", count: 8, scale: 0.9 },
       { type: "barrel", count: 8, scale: 0.85 },
@@ -1413,7 +1542,7 @@ const LEVELS = [
     floorSpeckles: [{ color: "rgba(120,170,255,0.4)", count: 60, size: [0.5, 1.6] }],
     floorCracks: { count: 6, color: "rgba(90,140,230,0.3)" },
     ambient: "drip", ambientRate: 6,
-    enemyBonus: 7, bearChance: 0.48, stoatChance: 0.35,
+    enemyBonus: 7, bearChance: 0.48, stoatChance: 0.35, owlChance: 0.2,
     decor: [
       { type: "icespike", count: 14, scale: 1.4 },
     ],
@@ -1431,7 +1560,7 @@ const LEVELS = [
     floorSpeckles: [{ color: "rgba(180,255,220,0.35)", count: 50, size: [0.6, 1.8] }],
     floorCracks: { count: 0, color: "transparent" },
     ambient: "snowstorm", ambientRate: 60,
-    enemyBonus: 8, bearChance: 0.5, stoatChance: 0.35,
+    enemyBonus: 8, bearChance: 0.5, stoatChance: 0.35, owlChance: 0.2,
     decor: [
       { type: "cairn", count: 9, scale: 1.4 },
     ],
@@ -1449,7 +1578,7 @@ const LEVELS = [
     floorSpeckles: [{ color: "rgba(255,214,120,0.35)", count: 30, size: [0.6, 1.6] }, { color: "rgba(255,255,255,0.4)", count: 50, size: [0.6, 1.6] }],
     floorCracks: { count: 4, color: "rgba(40,25,15,0.35)" },
     ambient: "snow", ambientRate: 16,
-    enemyBonus: 7, bearChance: 0.48, stoatChance: 0.35,
+    enemyBonus: 7, bearChance: 0.48, stoatChance: 0.35, owlChance: 0.2,
     decor: [
       { type: "tree", count: 12, scale: 1.9 },
       { type: "gift", count: 10, scale: 0.5 },
@@ -1469,7 +1598,7 @@ const LEVELS = [
     floorSpeckles: [{ color: "rgba(150,230,220,0.3)", count: 45, size: [0.6, 1.6] }],
     floorCracks: { count: 10, color: "rgba(10,5,20,0.5)" },
     ambient: "drip", ambientRate: 7,
-    enemyBonus: 9, bearChance: 0.55, stoatChance: 0.32,
+    enemyBonus: 9, bearChance: 0.55, stoatChance: 0.32, owlChance: 0.2,
     decor: [
       { type: "cairn", count: 10, scale: 1.3 },
     ],
@@ -1487,7 +1616,7 @@ const LEVELS = [
     floorSpeckles: [{ color: "rgba(255,120,60,0.3)", count: 45, size: [0.6, 1.8] }, { color: "rgba(0,0,0,0.4)", count: 55, size: [1, 2.4] }],
     floorCracks: { count: 12, color: "rgba(0,0,0,0.55)" },
     ambient: "embers", ambientRate: 22,
-    enemyBonus: 11, bearChance: 0.62, stoatChance: 0.30,
+    enemyBonus: 11, bearChance: 0.62, stoatChance: 0.30, owlChance: 0.2,
     decor: [
       { type: "brazier", count: 8, scale: 1.2 },
       { type: "bannerImperial", count: 6, scale: 1.4 },
@@ -1639,7 +1768,7 @@ function sfxHarpoon() {
   playNoise({ duration: 0.06, gain: 0.15, filterFreq: 2600, filterType: "highpass" });
 }
 function sfxHit(enemyType) {
-  const freq = enemyType === "walrus" ? 220 : enemyType === "polarbear" ? 320 : 520;
+  const freq = enemyType === "walrus" ? 220 : enemyType === "polarbear" ? 320 : enemyType === "owl" ? 760 : 520;
   playTone({ freq, endFreq: 150, type: "triangle", duration: 0.08, gain: 0.22 });
 }
 function sfxKill(enemyType) {
@@ -1648,6 +1777,9 @@ function sfxKill(enemyType) {
     playNoise({ duration: 0.4, gain: 0.22, filterFreq: 250, filterType: "lowpass", delay: 0.05 });
   } else if (enemyType === "polarbear") {
     playTone({ freq: 200, endFreq: 55, type: "sawtooth", duration: 0.45, gain: 0.3 });
+  } else if (enemyType === "owl") {
+    playTone({ freq: 900, endFreq: 200, type: "sine", duration: 0.3, gain: 0.24 });
+    playNoise({ duration: 0.18, gain: 0.16, filterFreq: 2200, filterType: "highpass", delay: 0.03 });
   } else {
     playTone({ freq: 640, endFreq: 900, type: "sine", duration: 0.12, gain: 0.25 });
     playTone({ freq: 480, endFreq: 120, type: "triangle", duration: 0.28, gain: 0.2, delay: 0.05 });
@@ -1686,6 +1818,12 @@ function sfxWalrusBellow() {
   wobble.start(t0); osc.start(t0);
   wobble.stop(t0 + 1.05); osc.stop(t0 + 1.05);
   playNoise({ duration: 0.5, gain: 0.22, filterFreq: 220, filterType: "lowpass", delay: 0.04 });
+}
+// Sharp, high descending screech — cued once when a snow owl first spots
+// the player, same spot the bear roar/walrus bellow fire for their types.
+function sfxOwlScreech() {
+  playTone({ freq: 2200, endFreq: 1100, type: "sine", duration: 0.28, gain: 0.22 });
+  playNoise({ duration: 0.2, gain: 0.16, filterFreq: 3000, filterType: "highpass", delay: 0.02 });
 }
 function sfxLevelClear() {
   [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => playTone({ freq: f, type: "triangle", duration: 0.5, gain: 0.22, delay: i * 0.11 }));
@@ -1964,11 +2102,13 @@ function newGame() {
 }
 
 // Rolls the base roster type for a regular (non-walrus) spawn: a chance of
-// a polar bear, then a chance of a stoat, otherwise a plain penguin.
+// a polar bear, then a chance of a stoat, then a chance of a snow owl,
+// otherwise a plain penguin.
 function pickBaseEnemyType(level) {
   const r = Math.random();
   if (r < level.bearChance) return "polarbear";
   if (r < level.bearChance + (level.stoatChance || 0)) return "stoat";
+  if (r < level.bearChance + (level.stoatChance || 0) + (level.owlChance || 0)) return "owl";
   return "penguin";
 }
 
@@ -1978,6 +2118,14 @@ function makeEnemy(type, x, y) {
     type, x: x + 0.5, y: y + 0.5, hp: stats.hp, alive: true, hitFlash: 0, lastAttack: 0,
     hunting: false, aware: false, wanderDirX: 0, wanderDirY: 0, wanderTimer: Math.random() * 2,
     animPhase: Math.random() * 4, zigzagPhase: Math.random() * Math.PI * 2,
+    // Owl-only dive cycle: "hover" (circles/chases at altitude) -> "dive"
+    // (stoops toward the player) -> "retreat" (climbs back away) -> "hover"
+    // again. altitude is a 0..stats.hoverAlt fraction of the sprite's full
+    // reference height, subtracted from its projected floor row in
+    // projectSprite so it visibly flies above the ground. Unused by every
+    // other type.
+    altitude: type === "owl" ? stats.hoverAlt : 0,
+    owlState: "hover", retreatTimer: 0,
   };
 }
 
@@ -2323,7 +2471,10 @@ function projectSprite(e, stats, invDet) {
   const spriteHeight = fullHeight * stats.scale;
   const spriteWidth = spriteHeight;
   const horizon = SCREEN_H / 2 + pitch;
-  const floorY = horizon + fullHeight / 2;
+  // Airborne enemies (the owl's dive cycle) carry a nonzero e.altitude, a
+  // fraction of fullHeight subtracted here to lift the whole billboard off
+  // the floor row — everything else is always grounded (altitude 0).
+  const floorY = horizon + fullHeight / 2 - (e.altitude || 0) * fullHeight;
   const drawStartY = Math.max(0, floorY - spriteHeight);
   const drawEndY = Math.min(SCREEN_H, floorY);
   const drawStartX = Math.floor(-spriteWidth / 2 + spriteScreenX);
@@ -2707,6 +2858,7 @@ let impactParticles = [];
 function impactColor(enemyType) {
   if (enemyType === "walrus") return Math.random() < 0.6 ? "#8d7359" : "#e8dcb8";
   if (enemyType === "polarbear") return Math.random() < 0.5 ? "#f4f4f4" : "#d9dde0";
+  if (enemyType === "owl") return Math.random() < 0.6 ? "#f7f7f2" : "#f0b429";
   return Math.random() < 0.6 ? "#1a1f22" : "#ff9d2f";
 }
 
@@ -2859,15 +3011,29 @@ function drawWeapon(key, recoil, shakeX) {
 }
 
 function drawBlasterGun(w) {
-  // grip
+  // grip, textured with a molded thumb-swell instead of a flat rectangle
   const gripGrad = ctx.createLinearGradient(-14, -34, 6, -34);
   gripGrad.addColorStop(0, "#0d1318");
   gripGrad.addColorStop(1, "#26333d");
   ctx.fillStyle = gripGrad;
   ctx.fillRect(-14, -34, 20, 40);
+  ctx.fillStyle = "rgba(255,255,255,0.06)";
+  ctx.beginPath(); ctx.ellipse(-3, -18, 5, 14, 0, 0, Math.PI * 2); ctx.fill();
   ctx.strokeStyle = "rgba(0,0,0,0.4)";
   ctx.lineWidth = 1;
   for (let gy = -30; gy < -2; gy += 6) { ctx.beginPath(); ctx.moveTo(-13, gy); ctx.lineTo(5, gy); ctx.stroke(); }
+
+  // trigger guard + trigger, looping out to the grip's forward side
+  ctx.strokeStyle = "#0d1318";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(4, -27);
+  ctx.quadraticCurveTo(17, -22, 15, -7);
+  ctx.quadraticCurveTo(14, 3, 2, 1);
+  ctx.stroke();
+  ctx.strokeStyle = "#3a6f8f";
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(6, -21); ctx.lineTo(9, -8); ctx.stroke();
 
   // body shell, lit from upper-left
   const grad = ctx.createLinearGradient(-34, -95, 34, -20);
@@ -2885,6 +3051,21 @@ function drawBlasterGun(w) {
   ctx.strokeStyle = "rgba(10,20,28,0.55)";
   ctx.lineWidth = 2;
   ctx.stroke();
+
+  // glassy specular streak, clipped to the shell's own silhouette
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(-34, -20); ctx.lineTo(-30, -80); ctx.lineTo(30, -95); ctx.lineTo(34, -20); ctx.closePath();
+  ctx.clip();
+  const gloss = ctx.createLinearGradient(-28, -78, -4, -30);
+  gloss.addColorStop(0, "rgba(255,255,255,0.28)");
+  gloss.addColorStop(1, "rgba(255,255,255,0)");
+  ctx.fillStyle = gloss;
+  ctx.beginPath();
+  ctx.moveTo(-28, -78); ctx.lineTo(-18, -82); ctx.lineTo(-4, -30); ctx.lineTo(-14, -26); ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+
   // panel seam + rivets
   ctx.strokeStyle = "rgba(15,30,40,0.5)";
   ctx.lineWidth = 1.5;
@@ -2925,10 +3106,32 @@ function drawBlasterGun(w) {
   ctx.beginPath();
   ctx.ellipse(0, -140, 10, 10, 0, 0, Math.PI * 2);
   ctx.fill();
+  // twin vents further down the barrel, wired to the same core so the
+  // whole weapon reads as one energy loop instead of an isolated tip glow
+  ctx.fillStyle = `rgba(140,235,255,${pulse * 0.7})`;
+  ctx.fillRect(-11, -119, 3, 3);
+  ctx.fillRect(8, -119, 3, 3);
+  ctx.fillRect(-11, -105, 3, 3);
+  ctx.fillRect(8, -105, 3, 3);
   ctx.restore();
   ctx.strokeStyle = "rgba(20,40,50,0.7)";
   ctx.lineWidth = 1.5;
   ctx.beginPath(); ctx.ellipse(0, -140, 11, 6, 0, 0, Math.PI * 2); ctx.stroke();
+
+  // holo-sight: stalk + frame + floating reticle dot, mounted on the
+  // barrel root between the cooling fins and the body
+  ctx.fillStyle = "#0d1318";
+  ctx.fillRect(-2, -100, 4, 10);
+  ctx.fillStyle = barrelGrad;
+  ctx.fillRect(-8, -110, 16, 9);
+  ctx.strokeStyle = "rgba(15,30,40,0.7)";
+  ctx.lineWidth = 1;
+  ctx.strokeRect(-8, -110, 16, 9);
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
+  ctx.fillStyle = `rgba(150,235,255,${pulse})`;
+  ctx.beginPath(); ctx.ellipse(0, -105.5, 2, 2, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
 
   // top sight rail highlight
   ctx.fillStyle = "rgba(220,245,255,0.35)";
@@ -2940,6 +3143,18 @@ function drawHarpoonGun(w) {
   ctx.fillRect(-14, -30, 20, 36);
   ctx.strokeStyle = "rgba(0,0,0,0.4)";
   for (let gy = -26; gy < -2; gy += 6) { ctx.beginPath(); ctx.moveTo(-13, gy); ctx.lineTo(5, gy); ctx.stroke(); }
+
+  // trigger guard + trigger
+  ctx.strokeStyle = "#241708";
+  ctx.lineWidth = 3.5;
+  ctx.beginPath();
+  ctx.moveTo(4, -24);
+  ctx.quadraticCurveTo(18, -19, 16, -4);
+  ctx.quadraticCurveTo(15, 5, 2, 3);
+  ctx.stroke();
+  ctx.strokeStyle = "#0d0a06";
+  ctx.lineWidth = 2.5;
+  ctx.beginPath(); ctx.moveTo(6, -18); ctx.lineTo(9, -5); ctx.stroke();
 
   // riveted iron body block, lit from top
   const bodyGrad = ctx.createLinearGradient(-38, -85, -38, -25);
@@ -2958,6 +3173,13 @@ function drawHarpoonGun(w) {
     ctx.beginPath(); ctx.arc(rx - 0.6, -55.6, 0.8, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = "#12100c";
   }
+  // brass nameplate
+  ctx.fillStyle = "#c9a35a";
+  ctx.fillRect(-12, -34, 24, 7);
+  ctx.strokeStyle = "rgba(20,12,5,0.5)"; ctx.lineWidth = 1;
+  ctx.strokeRect(-12, -34, 24, 7);
+  ctx.strokeStyle = "rgba(20,12,5,0.4)"; ctx.lineWidth = 0.8;
+  for (const lx of [-8, -3, 2, 7]) { ctx.beginPath(); ctx.moveTo(lx, -32); ctx.lineTo(lx + 2, -32); ctx.stroke(); }
   // pressure gauge
   ctx.fillStyle = "#e8dfc8";
   ctx.beginPath(); ctx.arc(20, -70, 7, 0, Math.PI * 2); ctx.fill();
@@ -2976,6 +3198,14 @@ function drawHarpoonGun(w) {
   ctx.lineWidth = 1.5;
   ctx.strokeRect(-13, -150, 26, 68);
 
+  // reinforcement bands wrapped around the barrel, cannon-style
+  for (const by of [-136, -102]) {
+    ctx.fillStyle = "#241708";
+    ctx.fillRect(-14, by, 28, 5);
+    ctx.fillStyle = "rgba(255,230,190,0.25)";
+    ctx.fillRect(-14, by, 28, 1.5);
+  }
+
   // barbed harpoon tip loaded in the barrel
   ctx.fillStyle = "#c9c9c9";
   ctx.beginPath();
@@ -2992,17 +3222,45 @@ function drawHarpoonGun(w) {
   ctx.fillStyle = "#8a8a8a";
   ctx.fillRect(-11, -152, 22, 6);
 
-  // coiled rope on the side
-  ctx.strokeStyle = "#7a5a30";
-  ctx.lineWidth = 3;
-  for (let i = 0; i < 3; i++) {
+  // winch: a bracket off the body's flank holding a proper wound reel
+  // (axle, spokes, wrapped rope) instead of a few floating coil lines,
+  // with a trailing strand run up to the loaded harpoon.
+  ctx.strokeStyle = "#3a2814";
+  ctx.lineWidth = 5;
+  ctx.beginPath(); ctx.moveTo(-38, -50); ctx.lineTo(-50, -48); ctx.stroke();
+
+  const reelGrad = ctx.createRadialGradient(-54, -50, 2, -52, -48, 14);
+  reelGrad.addColorStop(0, "#8a6a42");
+  reelGrad.addColorStop(1, "#4a2f18");
+  ctx.fillStyle = reelGrad;
+  ctx.beginPath(); ctx.ellipse(-52, -48, 13, 13, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = "#241708"; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.ellipse(-52, -48, 13, 13, 0, 0, Math.PI * 2); ctx.stroke();
+
+  ctx.strokeStyle = "#c9a35a";
+  ctx.lineWidth = 2;
+  for (let i = 0; i < 4; i++) {
     ctx.beginPath();
-    ctx.ellipse(-44, -40 - i * 9, 10, 6, 0.3, 0, Math.PI * 2);
+    ctx.ellipse(-52, -48, 11 - i * 2, 11 - i * 2, 0, 0.4, Math.PI * 1.7);
     ctx.stroke();
   }
-  ctx.strokeStyle = "rgba(255,230,190,0.25)";
-  ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.ellipse(-46, -49, 9, 5, 0.3, 0, Math.PI); ctx.stroke();
+  ctx.fillStyle = "#1c1208";
+  ctx.beginPath(); ctx.arc(-52, -48, 3, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = "#1c1208"; ctx.lineWidth = 1.5;
+  for (const a of [0.3, Math.PI / 2 + 0.3]) {
+    ctx.beginPath();
+    ctx.moveTo(-52 + Math.cos(a) * 3, -48 + Math.sin(a) * 3);
+    ctx.lineTo(-52 + Math.cos(a) * 12, -48 + Math.sin(a) * 12);
+    ctx.moveTo(-52 - Math.cos(a) * 3, -48 - Math.sin(a) * 3);
+    ctx.lineTo(-52 - Math.cos(a) * 12, -48 - Math.sin(a) * 12);
+    ctx.stroke();
+  }
+  ctx.strokeStyle = "#c9a35a";
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(-42, -54);
+  ctx.quadraticCurveTo(-22, -62, -6, -150);
+  ctx.stroke();
 }
 
 function drawFlamethrowerGun(w) {
@@ -3200,7 +3458,105 @@ function update(dt) {
     if (aware && !wasAware) {
       if (e.type === "polarbear") sfxRoar();
       else if (e.type === "walrus") sfxWalrusBellow();
+      else if (e.type === "owl") sfxOwlScreech();
     }
+
+    // Owl dive cycle: unlike every other enemy (which just closes to
+    // attackRange and bites on cooldown), the owl stays airborne and cycles
+    // through hover (circle/close in at stats.hoverAlt) -> dive (stoop
+    // straight at the player, altitude to 0, strike on contact) -> retreat
+    // (climb back away for stats.retreatDuration) -> hover again. Handled
+    // entirely separately from — and skips — the generic ground-enemy AI
+    // below, since it doesn't share that shape at all (no single "hunting
+    // until in range, else attack" state).
+    if (e.type === "owl") {
+      const diveRange = stats.attackRange + 3.0;
+      if (e.owlState === "dive") {
+        e.hunting = true;
+        const speed = stats.speed * stats.diveSpeedMult * dt;
+        const nx = e.x + (dx / (dist || 1)) * speed;
+        const ny = e.y + (dy / (dist || 1)) * speed;
+        if (isOpen(nx, e.y)) e.x = nx;
+        if (isOpen(e.x, ny)) e.y = ny;
+        e.altitude = Math.max(0, e.altitude - dt * 1.6);
+        e.diveTimer -= dt;
+        let struck = false;
+        if (dist <= stats.attackRange && now - e.lastAttack > stats.attackCooldown) {
+          struck = true;
+          e.lastAttack = now;
+          player.hp -= stats.damage;
+          hurtFlash = HURT_FLASH_PEAK;
+          addShake(0.1 + stats.damage * 0.006);
+          sfxPlayerHurt();
+          if (player.hp <= 0) { player.hp = 0; gameOver = true; recordRunEnd(false); sfxGameOver(); }
+          updateHud();
+          sfxHit(e.type);
+        }
+        // Strike landed, or the dive dragged on too long (player dodged /
+        // ducked behind a wall) — climb away either way rather than
+        // bumping into geometry forever.
+        if (struck || e.diveTimer <= 0) {
+          e.owlState = "retreat";
+          e.retreatTimer = stats.retreatDuration;
+          const rlen = dist || 1;
+          e.retreatDirX = -dx / rlen; e.retreatDirY = -dy / rlen;
+        }
+      } else if (e.owlState === "retreat") {
+        e.hunting = true;
+        e.retreatTimer -= dt;
+        const speed = stats.speed * stats.retreatSpeedMult * dt;
+        const nx = e.x + e.retreatDirX * speed;
+        const ny = e.y + e.retreatDirY * speed;
+        if (isOpen(nx, e.y)) e.x = nx; else e.retreatDirX = -e.retreatDirX;
+        if (isOpen(e.x, ny)) e.y = ny; else e.retreatDirY = -e.retreatDirY;
+        e.altitude = Math.min(stats.hoverAlt, e.altitude + dt * 1.2);
+        if (e.retreatTimer <= 0) e.owlState = "hover";
+      } else {
+        // hover: cruise toward the player at altitude once aware, or
+        // circle idly (same wander steering every other enemy uses) until
+        // it's spotted — then dive once in diveRange and off cooldown.
+        e.altitude = Math.min(stats.hoverAlt, e.altitude + dt * 1.5);
+        if (aware && dist <= diveRange && now - e.lastAttack > stats.attackCooldown) {
+          e.owlState = "dive";
+          e.diveTimer = 2.5;
+        } else if (aware) {
+          e.hunting = true;
+          const [wx, wy] = chaseWaypoint(e.x, e.y);
+          const wdx = wx - e.x, wdy = wy - e.y;
+          const wdist = Math.hypot(wdx, wdy) || 1;
+          const speed = stats.speed * dt;
+          const nx = e.x + (wdx / wdist) * speed;
+          const ny = e.y + (wdy / wdist) * speed;
+          if (isOpen(nx, e.y)) e.x = nx;
+          if (isOpen(e.x, ny)) e.y = ny;
+        } else {
+          e.hunting = false;
+          e.wanderTimer -= dt;
+          if (e.wanderTimer <= 0) {
+            e.wanderTimer = stats.wanderInterval[0] + Math.random() * (stats.wanderInterval[1] - stats.wanderInterval[0]);
+            if (Math.random() < stats.wanderPauseChance) {
+              e.wanderDirX = 0; e.wanderDirY = 0;
+            } else {
+              const angle = Math.random() * Math.PI * 2;
+              e.wanderDirX = Math.cos(angle);
+              e.wanderDirY = Math.sin(angle);
+            }
+          }
+          if (e.wanderDirX !== 0 || e.wanderDirY !== 0) {
+            const wSpeed = stats.speed * stats.wanderSpeedMult * dt;
+            const nx = e.x + e.wanderDirX * wSpeed;
+            const ny = e.y + e.wanderDirY * wSpeed;
+            const openX = isOpen(nx, e.y), openY = isOpen(e.x, ny);
+            if (openX) e.x = nx; else e.wanderDirX = -e.wanderDirX;
+            if (openY) e.y = ny; else e.wanderDirY = -e.wanderDirY;
+            if (!openX && !openY) e.wanderTimer = 0;
+          }
+        }
+      }
+      e.animPhase += dt * stats.speed * (e.owlState === "dive" ? 3.4 : 2.0);
+      continue;
+    }
+
     const hunting = aware && dist > stats.attackRange;
 
     if (hunting) {
@@ -3574,9 +3930,9 @@ function renderMinimap() {
   }
   for (const e of enemies) {
     if (!e.alive) continue;
-    mmCtx.fillStyle = e.type === "walrus" ? "#c9a878" : e.type === "polarbear" ? "#ffffff" : e.type === "stoat" ? "#cfe6e8" : "#7fe8ff";
+    mmCtx.fillStyle = e.type === "walrus" ? "#c9a878" : e.type === "polarbear" ? "#ffffff" : e.type === "stoat" ? "#cfe6e8" : e.type === "owl" ? "#f0b429" : "#7fe8ff";
     mmCtx.beginPath();
-    mmCtx.arc(e.x * scale, e.y * scale, e.type === "walrus" ? 4 : e.type === "polarbear" ? 3 : e.type === "stoat" ? 1.4 : 2, 0, Math.PI * 2);
+    mmCtx.arc(e.x * scale, e.y * scale, e.type === "walrus" ? 4 : e.type === "polarbear" ? 3 : e.type === "stoat" ? 1.4 : e.type === "owl" ? 1.8 : 2, 0, Math.PI * 2);
     mmCtx.fill();
   }
   mmCtx.fillStyle = "#7fffb0";
