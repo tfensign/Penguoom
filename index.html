@@ -2041,7 +2041,7 @@ const LEVELS = [
         0, 0, 0, 1, 0, 0, 4, null, 5, 4, 5, 6, 4, null, null, null,
       ],
       variation: { step: 127, degree: 0 },
-      stepMs: 273, padWave: "sine", filterBase: 800, windFreq: 500, windGain: 0.02, timbre: "bell",
+      stepMs: 273, padWave: "sine", filterBase: 800, timbre: "bell",
     },
   },
   {
@@ -2077,7 +2077,7 @@ const LEVELS = [
         3, null, 2, 1, 0, null, 6, null, 0, null, 2, 1, 0, null, null, null,
       ],
       variation: { step: 127, degree: 0 },
-      stepMs: 300, padWave: "sine", filterBase: 550, windFreq: 350, windGain: 0.012, timbre: "bell",
+      stepMs: 300, padWave: "sine", filterBase: 550, timbre: "bell",
     },
   },
   {
@@ -2114,7 +2114,7 @@ const LEVELS = [
         5, 4, null, 4, 0, 1, 2, 1, 0, 5, 4, null, null, 0, null, null,
       ],
       variation: { step: 95, degree: 4 },
-      stepMs: 833, padWave: "sine", filterBase: 1000, windFreq: 700, windGain: 0.04, timbre: "bell",
+      stepMs: 833, padWave: "sine", filterBase: 1000, timbre: "bell",
     },
   },
   {
@@ -2147,7 +2147,7 @@ const LEVELS = [
         2, null, 0, 1, null, 6, 4, null, 6, 0, null, null, null, null,
       ],
       variation: { step: 93, degree: 0 },
-      stepMs: 167, padWave: "sine", filterBase: 600, windFreq: 260, windGain: 0.02, timbre: "bell",
+      stepMs: 167, padWave: "sine", filterBase: 600, timbre: "bell",
     },
   },
   {
@@ -2181,7 +2181,7 @@ const LEVELS = [
         3, null, 5, null, 4, null, 3, null, 2, null, 1, null, 0, null, null, null,
       ],
       variation: { step: 127, degree: 4 },
-      stepMs: 214, padWave: "sine", filterBase: 700, windFreq: 420, windGain: 0.025, timbre: "bell",
+      stepMs: 214, padWave: "sine", filterBase: 700, timbre: "bell",
     },
   },
   {
@@ -2218,7 +2218,7 @@ const LEVELS = [
         0, null, 6, null, 4, 4, 4, null, null, 3, 2, null, null, null, null, null,
       ],
       variation: { step: 95, degree: 0 },
-      stepMs: 208, padWave: "sine", filterBase: 500, windFreq: 900, windGain: 0.01, timbre: "bell",
+      stepMs: 208, padWave: "sine", filterBase: 500, timbre: "bell",
     },
   },
   {
@@ -2254,7 +2254,7 @@ const LEVELS = [
         1, null, null, null, 0, null, 6, null, 0, null, null, null, null, null, null, null,
       ],
       variation: { step: 127, degree: 4 },
-      stepMs: 208, padWave: "sine", filterBase: 1100, windFreq: 750, windGain: 0.045, timbre: "bell",
+      stepMs: 208, padWave: "sine", filterBase: 1100, timbre: "bell",
     },
   },
   {
@@ -2315,7 +2315,7 @@ const LEVELS = [
       // background ambience loop. stepMs isn't used here - the big-band
       // scheduler computes its own swung (long-short) beat timing.
       arrangement: "bigband",
-      padWave: "triangle", filterBase: 1300, windFreq: 600, windGain: 0.012, timbre: "sleigh",
+      padWave: "triangle", filterBase: 1300, timbre: "sleigh",
     },
   },
   {
@@ -2346,7 +2346,7 @@ const LEVELS = [
         null, null, 4, null, 3, null, 2, null, 1, null, 0, null, null, null, null, null,
       ],
       variation: { step: 95, degree: 0 },
-      stepMs: 227, padWave: "sine", filterBase: 620, windFreq: 480, windGain: 0.018, timbre: "bell",
+      stepMs: 227, padWave: "sine", filterBase: 620, timbre: "bell",
     },
   },
   {
@@ -2392,7 +2392,7 @@ const LEVELS = [
       ],
       variation: { step: 127, degree: 0 },
       accelerate: { factor: 0.94, minStepMs: 130 },
-      stepMs: 250, padWave: "sine", filterBase: 480, windFreq: 300, windGain: 0.02, timbre: "bell",
+      stepMs: 250, padWave: "sine", filterBase: 480, timbre: "bell",
     },
   },
 ];
@@ -3029,13 +3029,14 @@ function flameLoopSetActive(active) {
 }
 
 // Wintry background music: a melody (each note carrying its own harmony
-// voice a scale-third above, see playMelodyNote) over an icy pad drone, a
-// root/fifth bass pulse, and a thin layer of wind noise, all generated
-// rather than loaded from a file. Each sector supplies its own `music`
-// config (root pitch, scale, rhythmic pattern, tempo, pad/wind character,
-// note timbre) so every sector has a distinct track while sharing the same
-// synthesis engine — see startMusicForLevel, called from startLevel
-// whenever the sector changes.
+// voice drawn from the actual chord underneath, see playMelodyNote/
+// chordHarmonyFreq) over an icy triad pad drone and a bass line that
+// follows the same chord progression, all generated rather than loaded from
+// a file. Each sector supplies its own `music` config (root pitch, scale,
+// rhythmic pattern, tempo, pad character, chord progression, note timbre)
+// so every sector has a distinct track while sharing the same synthesis
+// engine — see startMusicForLevel, called from startLevel whenever the
+// sector changes.
 function scaleFrom(root, semitoneSteps) {
   return semitoneSteps.map(st => root * Math.pow(2, st / 12));
 }
@@ -3077,10 +3078,29 @@ function harmonyFreqFor(scale, degree) {
   return scale[harmonyIdx] * (wrapped ? 2 : 1);
 }
 
-function playMelodyNote(scale, degree, timbre, fuller) {
+// Harmony note drawn from the *actual chord* playing underneath the melody
+// right now, rather than a fixed scale-relative third - checks every octave
+// of the chord's root/third/fifth and picks whichever lands closest to a
+// third above the melody note, so the harmony voice always outlines the
+// real underlying harmony instead of a generic parallel interval that can
+// drift out of step with the chord progression.
+function chordHarmonyFreq(chord, melodyFreq) {
+  const candidates = [chord.root, chord.third, chord.fifth]
+    .flatMap(f => [f * 0.5, f, f * 2, f * 4]);
+  const target = melodyFreq * 1.26; // roughly a major third above
+  let best = null, bestDist = Infinity;
+  for (const c of candidates) {
+    if (c <= melodyFreq * 1.05) continue; // must sit clearly above the melody
+    const d = Math.abs(c - target);
+    if (d < bestDist) { bestDist = d; best = c; }
+  }
+  return best !== null ? best : melodyFreq * 1.26;
+}
+
+function playMelodyNote(scale, degree, timbre, fuller, chord) {
   const t0 = audioCtx.currentTime;
   const freq = scale[degree];
-  const harmonyFreq = harmonyFreqFor(scale, degree);
+  const harmonyFreq = chord ? chordHarmonyFreq(chord, freq) : harmonyFreqFor(scale, degree);
   if (timbre === "sleigh") {
     // Bright, quick jingle-bell hit — fast metallic attack/decay plus a
     // high-passed noise "shake" transient, instead of the slow bell swell.
@@ -3184,8 +3204,8 @@ function playBassPulse(freq) {
   osc.start(t0); osc.stop(t0 + 0.42);
 }
 
-// Currently-playing pad/wind oscillators plus the melody's setInterval id,
-// torn down by stopMusic() before the next sector's track starts.
+// Currently-playing pad oscillators plus the melody's setInterval id, torn
+// down by stopMusic() before the next sector's track starts.
 let musicNodes = [];
 let musicIntervalId = null;
 let sleighShakeTimeoutId = null;
@@ -3345,7 +3365,7 @@ function startBigBandChristmas(cfg) {
 
     let degree = cfg.pattern[idx];
     if (cfg.variation && idx === cfg.variation.step && pass % 2 === 1) degree = cfg.variation.degree;
-    if (degree !== null) playMelodyNote(cfg.scale, degree, cfg.timbre);
+    if (degree !== null) playMelodyNote(cfg.scale, degree, cfg.timbre, false, chord);
 
     step++;
     bigBandStepTimeoutId = setTimeout(scheduleNext, idx % 2 === 0 ? swingLong : swingShort);
@@ -3376,21 +3396,8 @@ function startMusicForLevel(level) {
     // startBigBandChristmas) replaces the generic pad-drone + single-melody
     // engine below entirely - it needs its own swung, variable-timing step
     // clock, a full rhythm section, and a moving chord progression, none of
-    // which the generic per-level pattern engine was built to do. Keeps a
-    // thin wind layer for atmosphere and the same occasional horn
-    // swell/sleigh shimmer as everything else for continuity.
-    const windSrc = audioCtx.createBufferSource();
-    windSrc.buffer = noiseBuffer(4);
-    windSrc.loop = true;
-    const windFilter = audioCtx.createBiquadFilter();
-    windFilter.type = "bandpass";
-    windFilter.frequency.value = cfg.windFreq;
-    windFilter.Q.value = 0.5;
-    const windGain = audioCtx.createGain();
-    windGain.gain.value = cfg.windGain;
-    windSrc.connect(windFilter); windFilter.connect(windGain); windGain.connect(musicGain);
-    windSrc.start();
-    musicNodes = [windSrc];
+    // which the generic per-level pattern engine was built to do.
+    musicNodes = [];
 
     if (cfg.timbre === "sleigh") {
       const shake = () => {
@@ -3403,30 +3410,35 @@ function startMusicForLevel(level) {
     return;
   }
 
-  // Pad drone: root + a fifth above, plus a second root voice a few cents
-  // sharp for a touch of detuned-unison shimmer (kept subtle - a fuller
-  // multi-voice version of this read as a persistent hum instead of a quiet
-  // background pad, so this stays close to the original two-tone drone).
-  // When cfg.chordProgression is set, root/fifth here are the *current
-  // chord's* tones (retuned smoothly on each chord change in playStep
-  // below) instead of always the tonic - real harmonic movement instead of
-  // one unchanging drone underneath every song.
+  // Pad drone: the full current chord (root, third, fifth) plus a second
+  // root voice a few cents sharp for a touch of detuned-unison shimmer
+  // (kept subtle - a fuller multi-voice version of just the root read as a
+  // persistent hum instead of a quiet background pad). Real triad instead
+  // of a bare root+fifth "power chord" - the third is what actually tells
+  // major from minor, so this is the difference between a held drone and a
+  // held chord. When cfg.chordProgression is set, all three voices here are
+  // the *current chord's* tones (retuned smoothly on each chord change in
+  // playStep below) instead of always the tonic - real harmonic movement
+  // instead of one unchanging chord underneath every song.
   const firstChord = chordTones(cfg.root, (cfg.chordProgression && cfg.chordProgression[0]) || 0);
   const padOsc1 = audioCtx.createOscillator();
   const padOsc1detune = audioCtx.createOscillator();
   const padOsc2 = audioCtx.createOscillator();
-  padOsc1.type = padOsc1detune.type = padOsc2.type = cfg.padWave;
+  const padOsc3 = audioCtx.createOscillator();
+  padOsc1.type = padOsc1detune.type = padOsc2.type = padOsc3.type = cfg.padWave;
   padOsc1.frequency.value = firstChord.root;
   padOsc1detune.frequency.value = firstChord.root * Math.pow(2, 6 / 1200);
   padOsc2.frequency.value = firstChord.fifth;
+  padOsc3.frequency.value = firstChord.third;
   const padFilter = audioCtx.createBiquadFilter();
   padFilter.type = "lowpass";
   padFilter.frequency.value = cfg.filterBase;
   const padGain = audioCtx.createGain();
-  padGain.gain.value = 0.028;
-  padOsc1.connect(padFilter); padOsc1detune.connect(padFilter); padOsc2.connect(padFilter);
+  const padGainBase = 0.022;
+  padGain.gain.value = padGainBase;
+  padOsc1.connect(padFilter); padOsc1detune.connect(padFilter); padOsc2.connect(padFilter); padOsc3.connect(padFilter);
   padFilter.connect(padGain); padGain.connect(musicGain);
-  padOsc1.start(); padOsc1detune.start(); padOsc2.start();
+  padOsc1.start(); padOsc1detune.start(); padOsc2.start(); padOsc3.start();
 
   const lfo = audioCtx.createOscillator();
   lfo.type = "sine"; lfo.frequency.value = 0.05;
@@ -3435,20 +3447,7 @@ function startMusicForLevel(level) {
   lfo.connect(lfoGain); lfoGain.connect(padFilter.frequency);
   lfo.start();
 
-  // Thin wind layer.
-  const windSrc = audioCtx.createBufferSource();
-  windSrc.buffer = noiseBuffer(4);
-  windSrc.loop = true;
-  const windFilter = audioCtx.createBiquadFilter();
-  windFilter.type = "bandpass";
-  windFilter.frequency.value = cfg.windFreq;
-  windFilter.Q.value = 0.5;
-  const windGain = audioCtx.createGain();
-  windGain.gain.value = cfg.windGain;
-  windSrc.connect(windFilter); windFilter.connect(windGain); windGain.connect(musicGain);
-  windSrc.start();
-
-  musicNodes = [padOsc1, padOsc1detune, padOsc2, lfo, windSrc];
+  musicNodes = [padOsc1, padOsc1detune, padOsc2, padOsc3, lfo];
 
   // The sleigh-bell shimmer is keyed off the melody's own timbre rather
   // than a one-off per-level flag - "sleigh" already means "this level's
@@ -3485,19 +3484,31 @@ function startMusicForLevel(level) {
     const chordPos = step % chordLen;
     const chordIdx = Math.floor(step / chordLen) % chordProg.length;
     const chord = chordTones(cfg.root, chordProg[chordIdx]);
+    const fullerPass = pass % 2 === 1;
     if (chordPos === 0) {
       const t = audioCtx.currentTime;
       padOsc1.frequency.setTargetAtTime(chord.root, t, 0.15);
       padOsc1detune.frequency.setTargetAtTime(chord.root * Math.pow(2, 6 / 1200), t, 0.15);
       padOsc2.frequency.setTargetAtTime(chord.fifth, t, 0.15);
+      padOsc3.frequency.setTargetAtTime(chord.third, t, 0.15);
+      // The full-chord pad comes up in volume on the fuller repeat pass, the
+      // same "more voices join on verse two" swell playMelodyNote's fuller
+      // flag does for the melody, so the whole texture blooms together
+      // instead of just the lead line.
+      padGain.gain.setTargetAtTime(fullerPass ? padGainBase * 1.6 : padGainBase, t, 0.4);
       playBassPulse(chord.root / 2);
     } else if (chordLen >= 6 && chordPos === Math.floor(chordLen / 2)) {
       playBassPulse(chord.fifth / 2);
+    } else if (fullerPass && chordLen >= 8 && chordPos === Math.floor(chordLen * 3 / 4)) {
+      // A walking-bass passing tone, only on the fuller repeat: verse one
+      // keeps a plain root-fifth "oom-pah", verse two's bass actually walks
+      // through the chord.
+      playBassPulse(chord.third / 2);
     }
     let degree = cfg.pattern[idx];
     if (cfg.variation && idx === cfg.variation.step && pass % 2 === 1) degree = cfg.variation.degree;
     step++;
-    if (degree !== null) playMelodyNote(cfg.scale, degree, cfg.timbre, pass % 2 === 1);
+    if (degree !== null) playMelodyNote(cfg.scale, degree, cfg.timbre, fullerPass, chord);
     // cfg.accelerate (The Frozen Throne's "In the Hall of the Mountain King"
     // only, so far): the source material explicitly calls for speeding up
     // each loop for the classic effect - a fixed setInterval can't do that,
