@@ -195,7 +195,7 @@
      clickable mid-gameplay (not just over the game-over banner), and a
      middle-of-screen button would sit right in the player's line of sight.
      44px increments (chip height + gap) keep every entry evenly spaced. */
-  #restartBtnDesktop, #pauseBtnDesktop, #musicBtnDesktop, #sfxBtnDesktop, #sectorSelectBtnDesktop {
+  #restartBtnDesktop, #pauseBtnDesktop, #musicBtnDesktop, #sfxBtnDesktop, #sectorSelectBtnDesktop, #homeBtnDesktop {
     position: absolute; left: 12px; padding: 8px 12px; border-radius: 8px;
     font-size: 0.85rem; font-weight: bold; cursor: pointer;
     background: rgba(20,40,55,0.65); border: 2px solid rgba(150,220,240,0.5); color: #eafcff;
@@ -206,6 +206,11 @@
   #musicBtnDesktop { top: 132px; }
   #sfxBtnDesktop { top: 176px; }
   #musicBtnDesktop.muted, #sfxBtnDesktop.muted { opacity: 0.6; }
+  /* Sits beside Music (same row) rather than in the vertical rhythm, since
+     it's a "leave the run" action more than a settings toggle - left offset
+     is Music's own left (12px) plus a safe margin past its auto-sized
+     width. */
+  #homeBtnDesktop { left: 62px; top: 132px; }
   /* Sector Select: grayed out/unclickable until Sector 1's been cleared once
      on the currently-picked difficulty (see clearedThroughByDifficulty),
      then lit green like every other "achievement" cue in the game, opening
@@ -253,7 +258,7 @@
      Select - all pinned to the true screen edge (not inside #wrap, so it
      can't ever land on top of the letterboxed minimap), sharing one pill
      style and 44px spacing rhythm. */
-  #restartBtnMobile, #pauseBtnMobile, #musicBtnMobile, #sfxBtnMobile, #sectorSelectBtnMobile {
+  #restartBtnMobile, #pauseBtnMobile, #musicBtnMobile, #sfxBtnMobile, #sectorSelectBtnMobile, #homeBtnMobile {
     position: absolute; left: 2px; padding: 8px 12px; border-radius: 8px;
     background: rgba(20,40,55,0.65); border: 2px solid rgba(150,220,240,0.5); color: #eafcff;
     font-family: var(--font-ui); font-size: 0.85rem;
@@ -263,11 +268,14 @@
   #musicBtnMobile { top: 102px; }
   #sfxBtnMobile { top: 146px; }
   #musicBtnMobile.muted, #sfxBtnMobile.muted { opacity: 0.6; }
+  /* Sits beside Music (same row) rather than in the vertical rhythm - see
+     #homeBtnDesktop for why. */
+  #homeBtnMobile { left: 52px; top: 102px; }
   /* Sector Select: grayed out/unclickable until Sector 1's been cleared once
      on the currently-picked difficulty (see clearedThroughByDifficulty),
      then lit green to match the game's "achievement" color (best-score
      banner, level-clear text) and opens #sectorSelectOverlay. */
-  #sectorSelectBtnMobile { top: 200px; cursor: pointer; }
+  #sectorSelectBtnMobile { top: 190px; cursor: pointer; }
   #sectorSelectBtnMobile.locked { opacity: 0.4; cursor: default; }
   #sectorSelectBtnMobile.unlocked { border-color: #7fffb0; background: rgba(40,120,90,0.55); }
   #rotatePrompt {
@@ -309,6 +317,29 @@
     margin-top: 16px; padding: 0.5rem 1.2rem; font-size: 0.9rem; cursor: pointer;
     background: transparent; color: var(--accent-cyan); border: 2px solid rgba(127,232,255,0.4); border-radius: 6px;
   }
+  /* Same modal language as Sector Select - dark full-screen backdrop, one
+     centered panel - but purely a yes/no gate, so it's much smaller. */
+  #homeConfirmOverlay {
+    position: fixed; inset: 0; z-index: 45; display: none; align-items: center; justify-content: center;
+    background: rgba(3,10,18,0.88); font-family: var(--font-ui); color: #eafcff;
+    padding: 20px; box-sizing: border-box;
+  }
+  #homeConfirmOverlay.show { display: flex; }
+  #homeConfirmPanel {
+    background: rgba(10,25,35,0.96); border: 2px solid rgba(150,220,240,0.5); border-radius: 12px;
+    padding: 20px 24px; max-width: 380px; width: 100%; box-sizing: border-box; text-align: center;
+  }
+  #homeConfirmPanel h2 {
+    font-family: var(--font-display); font-weight: normal; letter-spacing: 0.1rem;
+    font-size: 1.2rem; color: #7fe8ff; margin: 0 0 8px;
+  }
+  #homeConfirmPanel p { margin: 0 0 18px; font-size: 0.85rem; color: #9fd8e6; }
+  #homeConfirmButtons { display: flex; gap: 12px; justify-content: center; }
+  #homeConfirmYesBtn, #homeConfirmNoBtn {
+    padding: 0.5rem 1.4rem; font-size: 0.9rem; font-weight: bold; cursor: pointer; border-radius: 6px;
+  }
+  #homeConfirmYesBtn { background: #1b6; border: none; color: #012; }
+  #homeConfirmNoBtn { background: transparent; color: var(--accent-cyan); border: 2px solid rgba(127,232,255,0.4); }
   #updateBanner {
     position: fixed; left: 50%; top: 14px; transform: translateX(-50%) translateY(-140%);
     z-index: 30; display: flex; align-items: center; gap: 10px;
@@ -335,9 +366,10 @@
   <button id="restartBtnDesktop" class="hidden">&#8635; Restart</button>
   <button id="pauseBtnDesktop" class="hidden">&#9208; Pause</button>
   <button id="musicBtnDesktop" class="hidden">&#127925;</button>
+  <button id="homeBtnDesktop" class="hidden" title="Back to the main menu">&#127968;</button>
   <button id="sfxBtnDesktop" class="hidden">&#128266;</button>
   <button id="sectorSelectBtnDesktop" class="hidden locked" title="Beat Sector 1 to unlock">Sectors</button>
-  <div id="hint">WASD move · mouse to look (aim up/down matters!) · scroll to turn · hold click to fire · 1/2/3 weapon · M mute</div>
+  <div id="hint">WASD move · mouse to look (aim up/down matters!) · scroll to turn · hold click to fire · 1/2/3 weapon · P pause · M mute</div>
   <div id="hud">
     <div id="hpPanel" class="hudPanel">
       <div id="hpTopRow"><span>HP</span><span id="hpValue">100</span></div>
@@ -389,6 +421,7 @@
   <div id="restartBtnMobile" class="touchBtn">&#8635; Restart</div>
   <div id="pauseBtnMobile" class="touchBtn hidden">&#9208; Pause</div>
   <div id="musicBtnMobile" class="touchBtn" title="Mute music (M)">&#127925;</div>
+  <div id="homeBtnMobile" class="touchBtn" title="Back to the main menu">&#127968;</div>
   <div id="sfxBtnMobile" class="touchBtn" title="Mute sound effects (M)">&#128266;</div>
   <div id="sectorSelectBtnMobile" class="touchBtn locked" title="Beat Sector 1 to unlock">Sectors</div>
 </div>
@@ -403,6 +436,17 @@
     <p>Jump straight into any sector you've unlocked on this difficulty. Starts a fresh run there (full HP, starting weapon).</p>
     <div id="sectorSelectList"></div>
     <button id="sectorSelectCloseBtn">Close</button>
+  </div>
+</div>
+
+<div id="homeConfirmOverlay">
+  <div id="homeConfirmPanel">
+    <h2>Quit to Home?</h2>
+    <p>Are you sure you want to quit the current game and return to the Home screen?</p>
+    <div id="homeConfirmButtons">
+      <button id="homeConfirmYesBtn">Yes</button>
+      <button id="homeConfirmNoBtn">No</button>
+    </div>
   </div>
 </div>
 
@@ -1719,6 +1763,11 @@ const musicBtnDesktopEl = document.getElementById("musicBtnDesktop");
 const sfxBtnDesktopEl = document.getElementById("sfxBtnDesktop");
 const musicBtnMobileEl = document.getElementById("musicBtnMobile");
 const sfxBtnMobileEl = document.getElementById("sfxBtnMobile");
+const homeBtnDesktopEl = document.getElementById("homeBtnDesktop");
+const homeBtnMobileEl = document.getElementById("homeBtnMobile");
+const homeConfirmOverlayEl = document.getElementById("homeConfirmOverlay");
+const homeConfirmYesBtnEl = document.getElementById("homeConfirmYesBtn");
+const homeConfirmNoBtnEl = document.getElementById("homeConfirmNoBtn");
 const sectorSelectBtnDesktopEl = document.getElementById("sectorSelectBtnDesktop");
 const sectorSelectBtnMobileEl = document.getElementById("sectorSelectBtnMobile");
 const sectorSelectOverlayEl = document.getElementById("sectorSelectOverlay");
@@ -3245,6 +3294,7 @@ document.addEventListener("keydown", e => {
   // on a win.
   if (e.code === "KeyR" && (gameOver || won)) newGame();
   if (e.code === "KeyM") toggleAllMute();
+  if (e.code === "KeyP") setPaused(!paused);
   if (e.code === "Digit1") currentWeaponKey = "blaster";
   if (e.code === "Digit2") currentWeaponKey = "harpoon";
   if (e.code === "Digit3") currentWeaponKey = "flamethrower";
@@ -3295,6 +3345,53 @@ sectorSelectBtnDesktopEl.addEventListener("click", openSectorSelect);
 sectorSelectBtnMobileEl.addEventListener("click", openSectorSelect);
 sectorSelectBtnMobileEl.addEventListener("touchstart", e => { e.preventDefault(); openSectorSelect(); }, { passive: false });
 sectorSelectCloseBtnEl.addEventListener("click", closeSectorSelect);
+
+// Back to the start screen (e.g. to switch difficulty) without a page
+// reload. Abandons whatever run is in progress rather than pausing it -
+// `running` stops the frame loop's simulation entirely, so the last frame
+// just freezes behind the overlay, the same as before any run has ever
+// started. Restart/Pause's own hidden-state is normally kept in sync every
+// frame inside `if (running)` in frame() below, which no longer runs once
+// this sets running to false, so their hidden state has to be forced here
+// instead or they'd be left showing whatever they last were.
+function goHome() {
+  if (document.pointerLockElement === canvas) document.exitPointerLock();
+  running = false;
+  paused = false;
+  pausedBySectorSelect = false;
+  restartBtnDesktopEl.classList.add("hidden");
+  pauseBtnDesktopEl.classList.add("hidden");
+  pauseBtnMobileEl.classList.add("hidden");
+  overlay.style.display = "";
+}
+
+// Clicking Home mid-run would otherwise silently throw the run away with no
+// way back, so it's gated behind a yes/no confirmation - pausing first (if
+// not already paused) so the world doesn't keep simulating while the player
+// decides. "No" resumes only if the confirm dialog was what paused it, same
+// pattern as Sector Select's own auto-pause. Once the run has already ended
+// (gameOver/won) or there isn't one (already home), there's nothing to lose
+// by leaving, so it skips the prompt entirely.
+let pausedByHomeConfirm = false;
+function requestGoHome() {
+  if (!running || gameOver || won) { goHome(); return; }
+  if (!paused) { pausedByHomeConfirm = true; setPaused(true); }
+  homeConfirmOverlayEl.classList.add("show");
+}
+function cancelGoHome() {
+  homeConfirmOverlayEl.classList.remove("show");
+  if (pausedByHomeConfirm) { setPaused(false); pausedByHomeConfirm = false; }
+}
+function confirmGoHome() {
+  homeConfirmOverlayEl.classList.remove("show");
+  pausedByHomeConfirm = false;
+  goHome();
+}
+homeBtnDesktopEl.addEventListener("click", requestGoHome);
+homeBtnMobileEl.addEventListener("click", requestGoHome);
+homeBtnMobileEl.addEventListener("touchstart", e => { e.preventDefault(); requestGoHome(); }, { passive: false });
+homeConfirmYesBtnEl.addEventListener("click", confirmGoHome);
+homeConfirmNoBtnEl.addEventListener("click", cancelGoHome);
 
 // ---------------------------------------------------------------------------
 // Touch controls: a virtual joystick for movement, drag-to-look anywhere on
@@ -5417,12 +5514,13 @@ updateDifficultyUI();
 populateSectorSelectList();
 updateSectorSelectUI();
 // Unlike Restart/Pause (only meaningful once a run exists), Music/SFX/
-// Sector Select should be available immediately - including on the start
-// screen - so these are set once here rather than gated on `running` in
-// frame() below.
+// Sector Select/Home should be available immediately - including on the
+// start screen - so these are set once here rather than gated on `running`
+// in frame() below.
 musicBtnDesktopEl.classList.toggle("hidden", isTouch);
 sfxBtnDesktopEl.classList.toggle("hidden", isTouch);
 sectorSelectBtnDesktopEl.classList.toggle("hidden", isTouch);
+homeBtnDesktopEl.classList.toggle("hidden", isTouch);
 requestAnimationFrame(frame);
 
 // ---------------------------------------------------------------------------
