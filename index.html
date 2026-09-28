@@ -169,15 +169,20 @@
   #crosshair.hit::before, #crosshair.hit::after { background: #fff; }
   #crosshair::before { left: 8px; top: 0; width: 2px; height: 18px; }
   #crosshair::after { top: 8px; left: 0; width: 18px; height: 2px; }
-  /* Desktop-only restart button shown over the game-over/win banner (mobile
-     has its own always-on restart chip top-left, untouched - see
-     #restartBtnMobile). Positioned as a percentage of the canvas so it lines
-     up under the canvas-drawn banner/stats text regardless of window size. */
-  #restartBtnDesktop {
-    position: absolute; left: 50%; top: 70%; transform: translateX(-50%);
-    padding: 0.5rem 1.4rem; font-size: 1.1rem; font-weight: bold; cursor: pointer;
-    background: #1b6; border: none; border-radius: 6px; color: #012; font-family: var(--font-ui);
+  /* Desktop-only restart/pause chips (mobile has its own always-on pair
+     top-left, untouched - see #restartBtnMobile/#pauseBtnMobile). Pinned
+     below the minimap rather than centered over the canvas, since restart
+     must stay clickable mid-gameplay now (not just over the game-over
+     banner) and a middle-of-screen button would sit right in the player's
+     line of sight while playing. */
+  #restartBtnDesktop, #pauseBtnDesktop {
+    position: absolute; right: 12px; padding: 8px 12px; border-radius: 8px;
+    font-size: 0.85rem; font-weight: bold; cursor: pointer;
+    background: rgba(20,40,55,0.65); border: 2px solid rgba(150,220,240,0.5); color: #eafcff;
+    font-family: var(--font-ui);
   }
+  #restartBtnDesktop { top: 184px; }
+  #pauseBtnDesktop { top: 228px; }
   #minimapFrame { position: absolute; top: 12px; right: 12px; padding: 4px; }
   #minimap { display: block; background: rgba(0,10,20,0.5); }
   #hint { position: absolute; top: 12px; left: 12px; color: #cfefff; font-family: var(--font-ui); font-size: 0.8rem; opacity: 0.8; max-width: 60%; }
@@ -228,11 +233,13 @@
     font-size: 1.3rem; line-height: 1; cursor: pointer; pointer-events: auto; user-select: none;
   }
   #muteBtn.muted { opacity: 0.6; }
-  #restartBtnMobile {
-    position: absolute; left: 24px; top: 14px; padding: 8px 12px; border-radius: 8px;
+  #restartBtnMobile, #pauseBtnMobile {
+    position: absolute; left: 24px; padding: 8px 12px; border-radius: 8px;
     background: rgba(20,40,55,0.65); border: 2px solid rgba(150,220,240,0.5); color: #eafcff;
     font-family: var(--font-ui); font-size: 0.85rem;
   }
+  #restartBtnMobile { top: 14px; }
+  #pauseBtnMobile { top: 58px; }
   #rotatePrompt {
     position: fixed; inset: 0; z-index: 20; display: none; align-items: center; justify-content: center;
     flex-direction: column; text-align: center; background: #030a12; color: #eafcff;
@@ -264,7 +271,8 @@
   <div id="minimapFrame" class="hudPanel"><canvas id="minimap" width="150" height="150"></canvas></div>
   <div id="crosshair"></div>
   <button id="restartBtnDesktop" class="hidden">&#8635; Restart</button>
-  <div id="hint">WASD move · mouse to look (aim up/down matters!) · scroll to turn · hold click to fire · 1/2/3 weapon · R restart · M mute</div>
+  <button id="pauseBtnDesktop" class="hidden">&#9208; Pause</button>
+  <div id="hint">WASD move · mouse to look (aim up/down matters!) · scroll to turn · hold click to fire · 1/2/3 weapon · M mute</div>
   <div id="hud">
     <div id="hpPanel" class="hudPanel">
       <div id="hpTopRow"><span>HP</span><span id="hpValue">100</span></div>
@@ -310,6 +318,7 @@
   </div>
   <div id="fireBtn" class="touchBtn">FIRE</div>
   <div id="restartBtnMobile" class="touchBtn">&#8635; Restart</div>
+  <div id="pauseBtnMobile" class="touchBtn hidden">&#9208; Pause</div>
 </div>
 <div id="rotatePrompt">
   <div class="spin">&#8635;</div>
@@ -1382,6 +1391,8 @@ const fireBtnEl = document.getElementById("fireBtn");
 const weaponBtnEls = Array.from(document.querySelectorAll(".weaponBtn"));
 const restartBtnMobileEl = document.getElementById("restartBtnMobile");
 const restartBtnDesktopEl = document.getElementById("restartBtnDesktop");
+const pauseBtnMobileEl = document.getElementById("pauseBtnMobile");
+const pauseBtnDesktopEl = document.getElementById("pauseBtnDesktop");
 const muteBtnEl = document.getElementById("muteBtn");
 const rotatePromptEl = document.getElementById("rotatePrompt");
 
@@ -1998,6 +2009,7 @@ function ensureAudio() {
 }
 
 let player, enemies, mouseDX, mouseDY, scrollTurn, running, gameOver, won;
+let paused = false;
 let pitch = 0; // vertical look offset in screen pixels, shifts the horizon/sprites/walls
 let keys = {};
 let mouseHeld = false;
@@ -2081,6 +2093,9 @@ function newGame() {
   running = true;
   gameOver = false;
   won = false;
+  paused = false;
+  pauseBtnDesktopEl.textContent = "⏸ Pause";
+  pauseBtnMobileEl.textContent = "⏸ Pause";
   lastShotTime = { blaster: 0, harpoon: 0 };
   recoilOffset = 0;
   hurtFlash = 0;
@@ -2241,6 +2256,7 @@ function tryPointerLock() {
   } catch (err) { /* Pointer Lock unsupported (e.g. touch-only browsers) — ignore */ }
 }
 canvas.addEventListener("mousedown", () => {
+  if (paused) return;
   if (!document.pointerLockElement) { tryPointerLock(); return; }
   mouseHeld = true;
   if (WEAPONS[currentWeaponKey].mode === "semi") trySemiShot();
@@ -2351,6 +2367,7 @@ let flameDisqualified = false;
 let flameArmedByCanvas = false;
 canvas.addEventListener("touchstart", e => {
   e.preventDefault();
+  if (paused) return;
   if (lookTouchId === null) {
     const t = e.changedTouches[0];
     lookTouchId = t.identifier;
@@ -2439,6 +2456,31 @@ restartBtnMobileEl.addEventListener("touchstart", e => {
 restartBtnDesktopEl.addEventListener("click", () => {
   newGame();
   tryPointerLock();
+});
+
+// Pause: freezes update() entirely (see the early return at the top of that
+// function) while render() keeps drawing, so the world stays visible but
+// frozen instead of going blank. Releases pointer lock so the cursor is free
+// to click Play again, the same reason a run's end releases it (see
+// recordRunEnd) — and re-requests it on resume so desktop mouse-look picks
+// back up without an extra click on the canvas.
+function setPaused(next) {
+  if (!running || gameOver || won) return;
+  paused = next;
+  const label = paused ? "▶ Play" : "⏸ Pause";
+  pauseBtnDesktopEl.textContent = label;
+  pauseBtnMobileEl.textContent = label;
+  if (paused) {
+    if (document.pointerLockElement === canvas) document.exitPointerLock();
+    mouseDX = 0; mouseDY = 0; scrollTurn = 0;
+  } else if (!isTouch) {
+    tryPointerLock();
+  }
+}
+pauseBtnDesktopEl.addEventListener("click", () => setPaused(!paused));
+pauseBtnMobileEl.addEventListener("touchstart", e => {
+  e.preventDefault();
+  setPaused(!paused);
 });
 
 muteBtnEl.addEventListener("click", () => toggleMute());
@@ -3472,6 +3514,7 @@ function drawFlamethrowerGun(w) {
 // Update loop
 // ---------------------------------------------------------------------------
 function update(dt) {
+  if (paused) return;
   if (shakeTrauma > 0) shakeTrauma = Math.max(0, shakeTrauma - dt * 2.5);
   if (levelTransition) {
     levelTransitionTimer -= dt;
@@ -4098,19 +4141,78 @@ function renderLevelTransition() {
   ctx.textAlign = "left";
 }
 
+function renderPausedState() {
+  ctx.fillStyle = "rgba(0,0,0,0.55)";
+  ctx.fillRect(0, 0, SCREEN_W, SCREEN_H);
+  ctx.fillStyle = "#eafcff";
+  fitDisplayFont("PAUSED", SCREEN_W - 40, 40);
+  ctx.textAlign = "center";
+  ctx.fillText("PAUSED", SCREEN_W / 2, SCREEN_H / 2 - 10);
+  ctx.font = `20px ${FONT_UI}`;
+  ctx.fillText(isTouch ? "Tap Play to resume" : "Click Play to resume", SCREEN_W / 2, SCREEN_H / 2 + 26);
+  ctx.textAlign = "left";
+}
+
 // ---------------------------------------------------------------------------
 // Main loop
 // ---------------------------------------------------------------------------
+// Mobile has reported a bug where, after a long session, the canvas goes
+// blank apart from the sky/floor gradient (nothing after that in render()
+// runs) - the likely cause is either an uncaught exception partway through
+// the frame (which, uncaught, would silently stop requestAnimationFrame from
+// ever being rescheduled) or the player's position/direction drifting to
+// NaN/Infinity (every draw call after the gradients depends on it; NaN
+// coordinates are a silent no-op per the canvas spec, not a crash). Both are
+// guarded below: a try/catch keeps the loop alive and surfaces the actual
+// error on-screen so it can be diagnosed, and a per-frame sanity check
+// recovers the player instead of leaving the run permanently soft-locked.
+let frameErrorOverlayEl = null;
+function showFrameError(err) {
+  console.error("PENGUOOM frame error:", err);
+  if (!frameErrorOverlayEl) {
+    frameErrorOverlayEl = document.createElement("div");
+    frameErrorOverlayEl.style.cssText = "position:fixed;left:6px;bottom:6px;z-index:9999;max-width:92vw;background:rgba(20,0,0,0.85);color:#ffb3b3;font:11px/1.4 monospace;padding:6px 8px;border-radius:6px;pointer-events:none;white-space:pre-wrap;";
+    document.body.appendChild(frameErrorOverlayEl);
+  }
+  frameErrorOverlayEl.textContent = "Recovered from a render error:\n" + (err && err.stack ? err.stack : String(err));
+}
+function sanitizePlayerState() {
+  if (!player) return;
+  const bad = !Number.isFinite(player.x) || !Number.isFinite(player.y) ||
+    !Number.isFinite(player.dirX) || !Number.isFinite(player.dirY) ||
+    !Number.isFinite(player.planeX) || !Number.isFinite(player.planeY);
+  if (!bad) return;
+  console.error("PENGUOOM: corrupted player state detected, recovering.");
+  const cell = (openCells && openCells[0]) || [1, 1];
+  player.x = cell[0] + 0.5; player.y = cell[1] + 0.5;
+  player.dirX = 1; player.dirY = 0; player.planeX = 0; player.planeY = FOV_PLANE;
+  pitch = 0;
+}
 let lastTime = performance.now();
 function frame(now) {
-  const dt = Math.min(0.05, (now - lastTime) / 1000);
+  // Clamped to [0, 0.05]: besides capping a slow frame's step, this also
+  // guards against a negative delta, which a phone can hand us after the tab
+  // is backgrounded and performance.now() resumes lower relative to lastTime
+  // than expected.
+  const dt = Math.max(0, Math.min(0.05, (now - lastTime) / 1000));
   lastTime = now;
   if (running) {
-    update(dt);
-    render();
-    if (gameOver || won) renderEndState();
-    else if (levelTransition) renderLevelTransition();
-    restartBtnDesktopEl.classList.toggle("hidden", isTouch || !(gameOver || won));
+    try {
+      update(dt);
+      sanitizePlayerState();
+      render();
+      if (gameOver || won) renderEndState();
+      else if (levelTransition) renderLevelTransition();
+      else if (paused) renderPausedState();
+      // Restart stays available through the whole run - including mid-fight -
+      // since the desktop player has no other way to bail out of a run short
+      // of dying. Pause only makes sense while there's live play to freeze.
+      restartBtnDesktopEl.classList.toggle("hidden", isTouch);
+      pauseBtnDesktopEl.classList.toggle("hidden", isTouch || gameOver || won);
+      pauseBtnMobileEl.classList.toggle("hidden", gameOver || won);
+    } catch (err) {
+      showFrameError(err);
+    }
   }
   requestAnimationFrame(frame);
 }
