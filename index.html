@@ -231,7 +231,8 @@
   #sectorSelectBtnDesktop.unlocked { border-color: #7fffb0; background: rgba(40,120,90,0.55); }
   #minimapFrame { position: absolute; top: 12px; right: 12px; padding: 4px; }
   #minimap { display: block; background: rgba(0,10,20,0.5); }
-  #hint { position: absolute; top: 12px; left: 12px; color: #cfefff; font-family: var(--font-ui); font-size: 0.8rem; opacity: 0.8; max-width: 60%; }
+  #hint { position: absolute; top: 12px; left: 12px; color: #cfefff; font-family: var(--font-ui); font-size: 0.8rem; opacity: 0.8; max-width: 60%; transition: opacity 1s; }
+  #hint.faded { opacity: 0; }
 
   /* Touch controls sit outside #wrap, pinned to the true screen edges (fixed,
      full viewport) so thumbs can reach them regardless of letterbox size. */
@@ -3962,10 +3963,23 @@ function updateGimmicks(dt) {
 
 // Rebuilds the maze and enemy roster for a sector without touching HP,
 // weapon, or fuel — those carry over between sectors.
+// The controls hint is only useful for the first few seconds of a level -
+// past that it's just a stationary block of text competing with the HUD -
+// so each level start clears any pending fade from the previous level and
+// re-shows it (a player who quit and restarted mid-sector still gets a
+// fresh reminder) before scheduling it to fade out again.
+let hintHideTimer = null;
+function scheduleHintHide() {
+  clearTimeout(hintHideTimer);
+  hintEl.classList.remove("faded");
+  hintHideTimer = setTimeout(() => hintEl.classList.add("faded"), 10000);
+}
+
 function startLevel(idx) {
   levelIndex = idx;
   const level = LEVELS[idx];
   buildLevel(level);
+  scheduleHintHide();
   const startCell = openCells[0];
   player.x = startCell[0] + 0.5;
   player.y = startCell[1] + 0.5;
