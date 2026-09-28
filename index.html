@@ -1794,12 +1794,16 @@ const LEVELS = [
       { type: "candycane", count: 8, scale: 1.1 },
     ],
     music: {
+      // Leans on the classic "Jingle Bells" rhythmic device - three quick
+      // repeated notes, a breath, three more - rather than a generic
+      // pentatonic noodle, so it actually reads as a carol instead of just
+      // "major scale + sleigh bells".
       root: 196, scale: scaleFrom(196, [0, 2, 4, 7, 9, 12]),
       pattern: [
-        0, null, 3, 2, 3, null, 4, null, 0, null, 3, 2, 3, 4, 3, null,
-        4, null, 3, 2, 3, null, 5, null, 4, 3, null, 2, 0, null, 0, null,
+        0, 0, 0, null, 0, 0, 0, null, 2, 1, 0, null, 3, null, null, null,
+        3, 3, 3, null, 2, 2, 2, null, 4, 3, 2, 1, 0, null, null, null,
       ],
-      variation: { step: 30, degree: 3 },
+      variation: { step: 28, degree: 2 },
       stepMs: 340, padWave: "triangle", filterBase: 1300, windFreq: 600, windGain: 0.012, timbre: "sleigh",
     },
   },
@@ -2291,11 +2295,14 @@ function playMelodyNote(scale, degree, timbre) {
     g2.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.16);
     shimmer.connect(g2); g2.connect(musicGain);
     shimmer.start(t0); shimmer.stop(t0 + 0.18);
-    // Harmony voice, a plainer square an octave below the shake so the chord
-    // reads as a supporting inner voice rather than a second melody.
+    // Harmony voice, a plainer square in the same octave as the main hit
+    // (which plays at freq*2 - this needs the same *2 or it lands a full
+    // octave below the melody instead of a third above it, which is what
+    // was turning Christmas Village's harmony into a low, dense hum instead
+    // of a supporting inner voice).
     const harmony = audioCtx.createOscillator();
     harmony.type = "square";
-    harmony.frequency.setValueAtTime(harmonyFreq, t0);
+    harmony.frequency.setValueAtTime(harmonyFreq * 2, t0);
     const gH = audioCtx.createGain();
     gH.gain.setValueAtTime(0.0001, t0);
     gH.gain.exponentialRampToValueAtTime(0.06, t0 + 0.006);
@@ -2354,12 +2361,19 @@ function playBassPulse(freq) {
 }
 
 // Currently-playing pad/wind oscillators plus the melody's setInterval id,
-// torn down by stopMusic() before the next sector's track starts.
+// torn down by stopMusic() before the next sector's track starts. The
+// horn-swell layer below is a self-rescheduling setTimeout chain rather than
+// a single interval (its spacing is randomized, not a fixed step rate) - its
+// own one-shot notes stop themselves and need no cleanup, but the chain
+// itself must be cancelled here or it'd keep spawning new notes into
+// whatever level plays next.
 let musicNodes = [];
 let musicIntervalId = null;
+let hornSwellTimeoutId = null;
 
 function stopMusic() {
   if (musicIntervalId !== null) { clearInterval(musicIntervalId); musicIntervalId = null; }
+  if (hornSwellTimeoutId !== null) { clearTimeout(hornSwellTimeoutId); hornSwellTimeoutId = null; }
   if (audioCtx) {
     const t = audioCtx.currentTime;
     for (const node of musicNodes) {
@@ -2369,24 +2383,59 @@ function stopMusic() {
   musicNodes = [];
 }
 
+// Occasional cinematic brass/horn swell (a fifth interval, the classic
+// "horn call"), built the same way the bear roar's formant sweep is - a
+// slow-opening resonant lowpass standing in for a horn section's timbre.
+// Rare and slow (a filter sweep over several seconds) so it reads as an
+// occasional epic underline, not a competing melody.
+function playHornSwell(root) {
+  const t0 = audioCtx.currentTime;
+  const dur = 3.2;
+  const osc1 = audioCtx.createOscillator();
+  osc1.type = "sawtooth"; osc1.frequency.value = root / 2;
+  const osc2 = audioCtx.createOscillator();
+  osc2.type = "sawtooth"; osc2.frequency.value = (root / 2) * Math.pow(2, 7 / 12);
+  const filt = audioCtx.createBiquadFilter();
+  filt.type = "lowpass"; filt.Q.value = 1.2;
+  filt.frequency.setValueAtTime(300, t0);
+  filt.frequency.linearRampToValueAtTime(900, t0 + dur * 0.5);
+  filt.frequency.linearRampToValueAtTime(300, t0 + dur);
+  const g = audioCtx.createGain();
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.exponentialRampToValueAtTime(0.1, t0 + dur * 0.4);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  osc1.connect(filt); osc2.connect(filt); filt.connect(g); g.connect(musicGain);
+  osc1.start(t0); osc2.start(t0);
+  osc1.stop(t0 + dur + 0.1); osc2.stop(t0 + dur + 0.1);
+}
+function scheduleHornSwell(root) {
+  const delay = 10000 + Math.random() * 8000;
+  hornSwellTimeoutId = setTimeout(() => { playHornSwell(root); scheduleHornSwell(root); }, delay);
+}
+
 function startMusicForLevel(level) {
   stopMusic();
   const cfg = level.music;
 
-  // Pad drone: root + a fifth above, under a slowly breathing lowpass filter.
+  // Pad drone: root + a fifth above, plus a second root voice a few cents
+  // sharp for a touch of detuned-unison shimmer (kept subtle - a fuller
+  // multi-voice version of this read as a persistent hum instead of a quiet
+  // background pad, so this stays close to the original two-tone drone).
   const padOsc1 = audioCtx.createOscillator();
+  const padOsc1detune = audioCtx.createOscillator();
   const padOsc2 = audioCtx.createOscillator();
-  padOsc1.type = cfg.padWave; padOsc2.type = cfg.padWave;
+  padOsc1.type = padOsc1detune.type = padOsc2.type = cfg.padWave;
   padOsc1.frequency.value = cfg.root;
+  padOsc1detune.frequency.value = cfg.root * Math.pow(2, 6 / 1200);
   padOsc2.frequency.value = cfg.root * Math.pow(2, 7 / 12);
   const padFilter = audioCtx.createBiquadFilter();
   padFilter.type = "lowpass";
   padFilter.frequency.value = cfg.filterBase;
   const padGain = audioCtx.createGain();
-  padGain.gain.value = 0.05;
-  padOsc1.connect(padFilter); padOsc2.connect(padFilter);
+  padGain.gain.value = 0.028;
+  padOsc1.connect(padFilter); padOsc1detune.connect(padFilter); padOsc2.connect(padFilter);
   padFilter.connect(padGain); padGain.connect(musicGain);
-  padOsc1.start(); padOsc2.start();
+  padOsc1.start(); padOsc1detune.start(); padOsc2.start();
 
   const lfo = audioCtx.createOscillator();
   lfo.type = "sine"; lfo.frequency.value = 0.05;
@@ -2408,7 +2457,9 @@ function startMusicForLevel(level) {
   windSrc.connect(windFilter); windFilter.connect(windGain); windGain.connect(musicGain);
   windSrc.start();
 
-  musicNodes = [padOsc1, padOsc2, lfo, windSrc];
+  musicNodes = [padOsc1, padOsc1detune, padOsc2, lfo, windSrc];
+
+  scheduleHornSwell(cfg.root);
 
   // Melody, looped by re-triggering on an interval. Each level's pattern is
   // two 16-step phrases (a theme, then a developed answer to it) rather than
@@ -2728,8 +2779,11 @@ function updateHud() {
 document.addEventListener("keydown", e => {
   keys[e.code] = true;
   // Locked out during live gameplay so a stray R doesn't force an accidental
-  // restart — only live once the run has actually ended.
-  if (e.code === "KeyR" && (gameOver || won)) newGame();
+  // restart — only live once the run has actually ended. A win restarts
+  // fresh at Sector 1 rather than resuming at the checkpoint - there's
+  // nothing left to "resume" once the whole game's been cleared, and
+  // looping back into just Sector 10 forever isn't a real replay.
+  if (e.code === "KeyR" && (gameOver || won)) newGame(won ? 0 : undefined);
   if (e.code === "KeyM") toggleAllMute();
   if (e.code === "Digit1") currentWeaponKey = "blaster";
   if (e.code === "Digit2") currentWeaponKey = "harpoon";
@@ -2935,13 +2989,13 @@ for (const btn of weaponBtnEls) {
 
 function restartFromMobileChip() {
   overlay.style.display = "none";
-  newGame();
+  newGame(won ? 0 : undefined);
 }
 restartBtnMobileEl.addEventListener("touchstart", e => { e.preventDefault(); restartFromMobileChip(); }, { passive: false });
 restartBtnMobileEl.addEventListener("click", restartFromMobileChip);
 
 restartBtnDesktopEl.addEventListener("click", () => {
-  newGame();
+  newGame(won ? 0 : undefined);
   tryPointerLock();
 });
 
@@ -4650,7 +4704,8 @@ function renderEndState() {
   ctx.fillText(bannerText, SCREEN_W / 2, SCREEN_H / 2 - 10);
   ctx.font = `20px ${FONT_UI}`;
   ctx.fillStyle = "#eafcff";
-  ctx.fillText(isTouch ? "Click the Restart button to play again" : "Click Restart or press R to play again", SCREEN_W / 2, SCREEN_H / 2 + 30);
+  const restartHint = (isTouch ? "Click the Restart button to play again" : "Click Restart or press R to play again") + (won ? " from Sector 1" : "");
+  ctx.fillText(restartHint, SCREEN_W / 2, SCREEN_H / 2 + 30);
   ctx.font = `16px ${FONT_UI}`;
   ctx.fillStyle = lastRunNewRecord ? "#ffe27f" : "#9fd8e6";
   ctx.fillText((lastRunNewRecord ? "NEW BEST!  " : "") + bestStatsText(), SCREEN_W / 2, SCREEN_H / 2 + 58);
