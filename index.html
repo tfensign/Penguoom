@@ -2021,15 +2021,25 @@ const LEVELS = [
     // cross-checked against the companion .abc encoding (identical on every
     // note/duration for this tune). "Ice Fortress" is the opening sector -
     // Grok's own tag for this piece ("march across ice") is exactly right.
+    // Played through twice (see chordProgression/chordStepLen - a plain
+    // I-V-I-V-V-I-I-V hymn harmonic rhythm, one chord per 8 steps, cycling
+    // once per verse) so the loop is real length before it repeats, and the
+    // second time through comes in fuller (see the fuller flag on
+    // playMelodyNote).
     music: {
       root: 196, scale: scaleFrom(196, [0, 2, 4, 5, 7, 9, 11, 12]),
+      chordStepLen: 8, chordProgression: [0, 4, 0, 4, 4, 0, 0, 4],
       pattern: [
         0, 0, 0, 1, 0, 0, 4, null, 5, 4, 5, 6, 4, null, null, null,
         0, 0, 0, 1, 0, 0, 4, null, 5, 4, 5, 6, 4, null, null, null,
         4, 5, 6, 4, 5, 6, 0, null, 4, 5, 6, 4, 5, 6, 0, null,
         0, 0, 0, 1, 0, 0, 4, null, 5, 4, 5, 6, 4, null, null, null,
+        0, 0, 0, 1, 0, 0, 4, null, 5, 4, 5, 6, 4, null, null, null,
+        0, 0, 0, 1, 0, 0, 4, null, 5, 4, 5, 6, 4, null, null, null,
+        4, 5, 6, 4, 5, 6, 0, null, 4, 5, 6, 4, 5, 6, 0, null,
+        0, 0, 0, 1, 0, 0, 4, null, 5, 4, 5, 6, 4, null, null, null,
       ],
-      variation: { step: 63, degree: 0 },
+      variation: { step: 127, degree: 0 },
       stepMs: 273, padWave: "sine", filterBase: 800, windFreq: 500, windGain: 0.02, timbre: "bell",
     },
   },
@@ -2050,16 +2060,22 @@ const LEVELS = [
     // sol=4 le=5(b6) te=6(b7). Transcribed note-for-note from
     // pd_winter_game_notes.txt, cross-checked against the .abc encoding
     // (identical). Dark, minor-key, atmospheric - fits this cavern's sparse
-    // dripping ambience and near-black palette.
+    // dripping ambience and near-black palette. Played twice (i-v-i-v-iv-i-v-i,
+    // one chord per 8 steps) for real length, fuller the second time through.
     music: {
       root: 164.81, scale: scaleFrom(164.81, [0, 2, 3, 5, 7, 8, 10, 12]),
+      chordStepLen: 8, chordProgression: [0, 4, 0, 4, 3, 0, 4, 0],
       pattern: [
         0, null, 0, 1, 2, null, 3, 4, 5, 4, 3, 2, 1, null, 0, 6,
         0, null, 0, 1, 2, null, 3, 4, 5, null, 4, 3, 4, null, null, null,
         4, null, 4, 4, 0, null, 6, 5, 4, 3, 2, 1, 0, null, 1, 2,
         3, null, 2, 1, 0, null, 6, null, 0, null, 2, 1, 0, null, null, null,
+        0, null, 0, 1, 2, null, 3, 4, 5, 4, 3, 2, 1, null, 0, 6,
+        0, null, 0, 1, 2, null, 3, 4, 5, null, 4, 3, 4, null, null, null,
+        4, null, 4, 4, 0, null, 6, 5, 4, 3, 2, 1, 0, null, 1, 2,
+        3, null, 2, 1, 0, null, 6, null, 0, null, 2, 1, 0, null, null, null,
       ],
-      variation: { step: 63, degree: 0 },
+      variation: { step: 127, degree: 0 },
       stepMs: 300, padWave: "sine", filterBase: 550, windFreq: 350, windGain: 0.012, timbre: "bell",
     },
   },
@@ -2083,14 +2099,20 @@ const LEVELS = [
     // combat" music: it's the harshest storm in the game (highest snow
     // rate of any level), and a bleak, contemplative tune under visual
     // chaos reads as haunting rather than mismatched.
+    // Played twice for real length (I-IV-I-V-I-IV-ii-V-I-IV-V-I, one chord
+    // per bar of 4 quarter-note steps), fuller the second time through.
     music: {
       root: 174.61, scale: scaleFrom(174.61, [0, 2, 4, 5, 7, 9, 11, 12]),
+      chordStepLen: 4, chordProgression: [0, 3, 0, 4, 0, 3, 1, 4, 0, 3, 4, 0],
       pattern: [
         0, 1, 2, 3, null, 2, 1, 0, 5, 4, null, 4, 0, 1, 2, 3,
         null, 2, 1, 0, 1, 2, null, null, 4, 4, 2, 3, null, 2, 1, 0,
         5, 4, null, 4, 0, 1, 2, 1, 0, 5, 4, null, null, 0, null, null,
+        0, 1, 2, 3, null, 2, 1, 0, 5, 4, null, 4, 0, 1, 2, 3,
+        null, 2, 1, 0, 1, 2, null, null, 4, 4, 2, 3, null, 2, 1, 0,
+        5, 4, null, 4, 0, 1, 2, 1, 0, 5, 4, null, null, 0, null, null,
       ],
-      variation: { step: 47, degree: 4 },
+      variation: { step: 95, degree: 4 },
       stepMs: 833, padWave: "sine", filterBase: 1000, windFreq: 700, windGain: 0.04, timbre: "bell",
     },
   },
@@ -2110,14 +2132,20 @@ const LEVELS = [
     // Sousa's "The Liberty Bell" (1893, public domain), key F major, in its
     // native compound 6/8 - stepMs is an eighth note at dotted-quarter=120.
     // A marching-band fortress fanfare for the Emperor's Guard's own keep.
+    // Played twice (I-V-I-IV-V-I-IV-I, one chord per 6-step bar) for real
+    // length, fuller the second time through.
     music: {
       root: 174.61, scale: scaleFrom(174.61, [0, 2, 4, 5, 7, 9, 11, 12]),
+      chordStepLen: 6, chordProgression: [0, 4, 0, 3, 4, 0, 3, 0],
       pattern: [
         0, null, 0, 2, null, 2, 4, null, null, 2, null, 0, 1, null, 1, 3,
         null, 3, 2, null, null, 0, null, 4, 0, null, 0, 2, null, 2, 4, null,
-        null, 2, null, 0, 1, null, 6, 4, null, 6, 0, null, null, null, null,
+        null, 2, null, 0, 1, null, 6, 4, null, 6, 0, null, null, null, null, 0,
+        null, 0, 2, null, 2, 4, null, null, 2, null, 0, 1, null, 1, 3, null,
+        3, 2, null, null, 0, null, 4, 0, null, 0, 2, null, 2, 4, null, null,
+        2, null, 0, 1, null, 6, 4, null, 6, 0, null, null, null, null,
       ],
-      variation: { step: 46, degree: 0 },
+      variation: { step: 93, degree: 0 },
       stepMs: 167, padWave: "sine", filterBase: 600, windFreq: 260, windGain: 0.02, timbre: "bell",
     },
   },
@@ -2136,16 +2164,22 @@ const LEVELS = [
     ],
     // Drunken Sailor (traditional sea shanty, public domain), key E minor -
     // an obvious pick for a dock/harbor sector, and the most universally
-    // recognized shanty of the set.
+    // recognized shanty of the set. Played twice (i-v-i-v-i-iv-i-v, one
+    // chord per 8 steps) for real length, fuller the second time through.
     music: {
       root: 164.81, scale: scaleFrom(164.81, [0, 2, 3, 5, 7, 8, 10, 12]),
+      chordStepLen: 8, chordProgression: [0, 4, 0, 4, 0, 3, 0, 4],
       pattern: [
         0, null, 0, null, 0, null, 2, null, 4, null, 4, null, 4, null, null, null,
         3, null, 3, null, 3, null, 5, null, 4, null, 3, null, 2, null, 1, null,
         0, null, 0, null, 0, null, 2, null, 4, null, 4, null, 4, null, null, null,
         3, null, 5, null, 4, null, 3, null, 2, null, 1, null, 0, null, null, null,
+        0, null, 0, null, 0, null, 2, null, 4, null, 4, null, 4, null, null, null,
+        3, null, 3, null, 3, null, 5, null, 4, null, 3, null, 2, null, 1, null,
+        0, null, 0, null, 0, null, 2, null, 4, null, 4, null, 4, null, null, null,
+        3, null, 5, null, 4, null, 3, null, 2, null, 1, null, 0, null, null, null,
       ],
-      variation: { step: 63, degree: 4 },
+      variation: { step: 127, degree: 4 },
       stepMs: 214, padWave: "sine", filterBase: 700, windFreq: 420, windGain: 0.025, timbre: "bell",
     },
   },
@@ -2166,14 +2200,23 @@ const LEVELS = [
     // ostinato - looping it isn't the liability it would be for a short
     // motif, since the repetition IS the piece. A bell-like ostinato under
     // this cavern's glowing crystal veins is a natural pairing.
+    // Played twice for real length. Kept the chord change slow (i-VI-i,
+    // one chord per 16 steps) rather than busy - the real piece holds its
+    // harmony static for long stretches under the moving ostinato, and a
+    // fast-changing chord here would fight the bell-like repetition
+    // instead of supporting it. Fuller the second time through.
     music: {
       root: 220, scale: scaleFrom(220, [0, 2, 3, 5, 7, 8, 10, 12]),
+      chordStepLen: 16, chordProgression: [0, 5, 0],
       pattern: [
         4, 4, 4, null, null, 3, 2, null, 3, null, 4, null, 4, 4, 4, null,
         null, 3, 2, null, 3, null, 4, null, 4, null, 0, null, 6, null, 4, null,
         0, null, 6, null, 4, 4, 4, null, null, 3, 2, null, null, null, null, null,
+        4, 4, 4, null, null, 3, 2, null, 3, null, 4, null, 4, 4, 4, null,
+        null, 3, 2, null, 3, null, 4, null, 4, null, 0, null, 6, null, 4, null,
+        0, null, 6, null, 4, 4, 4, null, null, 3, 2, null, null, null, null, null,
       ],
-      variation: { step: 47, degree: 0 },
+      variation: { step: 95, degree: 0 },
       stepMs: 208, padWave: "sine", filterBase: 500, windFreq: 900, windGain: 0.01, timbre: "bell",
     },
   },
@@ -2193,15 +2236,23 @@ const LEVELS = [
     // E minor, pitched up an octave from its source register for a bright,
     // celesta-like sparkle - whimsical "ice-magic" fits an aurora better
     // than anything else in the set.
+    // Played twice for real length (i-iv-V-i-VI-iv-V-i, one chord per 8
+    // steps), fuller and a touch more harmonically colorful the second
+    // time through.
     music: {
       root: 329.63, scale: scaleFrom(329.63, [0, 2, 3, 5, 7, 8, 10, 12]),
+      chordStepLen: 8, chordProgression: [0, 3, 4, 0, 5, 3, 4, 0],
       pattern: [
         4, null, null, null, 6, null, 0, null, 1, null, null, null, 0, null, 6, null,
         0, null, null, null, 4, null, null, null, 4, null, null, null, null, null, null, null,
         4, null, null, null, 6, null, 0, null, 1, null, null, null, 3, null, 2, null,
         1, null, null, null, 0, null, 6, null, 0, null, null, null, null, null, null, null,
+        4, null, null, null, 6, null, 0, null, 1, null, null, null, 0, null, 6, null,
+        0, null, null, null, 4, null, null, null, 4, null, null, null, null, null, null, null,
+        4, null, null, null, 6, null, 0, null, 1, null, null, null, 3, null, 2, null,
+        1, null, null, null, 0, null, 6, null, 0, null, null, null, null, null, null, null,
       ],
-      variation: { step: 63, degree: 4 },
+      variation: { step: 127, degree: 4 },
       stepMs: 208, padWave: "sine", filterBase: 1100, windFreq: 750, windGain: 0.045, timbre: "bell",
     },
   },
@@ -2280,15 +2331,20 @@ const LEVELS = [
     ],
     // Danse Macabre's opening figure (Camille Saint-Saens, 1874, public
     // domain), key G minor - an eerie waltz-like tread for crumbling,
-    // mysterious ruins.
+    // mysterious ruins. Played twice for real length (i-iv-i-V, one chord
+    // per 12-step phrase), fuller the second time through.
     music: {
       root: 196, scale: scaleFrom(196, [0, 2, 3, 5, 7, 8, 10, 12]),
+      chordStepLen: 12, chordProgression: [0, 3, 0, 4],
       pattern: [
         4, null, 4, null, 4, null, 5, null, null, null, 4, null, 3, null, 3, null,
         3, null, 4, null, null, null, null, null, 4, null, 4, null, 4, null, 5, null,
         null, null, 4, null, 3, null, 2, null, 1, null, 0, null, null, null, null, null,
+        4, null, 4, null, 4, null, 5, null, null, null, 4, null, 3, null, 3, null,
+        3, null, 4, null, null, null, null, null, 4, null, 4, null, 4, null, 5, null,
+        null, null, 4, null, 3, null, 2, null, 1, null, 0, null, null, null, null, null,
       ],
-      variation: { step: 47, degree: 0 },
+      variation: { step: 95, degree: 0 },
       stepMs: 227, padWave: "sine", filterBase: 620, windFreq: 480, windGain: 0.018, timbre: "bell",
     },
   },
@@ -2308,20 +2364,32 @@ const LEVELS = [
     // In the Hall of the Mountain King (Edvard Grieg, 1875, public domain),
     // key B minor - the final boss level. The source material explicitly
     // calls for speeding this up each loop "for the classic effect"; see
-    // cfg.accelerate in startMusicForLevel, which shrinks the step interval
-    // a little further every time the pattern completes a full pass,
-    // floored so it never turns into an unplayable blur. The pattern's
-    // second half restates the same figure an octave up, matching the
-    // source's own orchestration (strings low, then higher voices join).
+    // cfg.accelerate below, which shrinks the step interval a little
+    // further every time the pattern completes a full pass, floored at
+    // minStepMs so it never turns into an unplayable blur (130ms/step -
+    // an 8-beat phrase at that floor is still under a second, frantic but
+    // legible, not a wall of noise). Doubled again here on top of the
+    // pattern's own built-in octave-up restatement, matching how the real
+    // piece keeps stacking the same figure louder/higher/faster rather
+    // than introducing new material - repetition-as-tension is the whole
+    // idea for this one, unlike the other levels' tracks. Harmony held
+    // static (i-i-iv-V, one chord per 16-step phrase) rather than
+    // frequently moving, so it doesn't blunt the accelerando's own sense
+    // of rising tension.
     music: {
       root: 123.47, scale: scaleFrom(123.47, [0, 2, 3, 5, 7, 8, 10, 12]),
+      chordStepLen: 16, chordProgression: [0, 0, 3, 4],
       pattern: [
         0, 1, 2, 3, 4, 5, 4, 3, 2, 3, 2, 1, 0, null, 4, null,
         0, 1, 2, 3, 4, 5, 4, 3, 2, 3, 2, 1, 0, null, null, null,
         0, 1, 2, 3, 4, 5, 4, 3, 2, 3, 2, 1, 0, null, 4, null,
         0, 1, 2, 3, 4, 5, 4, 3, 2, 3, 2, 1, 0, null, null, null,
+        0, 1, 2, 3, 4, 5, 4, 3, 2, 3, 2, 1, 0, null, 4, null,
+        0, 1, 2, 3, 4, 5, 4, 3, 2, 3, 2, 1, 0, null, null, null,
+        0, 1, 2, 3, 4, 5, 4, 3, 2, 3, 2, 1, 0, null, 4, null,
+        0, 1, 2, 3, 4, 5, 4, 3, 2, 3, 2, 1, 0, null, null, null,
       ],
-      variation: { step: 63, degree: 0 },
+      variation: { step: 127, degree: 0 },
       accelerate: { factor: 0.94, minStepMs: 130 },
       stepMs: 250, padWave: "sine", filterBase: 480, windFreq: 300, windGain: 0.02, timbre: "bell",
     },
@@ -3008,7 +3076,7 @@ function harmonyFreqFor(scale, degree) {
   return scale[harmonyIdx] * (wrapped ? 2 : 1);
 }
 
-function playMelodyNote(scale, degree, timbre) {
+function playMelodyNote(scale, degree, timbre, fuller) {
   const t0 = audioCtx.currentTime;
   const freq = scale[degree];
   const harmonyFreq = harmonyFreqFor(scale, degree);
@@ -3052,7 +3120,13 @@ function playMelodyNote(scale, degree, timbre) {
   }
   // Default "bell" timbre: an icy sine plus a detuned shimmer overtone, plus
   // a softer harmony sine underneath for a fuller chordal tone instead of a
-  // single bare pitch.
+  // single bare pitch. On a "fuller" pass (every other loop through a
+  // song, see the fuller/pass logic in startMusicForLevel) the shimmer and
+  // harmony voices come up in volume and a soft sub-octave doubling joins
+  // underneath - the same "choir/full harmony joins on the repeat" trick
+  // real hymn and carol arrangements use, without needing new melodic
+  // material to make a repeat read as a fuller second verse.
+  const fullerMult = fuller ? 1.8 : 1;
   const osc = audioCtx.createOscillator();
   osc.type = "sine";
   osc.frequency.setValueAtTime(freq, t0);
@@ -3068,11 +3142,11 @@ function playMelodyNote(scale, degree, timbre) {
   g.gain.exponentialRampToValueAtTime(0.0001, t0 + 1.6);
   const g2 = audioCtx.createGain();
   g2.gain.setValueAtTime(0.0001, t0);
-  g2.gain.exponentialRampToValueAtTime(0.05, t0 + 0.02);
+  g2.gain.exponentialRampToValueAtTime(0.05 * fullerMult, t0 + 0.02);
   g2.gain.exponentialRampToValueAtTime(0.0001, t0 + 1.0);
   const gH = audioCtx.createGain();
   gH.gain.setValueAtTime(0.0001, t0);
-  gH.gain.exponentialRampToValueAtTime(0.09, t0 + 0.02);
+  gH.gain.exponentialRampToValueAtTime(0.09 * fullerMult, t0 + 0.02);
   gH.gain.exponentialRampToValueAtTime(0.0001, t0 + 1.4);
   osc.connect(g); g.connect(musicGain);
   shimmer.connect(g2); g2.connect(musicGain);
@@ -3080,6 +3154,17 @@ function playMelodyNote(scale, degree, timbre) {
   osc.start(t0); osc.stop(t0 + 1.7);
   shimmer.start(t0); shimmer.stop(t0 + 1.1);
   harmony.start(t0); harmony.stop(t0 + 1.5);
+  if (fuller) {
+    const sub = audioCtx.createOscillator();
+    sub.type = "sine";
+    sub.frequency.setValueAtTime(freq / 2, t0);
+    const gSub = audioCtx.createGain();
+    gSub.gain.setValueAtTime(0.0001, t0);
+    gSub.gain.exponentialRampToValueAtTime(0.07, t0 + 0.03);
+    gSub.gain.exponentialRampToValueAtTime(0.0001, t0 + 1.5);
+    sub.connect(gSub); gSub.connect(musicGain);
+    sub.start(t0); sub.stop(t0 + 1.6);
+  }
 }
 
 // Soft root/fifth "oom-pah" bass pulse, an octave under the melody, so each
@@ -3321,13 +3406,18 @@ function startMusicForLevel(level) {
   // sharp for a touch of detuned-unison shimmer (kept subtle - a fuller
   // multi-voice version of this read as a persistent hum instead of a quiet
   // background pad, so this stays close to the original two-tone drone).
+  // When cfg.chordProgression is set, root/fifth here are the *current
+  // chord's* tones (retuned smoothly on each chord change in playStep
+  // below) instead of always the tonic - real harmonic movement instead of
+  // one unchanging drone underneath every song.
+  const firstChord = chordTones(cfg.root, (cfg.chordProgression && cfg.chordProgression[0]) || 0);
   const padOsc1 = audioCtx.createOscillator();
   const padOsc1detune = audioCtx.createOscillator();
   const padOsc2 = audioCtx.createOscillator();
   padOsc1.type = padOsc1detune.type = padOsc2.type = cfg.padWave;
-  padOsc1.frequency.value = cfg.root;
-  padOsc1detune.frequency.value = cfg.root * Math.pow(2, 6 / 1200);
-  padOsc2.frequency.value = cfg.root * Math.pow(2, 7 / 12);
+  padOsc1.frequency.value = firstChord.root;
+  padOsc1detune.frequency.value = firstChord.root * Math.pow(2, 6 / 1200);
+  padOsc2.frequency.value = firstChord.fifth;
   const padFilter = audioCtx.createBiquadFilter();
   padFilter.type = "lowpass";
   padFilter.frequency.value = cfg.filterBase;
@@ -3375,22 +3465,38 @@ function startMusicForLevel(level) {
   }
 
   // Melody, looped by re-triggering on an interval. Each level's pattern is
-  // two 16-step phrases (a theme, then a developed answer to it) rather than
-  // one short cell, so the tune has a real arc before it repeats. A root/
-  // fifth bass pulse every 4 steps (see playBassPulse) gives it rhythmic
-  // footing, and cfg.variation swaps in one alternate note every other pass
-  // through the whole pattern, so even the repeat isn't bit-for-bit identical.
+  // the tune played through twice (a plain verse, then a fuller repeat)
+  // rather than one short cell, so there's real length before it repeats.
+  // cfg.chordProgression (one scale-degree root per cfg.chordStepLen
+  // steps, cycling and looping independently of the melody pattern's own
+  // length) drives real harmonic movement in both the pad above and the
+  // bass below, instead of a single unchanging tonic drone/pulse. On odd
+  // passes (every other loop through the whole song) the melody comes
+  // through "fuller" (see playMelodyNote) and cfg.variation can swap in one
+  // alternate note, so even the repeat isn't bit-for-bit identical.
   let step = 0;
   let currentStepMs = cfg.stepMs;
+  const chordLen = cfg.chordStepLen || 8;
+  const chordProg = cfg.chordProgression || [0];
   const playStep = () => {
     const idx = step % cfg.pattern.length;
     const pass = Math.floor(step / cfg.pattern.length);
-    if (idx % 8 === 0) playBassPulse(cfg.root / 2);
-    else if (idx % 8 === 4) playBassPulse((cfg.root / 2) * Math.pow(2, 7 / 12));
+    const chordPos = step % chordLen;
+    const chordIdx = Math.floor(step / chordLen) % chordProg.length;
+    const chord = chordTones(cfg.root, chordProg[chordIdx]);
+    if (chordPos === 0) {
+      const t = audioCtx.currentTime;
+      padOsc1.frequency.setTargetAtTime(chord.root, t, 0.15);
+      padOsc1detune.frequency.setTargetAtTime(chord.root * Math.pow(2, 6 / 1200), t, 0.15);
+      padOsc2.frequency.setTargetAtTime(chord.fifth, t, 0.15);
+      playBassPulse(chord.root / 2);
+    } else if (chordLen >= 6 && chordPos === Math.floor(chordLen / 2)) {
+      playBassPulse(chord.fifth / 2);
+    }
     let degree = cfg.pattern[idx];
     if (cfg.variation && idx === cfg.variation.step && pass % 2 === 1) degree = cfg.variation.degree;
     step++;
-    if (degree !== null) playMelodyNote(cfg.scale, degree, cfg.timbre);
+    if (degree !== null) playMelodyNote(cfg.scale, degree, cfg.timbre, pass % 2 === 1);
     // cfg.accelerate (The Frozen Throne's "In the Hall of the Mountain King"
     // only, so far): the source material explicitly calls for speeding up
     // each loop for the classic effect - a fixed setInterval can't do that,
