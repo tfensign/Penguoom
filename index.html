@@ -234,7 +234,7 @@
   }
   #muteBtn.muted { opacity: 0.6; }
   #restartBtnMobile, #pauseBtnMobile {
-    position: absolute; left: 24px; padding: 8px 12px; border-radius: 8px;
+    position: absolute; left: 8px; padding: 8px 12px; border-radius: 8px;
     background: rgba(20,40,55,0.65); border: 2px solid rgba(150,220,240,0.5); color: #eafcff;
     font-family: var(--font-ui); font-size: 0.85rem;
   }
@@ -2437,21 +2437,29 @@ fireBtnEl.addEventListener("touchcancel", () => {
   mouseHeld = false;
 });
 
+// Registered for both "touchstart" and "click": isTouch is a device guess
+// (see its declaration) that also flags touchscreen-equipped laptops/desktops
+// where the player is actually clicking with a real mouse - a click on one of
+// these never reaches a touchstart-only listener. touchstart calls
+// preventDefault(), which suppresses the browser's synthetic click for an
+// actual touch, so a real tap still only fires selectWeapon/etc. once.
+function selectWeapon(btn) {
+  currentWeaponKey = btn.dataset.weapon;
+  weaponBtnEls.forEach(b => b.classList.toggle("selected", b === btn));
+  if (player) updateHud();
+  if (audioCtx) sfxClick();
+}
 for (const btn of weaponBtnEls) {
-  btn.addEventListener("touchstart", e => {
-    e.preventDefault();
-    currentWeaponKey = btn.dataset.weapon;
-    weaponBtnEls.forEach(b => b.classList.toggle("selected", b === btn));
-    if (player) updateHud();
-    if (audioCtx) sfxClick();
-  }, { passive: false });
+  btn.addEventListener("touchstart", e => { e.preventDefault(); selectWeapon(btn); }, { passive: false });
+  btn.addEventListener("click", () => selectWeapon(btn));
 }
 
-restartBtnMobileEl.addEventListener("touchstart", e => {
-  e.preventDefault();
+function restartFromMobileChip() {
   overlay.style.display = "none";
   newGame();
-});
+}
+restartBtnMobileEl.addEventListener("touchstart", e => { e.preventDefault(); restartFromMobileChip(); }, { passive: false });
+restartBtnMobileEl.addEventListener("click", restartFromMobileChip);
 
 restartBtnDesktopEl.addEventListener("click", () => {
   newGame();
@@ -2481,7 +2489,8 @@ pauseBtnDesktopEl.addEventListener("click", () => setPaused(!paused));
 pauseBtnMobileEl.addEventListener("touchstart", e => {
   e.preventDefault();
   setPaused(!paused);
-});
+}, { passive: false });
+pauseBtnMobileEl.addEventListener("click", () => setPaused(!paused));
 
 muteBtnEl.addEventListener("click", () => toggleMute());
 muteBtnEl.addEventListener("touchstart", e => {
