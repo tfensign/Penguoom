@@ -585,6 +585,136 @@ function drawPenguinFrame(c, s, phase, aggressive) {
   c.stroke();
 }
 
+// Final-boss variant of the regular penguin: same silhouette/gait so it
+// still reads as "penguin" at a glance, but recolored imperial purple-black
+// with the gold neck patches real emperor penguins actually have (instead of
+// a plain white belly), plus a small gold crown - the two cheapest possible
+// signals ("bigger" via ENEMY_TYPES.scale, "regal" via color/crown) that
+// this is the boss, without needing a whole new silhouette.
+function drawEmperorPenguinFrame(c, s, phase, aggressive) {
+  c.clearRect(0, 0, s, s);
+  const legLift1 = Math.sin(phase) * 0.028;
+  const legLift2 = Math.sin(phase + Math.PI) * 0.028;
+  const wingSwing1 = Math.sin(phase + Math.PI) * 0.22;
+  const wingSwing2 = Math.sin(phase) * 0.22;
+
+  c.fillStyle = "#e8830f";
+  c.beginPath(); c.ellipse(s * 0.36, s * (0.94 + legLift1), s * 0.10, s * 0.045, 0, 0, Math.PI * 2); c.fill();
+  c.beginPath(); c.ellipse(s * 0.64, s * (0.94 + legLift2), s * 0.10, s * 0.045, 0, 0, Math.PI * 2); c.fill();
+  c.fillStyle = "#ff9d2f";
+  c.beginPath(); c.ellipse(s * 0.355, s * (0.925 + legLift1), s * 0.085, s * 0.035, 0, 0, Math.PI * 2); c.fill();
+  c.beginPath(); c.ellipse(s * 0.645, s * (0.925 + legLift2), s * 0.085, s * 0.035, 0, 0, Math.PI * 2); c.fill();
+
+  // body: deep imperial purple-black instead of the regular penguin's neutral black
+  const bodyGrad = c.createRadialGradient(s * 0.42, s * 0.46, s * 0.06, s * 0.5, s * 0.58, s * 0.42);
+  bodyGrad.addColorStop(0, "#2c2038");
+  bodyGrad.addColorStop(0.55, "#1c1524");
+  bodyGrad.addColorStop(1, "#0c0810");
+  c.fillStyle = bodyGrad;
+  c.beginPath();
+  c.ellipse(s * 0.5, s * 0.58, s * 0.30, s * 0.40, 0, 0, Math.PI * 2);
+  c.fill();
+
+  // belly: rich gold instead of white
+  const bellyGrad = c.createRadialGradient(s * 0.46, s * 0.48, s * 0.03, s * 0.5, s * 0.62, s * 0.3);
+  bellyGrad.addColorStop(0, "#ffe36b");
+  bellyGrad.addColorStop(1, "#d9a520");
+  c.fillStyle = bellyGrad;
+  c.beginPath();
+  c.ellipse(s * 0.5, s * 0.62, s * 0.18, s * 0.30, 0, 0, Math.PI * 2);
+  c.fill();
+  c.strokeStyle = "rgba(120,80,10,0.35)";
+  c.lineWidth = 0.9;
+  for (let i = 0; i < 3; i++) {
+    c.beginPath();
+    c.ellipse(s * 0.5, s * (0.5 + i * 0.13), s * (0.14 - i * 0.02), s * 0.05, 0, 0, Math.PI);
+    c.stroke();
+  }
+
+  // gold neck patches - the real emperor penguin's signature marking
+  c.fillStyle = "rgba(255,210,90,0.85)";
+  c.beginPath(); c.ellipse(s * 0.33, s * 0.33, s * 0.07, s * 0.09, -0.3, 0, Math.PI * 2); c.fill();
+  c.beginPath(); c.ellipse(s * 0.67, s * 0.33, s * 0.07, s * 0.09, 0.3, 0, Math.PI * 2); c.fill();
+
+  const wingGrad = c.createLinearGradient(s * 0.18, s * 0.4, s * 0.3, s * 0.75);
+  wingGrad.addColorStop(0, "#241c30");
+  wingGrad.addColorStop(1, "#0c0810");
+  c.fillStyle = wingGrad;
+  c.beginPath(); c.ellipse(s * 0.24, s * 0.58, s * 0.06, s * 0.18, -0.3 + wingSwing1, 0, Math.PI * 2); c.fill();
+  c.beginPath(); c.ellipse(s * 0.76, s * 0.58, s * 0.06, s * 0.18, 0.3 + wingSwing2, 0, Math.PI * 2); c.fill();
+
+  c.fillStyle = "#1a1420";
+  c.beginPath();
+  c.ellipse(s * 0.5, s * 0.24, s * 0.18, s * 0.18, 0, 0, Math.PI * 2);
+  c.fill();
+
+  if (aggressive) {
+    c.strokeStyle = "#000";
+    c.lineWidth = s * 0.028;
+    c.lineCap = "round";
+    c.beginPath(); c.moveTo(s * 0.385, s * 0.205); c.lineTo(s * 0.475, s * 0.225); c.stroke();
+    c.beginPath(); c.moveTo(s * 0.615, s * 0.205); c.lineTo(s * 0.525, s * 0.225); c.stroke();
+  } else {
+    c.fillStyle = "#fff";
+    c.beginPath(); c.ellipse(s * 0.43, s * 0.22, 0.045 * s, 0.05 * s, 0, 0, Math.PI * 2); c.fill();
+    c.beginPath(); c.ellipse(s * 0.57, s * 0.22, 0.045 * s, 0.05 * s, 0, 0, Math.PI * 2); c.fill();
+    c.fillStyle = "#000";
+    c.beginPath(); c.ellipse(s * 0.44, s * 0.225, 0.02 * s, 0.025 * s, 0, 0, Math.PI * 2); c.fill();
+    c.beginPath(); c.ellipse(s * 0.56, s * 0.225, 0.02 * s, 0.025 * s, 0, 0, Math.PI * 2); c.fill();
+    c.fillStyle = "rgba(255,255,255,0.8)";
+    c.beginPath(); c.ellipse(s * 0.435, s * 0.215, 0.008 * s, 0.01 * s, 0, 0, Math.PI * 2); c.fill();
+    c.beginPath(); c.ellipse(s * 0.555, s * 0.215, 0.008 * s, 0.01 * s, 0, 0, Math.PI * 2); c.fill();
+  }
+  const beakGrad = c.createLinearGradient(s * 0.44, s * 0.27, s * 0.56, s * 0.31);
+  beakGrad.addColorStop(0, "#ffb654");
+  beakGrad.addColorStop(1, "#c5590f");
+  c.fillStyle = beakGrad;
+  c.beginPath();
+  if (aggressive) {
+    c.moveTo(s * 0.5, s * 0.265);
+    c.lineTo(s * 0.5 - 0.075 * s, s * 0.30);
+    c.lineTo(s * 0.5, s * 0.335);
+    c.lineTo(s * 0.5 + 0.075 * s, s * 0.30);
+  } else {
+    c.moveTo(s * 0.5, s * 0.27);
+    c.lineTo(s * 0.5 - 0.06 * s, s * 0.31);
+    c.lineTo(s * 0.5 + 0.06 * s, s * 0.31);
+  }
+  c.closePath();
+  c.fill();
+  if (aggressive) {
+    c.fillStyle = "#7a1c14";
+    c.beginPath(); c.ellipse(s * 0.5, s * 0.30, s * 0.025, s * 0.018, 0, 0, Math.PI * 2); c.fill();
+  }
+
+  // small gold crown, the clearest "this one's the boss" signal
+  const crownGrad = c.createLinearGradient(0, s * 0.06, 0, s * 0.14);
+  crownGrad.addColorStop(0, "#fff1a8");
+  crownGrad.addColorStop(1, "#d9a520");
+  c.fillStyle = crownGrad;
+  c.beginPath();
+  c.moveTo(s * 0.38, s * 0.145);
+  c.lineTo(s * 0.40, s * 0.075);
+  c.lineTo(s * 0.44, s * 0.115);
+  c.lineTo(s * 0.5, s * 0.06);
+  c.lineTo(s * 0.56, s * 0.115);
+  c.lineTo(s * 0.60, s * 0.075);
+  c.lineTo(s * 0.62, s * 0.145);
+  c.closePath();
+  c.fill();
+  c.strokeStyle = "rgba(0,0,0,0.4)";
+  c.lineWidth = 0.8;
+  c.stroke();
+  c.fillStyle = "#b3243a";
+  c.beginPath(); c.ellipse(s * 0.5, s * 0.115, s * 0.018, s * 0.018, 0, 0, Math.PI * 2); c.fill();
+
+  c.strokeStyle = "rgba(0,0,0,0.35)";
+  c.lineWidth = 1;
+  c.beginPath();
+  c.ellipse(s * 0.5, s * 0.58, s * 0.30, s * 0.40, 0, 0, Math.PI * 2);
+  c.stroke();
+}
+
 function drawPolarBearFrame(c, s, phase, aggressive) {
   c.clearRect(0, 0, s, s);
   const legLift1 = Math.sin(phase) * 0.022;
@@ -966,11 +1096,13 @@ const polarBearFrames = buildFrameSet(drawPolarBearFrame);
 const walrusFrames = buildFrameSet(drawWalrusFrame);
 const stoatFrames = buildFrameSet(drawStoatFrame);
 const owlFrames = buildFrameSet(drawOwlFrame);
+const emperorPenguinFrames = buildFrameSet(drawEmperorPenguinFrame);
 const penguinAlphaMask = buildAlphaMask(penguinFrames.neutral[0]);
 const polarBearAlphaMask = buildAlphaMask(polarBearFrames.neutral[0]);
 const walrusAlphaMask = buildAlphaMask(walrusFrames.neutral[0]);
 const stoatAlphaMask = buildAlphaMask(stoatFrames.neutral[0]);
 const owlAlphaMask = buildAlphaMask(owlFrames.neutral[0]);
+const emperorPenguinAlphaMask = buildAlphaMask(emperorPenguinFrames.neutral[0]);
 
 // ---------------------------------------------------------------------------
 // Static decoration props (Christmas trees, gifts, candy canes, ...): drawn
@@ -1355,6 +1487,12 @@ const ENEMY_TYPES = {
   // quite a stoat; hits harder than a stoat but not as often, and not as
   // hard as a penguin.
   owl: { hp: 2, speed: 1.8, damage: 7, detect: 10, attackRange: 0.55, attackCooldown: 1100, frames: owlFrames, alphaMask: owlAlphaMask, scale: 0.62, wanderSpeedMult: 0.55, wanderInterval: [1.0, 2.4], wanderPauseChance: 0.1, hoverAlt: 0.5, diveSpeedMult: 1.6, retreatSpeedMult: 1.3, retreatDuration: 0.9 },
+  // The final boss - one guaranteed spawn in the last sector only (see
+  // startLevel), same generic ground-enemy AI as everything but the owl, just
+  // tuned to be the toughest, hardest-hitting, biggest thing in the game:
+  // more than double a walrus's HP, hits harder, sees farther, and is the
+  // biggest sprite on screen.
+  emperorpenguin: { hp: 50, speed: 0.6, damage: 40, detect: 10, attackRange: 1.1, attackCooldown: 1200, frames: emperorPenguinFrames, alphaMask: emperorPenguinAlphaMask, scale: 1.9, wanderSpeedMult: 0.4, wanderInterval: [2.5, 5.0], wanderPauseChance: 0.4 },
 };
 
 // ---------------------------------------------------------------------------
@@ -1491,7 +1629,7 @@ const LEVELS = [
     floorSpeckles: [{ color: "rgba(150,190,210,0.5)", count: 90, size: [0.6, 1.8] }],
     floorCracks: { count: 5, color: "rgba(70,100,120,0.35)" },
     ambient: "snow", ambientRate: 12,
-    enemyBonus: 0, bearChance: 0.2, stoatChance: 0.35, owlChance: 0.2,
+    enemyCap: 18, bearChance: 0.2, stoatChance: 0.2, owlChance: 0.1,
     decor: [
       { type: "icespike", count: 10, scale: 1.3 },
       { type: "bannerIce", count: 4, scale: 1.3 },
@@ -1514,7 +1652,7 @@ const LEVELS = [
     floorSpeckles: [{ color: "rgba(20,26,30,0.5)", count: 70, size: [1, 3] }, { color: "rgba(150,210,230,0.18)", count: 20, size: [0.5, 1.4] }],
     floorCracks: { count: 8, color: "rgba(10,14,16,0.5)" },
     ambient: "drip", ambientRate: 5,
-    enemyBonus: 2, bearChance: 0.3, stoatChance: 0.35, owlChance: 0.2,
+    enemyCap: 18, bearChance: 0.22, stoatChance: 0.21, owlChance: 0.11,
     decor: [
       { type: "icespike", count: 12, scale: 1.2 },
     ],
@@ -1536,7 +1674,7 @@ const LEVELS = [
     floorSpeckles: [{ color: "rgba(255,255,255,0.6)", count: 60, size: [0.6, 1.6] }],
     floorCracks: { count: 0, color: "transparent" },
     ambient: "snowstorm", ambientRate: 55,
-    enemyBonus: 3, bearChance: 0.35, stoatChance: 0.35, owlChance: 0.2,
+    enemyCap: 18, bearChance: 0.24, stoatChance: 0.23, owlChance: 0.12,
     decor: [
       { type: "crate", count: 6, scale: 0.9 },
       { type: "barrel", count: 6, scale: 0.85 },
@@ -1559,7 +1697,7 @@ const LEVELS = [
     floorSpeckles: [{ color: "rgba(255,140,60,0.28)", count: 40, size: [0.6, 1.6] }, { color: "rgba(0,0,0,0.4)", count: 60, size: [1, 2.4] }],
     floorCracks: { count: 10, color: "rgba(0,0,0,0.5)" },
     ambient: "embers", ambientRate: 16,
-    enemyBonus: 5, bearChance: 0.45, stoatChance: 0.35, owlChance: 0.2,
+    enemyCap: 19, bearChance: 0.27, stoatChance: 0.24, owlChance: 0.13,
     decor: [
       { type: "brazier", count: 8, scale: 1.1 },
       { type: "bannerImperial", count: 5, scale: 1.3 },
@@ -1582,7 +1720,7 @@ const LEVELS = [
     floorSpeckles: [{ color: "rgba(190,150,110,0.3)", count: 40, size: [0.8, 2.2] }, { color: "rgba(200,230,235,0.35)", count: 50, size: [0.6, 1.6] }],
     floorCracks: { count: 9, color: "rgba(15,25,25,0.4)" },
     ambient: "drip", ambientRate: 8,
-    enemyBonus: 6, bearChance: 0.42, stoatChance: 0.38, owlChance: 0.2,
+    enemyCap: 19, bearChance: 0.29, stoatChance: 0.25, owlChance: 0.14,
     decor: [
       { type: "crate", count: 8, scale: 0.9 },
       { type: "barrel", count: 8, scale: 0.85 },
@@ -1605,7 +1743,7 @@ const LEVELS = [
     floorSpeckles: [{ color: "rgba(120,170,255,0.4)", count: 60, size: [0.5, 1.6] }],
     floorCracks: { count: 6, color: "rgba(90,140,230,0.3)" },
     ambient: "drip", ambientRate: 6,
-    enemyBonus: 7, bearChance: 0.48, stoatChance: 0.35, owlChance: 0.2,
+    enemyCap: 19, bearChance: 0.31, stoatChance: 0.27, owlChance: 0.15,
     decor: [
       { type: "icespike", count: 14, scale: 1.4 },
     ],
@@ -1627,7 +1765,7 @@ const LEVELS = [
     floorSpeckles: [{ color: "rgba(180,255,220,0.35)", count: 50, size: [0.6, 1.8] }],
     floorCracks: { count: 0, color: "transparent" },
     ambient: "snowstorm", ambientRate: 60,
-    enemyBonus: 8, bearChance: 0.5, stoatChance: 0.35, owlChance: 0.2,
+    enemyCap: 20, bearChance: 0.33, stoatChance: 0.28, owlChance: 0.16,
     decor: [
       { type: "cairn", count: 9, scale: 1.4 },
     ],
@@ -1649,7 +1787,7 @@ const LEVELS = [
     floorSpeckles: [{ color: "rgba(255,214,120,0.35)", count: 30, size: [0.6, 1.6] }, { color: "rgba(255,255,255,0.4)", count: 50, size: [0.6, 1.6] }],
     floorCracks: { count: 4, color: "rgba(40,25,15,0.35)" },
     ambient: "snow", ambientRate: 16,
-    enemyBonus: 7, bearChance: 0.48, stoatChance: 0.35, owlChance: 0.2,
+    enemyCap: 20, bearChance: 0.35, stoatChance: 0.29, owlChance: 0.17,
     decor: [
       { type: "tree", count: 12, scale: 1.9 },
       { type: "gift", count: 10, scale: 0.5 },
@@ -1673,7 +1811,7 @@ const LEVELS = [
     floorSpeckles: [{ color: "rgba(150,230,220,0.3)", count: 45, size: [0.6, 1.6] }],
     floorCracks: { count: 10, color: "rgba(10,5,20,0.5)" },
     ambient: "drip", ambientRate: 7,
-    enemyBonus: 9, bearChance: 0.55, stoatChance: 0.32, owlChance: 0.2,
+    enemyCap: 20, bearChance: 0.38, stoatChance: 0.30, owlChance: 0.18,
     decor: [
       { type: "cairn", count: 10, scale: 1.3 },
     ],
@@ -1695,7 +1833,7 @@ const LEVELS = [
     floorSpeckles: [{ color: "rgba(255,120,60,0.3)", count: 45, size: [0.6, 1.8] }, { color: "rgba(0,0,0,0.4)", count: 55, size: [1, 2.4] }],
     floorCracks: { count: 12, color: "rgba(0,0,0,0.55)" },
     ambient: "embers", ambientRate: 22,
-    enemyBonus: 11, bearChance: 0.62, stoatChance: 0.30, owlChance: 0.2,
+    enemyCap: 20, bearChance: 0.40, stoatChance: 0.32, owlChance: 0.19,
     decor: [
       { type: "brazier", count: 8, scale: 1.2 },
       { type: "bannerImperial", count: 6, scale: 1.4 },
@@ -2031,6 +2169,41 @@ function sfxStoatChitter() {
     playNoise({ duration: 0.03, gain: 0.14, filterFreq: 3200 + i * 200, filterType: "bandpass", delay: i * 0.045 });
   }
   playTone({ freq: 1400, endFreq: 900, type: "square", duration: 0.06, gain: 0.14, delay: 0.02 });
+}
+// Emperor penguin (final boss) call: a deep, resonant double-trumpet, built
+// the same way the bear roar's formant sweep is (a bandpass "vocal tract"
+// riding the pitch) but voiced higher with a faster nasal wobble, and a
+// rising-then-falling pitch per note instead of a simple downward sweep, so
+// it reads as a commanding trumpet rather than a growl or the regular
+// penguin's bright chirp.
+function playEmperorTrumpetNote(delay) {
+  const t0 = audioCtx.currentTime + delay;
+  const osc = audioCtx.createOscillator();
+  osc.type = "sawtooth";
+  osc.frequency.setValueAtTime(180, t0);
+  osc.frequency.exponentialRampToValueAtTime(260, t0 + 0.1);
+  osc.frequency.exponentialRampToValueAtTime(150, t0 + 0.38);
+  const wobble = audioCtx.createOscillator();
+  wobble.type = "sine"; wobble.frequency.value = 9;
+  const wobbleGain = audioCtx.createGain(); wobbleGain.gain.value = 10;
+  wobble.connect(wobbleGain); wobbleGain.connect(osc.frequency);
+  const formant = audioCtx.createBiquadFilter();
+  formant.type = "bandpass";
+  formant.Q.value = 4;
+  formant.frequency.setValueAtTime(500, t0);
+  formant.frequency.exponentialRampToValueAtTime(900, t0 + 0.15);
+  formant.frequency.exponentialRampToValueAtTime(400, t0 + 0.4);
+  const g = audioCtx.createGain();
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.exponentialRampToValueAtTime(0.32, t0 + 0.05);
+  g.gain.exponentialRampToValueAtTime(0.0005, t0 + 0.42);
+  osc.connect(formant); formant.connect(g); g.connect(sfxGain);
+  wobble.start(t0); osc.start(t0);
+  wobble.stop(t0 + 0.44); osc.stop(t0 + 0.44);
+}
+function sfxEmperorPenguinCall() {
+  playEmperorTrumpetNote(0);
+  playEmperorTrumpetNote(0.42);
 }
 function sfxLevelClear() {
   [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => playTone({ freq: f, type: "triangle", duration: 0.5, gain: 0.22, delay: i * 0.11 }));
@@ -2460,21 +2633,39 @@ function startLevel(idx) {
   player.y = startCell[1] + 0.5;
   player.dirX = 1; player.dirY = 0; player.planeX = 0; player.planeY = FOV_PLANE;
 
-  // Place enemies on open cells reasonably far from the player. Bear odds
-  // and headcount both climb with each deeper sector.
-  const candidates = openCells.filter(([x, y]) => distance(x, y, player.x, player.y) > 4);
+  // Place enemies on open cells far enough from the player's start that
+  // even the fastest enemy (a stoat, 2.2 tiles/sec) can't reach biting range
+  // in an instant if it happened to spawn already aware - a few seconds to
+  // get oriented before anything can possibly be on top of you. (Verified
+  // against the maze generator: even the smallest sector's candidate pool
+  // never drops below 100+ cells at this distance, so there's no risk of
+  // running short even at the higher enemy counts below.)
+  const candidates = openCells.filter(([x, y]) => distance(x, y, player.x, player.y) > 8);
   const shuffled = candidates.sort(() => Math.random() - 0.5);
-  const count = Math.min(18, Math.max(7, Math.floor(shuffled.length / 6)) + level.enemyBonus);
+  const count = Math.min(level.enemyCap, Math.max(7, Math.floor(shuffled.length / 6)));
   enemies = shuffled.slice(0, count).map(([x, y]) => makeEnemy(pickBaseEnemyType(level), x, y));
 
+  // Guaranteed extra spawns (walrus every sector from Sector 2 on, plus the
+  // emperor penguin boss in the last sector only) draw from the cells the
+  // regular roster didn't use, splicing each pick out so the two guaranteed
+  // spawns can never land on the same cell as each other.
+  let extraPool = shuffled.slice(count);
+  function drawExtraCell() {
+    if (!extraPool.length) extraPool = shuffled.slice();
+    const i = Math.floor(Math.random() * extraPool.length);
+    return extraPool.splice(i, 1)[0];
+  }
   // Exactly one walrus per sector from Sector 2 onward: slow, very tanky,
   // very hard-hitting — placed on a leftover cell so it doesn't just spawn
   // stacked with the regular roster.
   if (idx >= 1) {
-    const leftover = shuffled.slice(count);
-    const pool = leftover.length ? leftover : shuffled;
-    const [wx, wy] = pool[Math.floor(Math.random() * pool.length)];
+    const [wx, wy] = drawExtraCell();
     enemies.push(makeEnemy("walrus", wx, wy));
+  }
+  // The final boss: one emperor penguin, only in the last sector.
+  if (idx === LEVELS.length - 1) {
+    const [bx, by] = drawExtraCell();
+    enemies.push(makeEnemy("emperorpenguin", bx, by));
   }
 
   // Static decorative billboards (Christmas trees, gifts, ...) for sectors
@@ -3961,6 +4152,7 @@ function update(dt) {
       else if (e.type === "owl") sfxOwlScreech();
       else if (e.type === "penguin") sfxPenguinChirp();
       else if (e.type === "stoat") sfxStoatChitter();
+      else if (e.type === "emperorpenguin") sfxEmperorPenguinCall();
     }
 
     // Owl dive cycle: unlike every other enemy (which just closes to
