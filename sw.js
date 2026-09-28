@@ -1,4 +1,4 @@
-const CACHE = "penguoom-v50";
+const CACHE = "penguoom-v51";
 const ASSETS = [
   "./",
   "./index.html",

@@ -2192,7 +2192,15 @@ const LEVELS = [
         3, 3, 3, 3, 3, 2, 2, 2, 2, 1, 1, 2, 1, null, 4, null,
       ],
       variation: { step: 31, degree: 0 },
-      stepMs: 340, padWave: "triangle", filterBase: 1300, windFreq: 600, windGain: 0.012, timbre: "sleigh",
+      // "bigband": routes to startBigBandChristmas instead of the generic
+      // pad+single-melody engine (see startMusicForLevel) - a full swung
+      // rhythm section (kick/snare/hi-hat), a walking bass, and brass stabs
+      // over a real I-vi-IV-V progression, built specifically to be
+      // something people can actually dance to rather than just another
+      // background ambience loop. stepMs isn't used here - the big-band
+      // scheduler computes its own swung (long-short) beat timing.
+      arrangement: "bigband",
+      padWave: "triangle", filterBase: 1300, windFreq: 600, windGain: 0.012, timbre: "sleigh",
     },
   },
   {
@@ -2885,6 +2893,30 @@ function scaleFrom(root, semitoneSteps) {
   return semitoneSteps.map(st => root * Math.pow(2, st / 12));
 }
 
+// True diatonic interval arithmetic for chord-tone stacking (used by the
+// Christmas Village big-band arrangement's chords/bass/brass). There are
+// only 7 unique diatonic pitch classes (do re mi fa sol la ti); this works
+// modulo 7 and adds a full octave per wrap, rather than modulo a scale
+// array's length - an 8-element [do..ti,do-octave] array like this level's
+// has a *redundant* duplicate slot at index 7, and naively wrapping modulo 8
+// (as harmonyFreqFor above does) silently lands a step short of a true
+// octave for some chords (a diatonic fifth stacked above "sol" or "la" needs
+// to cross that redundant slot, not stop at it) - degreeFromZero can freely
+// exceed 6 here (e.g. "fifth above sol" is degree 4 + 4 = 8).
+const DIATONIC_STEPS = [0, 2, 4, 5, 7, 9, 11];
+function diatonicFreq(root, degreeFromZero) {
+  const octave = Math.floor(degreeFromZero / 7);
+  const within = ((degreeFromZero % 7) + 7) % 7;
+  return root * Math.pow(2, (DIATONIC_STEPS[within] + octave * 12) / 12);
+}
+function chordTones(root, rootDegree) {
+  return {
+    root: diatonicFreq(root, rootDegree),
+    third: diatonicFreq(root, rootDegree + 2),
+    fifth: diatonicFreq(root, rootDegree + 4),
+  };
+}
+
 // Harmony note for a melody degree: two scale steps above (a "third" in
 // scale-degree terms), always drawn from the same level's own scale array so
 // it's guaranteed to be one of that level's own consonant pitches rather
@@ -3006,15 +3038,170 @@ let sleighShakeTimeoutId = null;
 // just on the beat, and that background shake is a big part of what makes
 // "Jingle Bells" specifically read as *that* song rather than just another
 // carol-shaped melody in bell tones.
+// Built by hand rather than via playNoise/playTone: those route to sfxGain,
+// and this is unambiguously part of the music, not a sound effect - it needs
+// to respect the Music mute toggle (and the gentler music-bus limiter), not
+// the SFX one.
 function playSleighShimmer() {
-  playNoise({ duration: 0.05, gain: 0.045, filterFreq: 5200 + Math.random() * 1800, filterType: "bandpass" });
-  playTone({ freq: 2600 + Math.random() * 400, type: "square", duration: 0.03, gain: 0.02 });
+  const t0 = audioCtx.currentTime;
+  const src = audioCtx.createBufferSource();
+  src.buffer = noiseBuffer(0.05);
+  const filt = audioCtx.createBiquadFilter();
+  filt.type = "bandpass";
+  filt.frequency.value = 5200 + Math.random() * 1800;
+  const g = audioCtx.createGain();
+  g.gain.setValueAtTime(0.045, t0);
+  g.gain.exponentialRampToValueAtTime(0.0005, t0 + 0.05);
+  src.connect(filt); filt.connect(g); g.connect(musicGain);
+  src.start(t0); src.stop(t0 + 0.07);
+
+  const osc = audioCtx.createOscillator();
+  osc.type = "square";
+  osc.frequency.value = 2600 + Math.random() * 400;
+  const g2 = audioCtx.createGain();
+  g2.gain.setValueAtTime(0.02, t0);
+  g2.gain.exponentialRampToValueAtTime(0.0005, t0 + 0.03);
+  osc.connect(g2); g2.connect(musicGain);
+  osc.start(t0); osc.stop(t0 + 0.04);
+}
+
+// ---------------------------------------------------------------------------
+// Christmas Village's dedicated "big band" arrangement - a full dance-band
+// rhythm section (kick/snare/hi-hat), a walking bass and brass stabs
+// following a real I-vi-IV-V chord progression, and a swung (long-short)
+// eighth-note clock instead of a dead-straight grid, with the (now-correct)
+// Jingle Bells melody riding on top. This is its own scheduler rather than
+// a generalization of startMusicForLevel's generic one-melody-line engine
+// below - swing timing needs variable inter-step delays (a plain
+// setInterval can't do that), and nothing else in the game needs a full
+// rhythm section, so it isn't worth bending the shared engine to fit it.
+// ---------------------------------------------------------------------------
+function drumKick() {
+  const t0 = audioCtx.currentTime;
+  const osc = audioCtx.createOscillator();
+  osc.type = "sine";
+  osc.frequency.setValueAtTime(130, t0);
+  osc.frequency.exponentialRampToValueAtTime(46, t0 + 0.12);
+  const g = audioCtx.createGain();
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.linearRampToValueAtTime(0.34, t0 + 0.006);
+  g.gain.exponentialRampToValueAtTime(0.0005, t0 + 0.17);
+  osc.connect(g); g.connect(musicGain);
+  osc.start(t0); osc.stop(t0 + 0.19);
+}
+function drumSnare() {
+  const t0 = audioCtx.currentTime;
+  const src = audioCtx.createBufferSource();
+  src.buffer = noiseBuffer(0.14);
+  const filt = audioCtx.createBiquadFilter();
+  filt.type = "bandpass"; filt.frequency.value = 1800; filt.Q.value = 0.7;
+  const g = audioCtx.createGain();
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.linearRampToValueAtTime(0.22, t0 + 0.004);
+  g.gain.exponentialRampToValueAtTime(0.0005, t0 + 0.13);
+  src.connect(filt); filt.connect(g); g.connect(musicGain);
+  src.start(t0); src.stop(t0 + 0.15);
+  const body = audioCtx.createOscillator();
+  body.type = "triangle"; body.frequency.value = 210;
+  const g2 = audioCtx.createGain();
+  g2.gain.setValueAtTime(0.0001, t0);
+  g2.gain.linearRampToValueAtTime(0.08, t0 + 0.004);
+  g2.gain.exponentialRampToValueAtTime(0.0005, t0 + 0.07);
+  body.connect(g2); g2.connect(musicGain);
+  body.start(t0); body.stop(t0 + 0.08);
+}
+function drumHihat(open) {
+  const t0 = audioCtx.currentTime;
+  const dur = open ? 0.14 : 0.045;
+  const src = audioCtx.createBufferSource();
+  src.buffer = noiseBuffer(dur);
+  const filt = audioCtx.createBiquadFilter();
+  filt.type = "highpass"; filt.frequency.value = 7500;
+  const g = audioCtx.createGain();
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.linearRampToValueAtTime(open ? 0.055 : 0.04, t0 + 0.002);
+  g.gain.exponentialRampToValueAtTime(0.0005, t0 + dur);
+  src.connect(filt); filt.connect(g); g.connect(musicGain);
+  src.start(t0); src.stop(t0 + dur + 0.01);
+}
+// Short plucky bass hit at a chord tone, an octave down from where the
+// chord/stab voicing sits so it reads as the rhythm section's low end
+// rather than another mid-range voice.
+function playWalkingBass(freq) {
+  const t0 = audioCtx.currentTime;
+  const osc = audioCtx.createOscillator();
+  osc.type = "sawtooth";
+  osc.frequency.setValueAtTime(freq / 2, t0);
+  const filt = audioCtx.createBiquadFilter();
+  filt.type = "lowpass"; filt.frequency.value = 500; filt.Q.value = 1;
+  const g = audioCtx.createGain();
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.linearRampToValueAtTime(0.17, t0 + 0.008);
+  g.gain.exponentialRampToValueAtTime(0.0005, t0 + 0.2);
+  osc.connect(filt); filt.connect(g); g.connect(musicGain);
+  osc.start(t0); osc.stop(t0 + 0.22);
+}
+// Big-band "shout chorus" stab: the full triad at once, sawtooth through a
+// resonant bandpass standing in for a horn section, short and punchy rather
+// than playHornSwell's slow cinematic swell (that's still used separately,
+// rarely, as an occasional grander flourish on top of this).
+function playBrassStab(chord) {
+  const t0 = audioCtx.currentTime;
+  for (const f of [chord.root, chord.third, chord.fifth]) {
+    const osc = audioCtx.createOscillator();
+    osc.type = "sawtooth";
+    osc.frequency.value = f;
+    const filt = audioCtx.createBiquadFilter();
+    filt.type = "bandpass"; filt.frequency.value = f * 2; filt.Q.value = 2;
+    const g = audioCtx.createGain();
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.linearRampToValueAtTime(0.07, t0 + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0005, t0 + 0.3);
+    osc.connect(filt); filt.connect(g); g.connect(musicGain);
+    osc.start(t0); osc.stop(t0 + 0.32);
+  }
+}
+let bigBandStepTimeoutId = null;
+function startBigBandChristmas(cfg) {
+  // I - vi - IV - V, the classic "50s progression" - about as danceable and
+  // universally consonant as a chord loop gets, and any diatonic melody
+  // (this level's Jingle Bells transcription included) sits comfortably
+  // over it. One chord per 4 steps, so it changes twice per 16-step line.
+  const chordProgression = [0, 5, 3, 4];
+  const beatMs = 400; // quarter note at ~150 BPM - a dance tempo, not a dirge
+  const swingLong = beatMs * 0.6;
+  const swingShort = beatMs * 0.4;
+  const totalSteps = cfg.pattern.length;
+  let step = 0;
+  const scheduleNext = () => {
+    const idx = step % totalSteps;
+    const pass = Math.floor(step / totalSteps);
+    const posInGroup = idx % 4;
+    const chordIdx = Math.floor(idx / 4) % chordProgression.length;
+    const chord = chordTones(cfg.root, chordProgression[chordIdx]);
+
+    // Rhythm section: kick+bass+brass on the downbeat of each 2-beat chord
+    // group, snare+bass on the backbeat, hi-hat every swung eighth for a
+    // continuous shuffle ride.
+    if (posInGroup === 0) { drumKick(); playWalkingBass(chord.root); playBrassStab(chord); }
+    else if (posInGroup === 2) { drumSnare(); playWalkingBass(chord.fifth); }
+    drumHihat(posInGroup % 2 === 0);
+
+    let degree = cfg.pattern[idx];
+    if (cfg.variation && idx === cfg.variation.step && pass % 2 === 1) degree = cfg.variation.degree;
+    if (degree !== null) playMelodyNote(cfg.scale, degree, cfg.timbre);
+
+    step++;
+    bigBandStepTimeoutId = setTimeout(scheduleNext, idx % 2 === 0 ? swingLong : swingShort);
+  };
+  scheduleNext();
 }
 
 function stopMusic() {
   if (musicIntervalId !== null) { clearInterval(musicIntervalId); musicIntervalId = null; }
   if (hornSwellTimeoutId !== null) { clearTimeout(hornSwellTimeoutId); hornSwellTimeoutId = null; }
   if (sleighShakeTimeoutId !== null) { clearTimeout(sleighShakeTimeoutId); sleighShakeTimeoutId = null; }
+  if (bigBandStepTimeoutId !== null) { clearTimeout(bigBandStepTimeoutId); bigBandStepTimeoutId = null; }
   if (audioCtx) {
     const t = audioCtx.currentTime;
     for (const node of musicNodes) {
@@ -3057,6 +3244,39 @@ function scheduleHornSwell(root) {
 function startMusicForLevel(level) {
   stopMusic();
   const cfg = level.music;
+
+  if (cfg.arrangement === "bigband") {
+    // Christmas Village's dedicated dance-band arrangement (see
+    // startBigBandChristmas) replaces the generic pad-drone + single-melody
+    // engine below entirely - it needs its own swung, variable-timing step
+    // clock, a full rhythm section, and a moving chord progression, none of
+    // which the generic per-level pattern engine was built to do. Keeps a
+    // thin wind layer for atmosphere and the same occasional horn
+    // swell/sleigh shimmer as everything else for continuity.
+    const windSrc = audioCtx.createBufferSource();
+    windSrc.buffer = noiseBuffer(4);
+    windSrc.loop = true;
+    const windFilter = audioCtx.createBiquadFilter();
+    windFilter.type = "bandpass";
+    windFilter.frequency.value = cfg.windFreq;
+    windFilter.Q.value = 0.5;
+    const windGain = audioCtx.createGain();
+    windGain.gain.value = cfg.windGain;
+    windSrc.connect(windFilter); windFilter.connect(windGain); windGain.connect(musicGain);
+    windSrc.start();
+    musicNodes = [windSrc];
+
+    scheduleHornSwell(cfg.root);
+    if (cfg.timbre === "sleigh") {
+      const shake = () => {
+        playSleighShimmer();
+        sleighShakeTimeoutId = setTimeout(shake, 110 + Math.random() * 70);
+      };
+      shake();
+    }
+    startBigBandChristmas(cfg);
+    return;
+  }
 
   // Pad drone: root + a fifth above, plus a second root voice a few cents
   // sharp for a touch of detuned-unison shimmer (kept subtle - a fuller
