@@ -154,6 +154,17 @@
     transition: width 0.25s ease, background 0.25s ease;
   }
   #hpBarWrap.low #hpBarFill { background: linear-gradient(180deg, #ffe2d8 0%, #ff8f70 45%, #b03824 100%); }
+  /* Colorblind-friendly HUD (Settings toggle): the low-HP warning already has
+     a numeric readout next to the bar, but the bar itself relied on a
+     red/green-adjacent hue shift alone. Swapping to blue-vs-amber (safe
+     across every common form of color blindness) plus a pulsing glow means
+     the warning no longer depends on hue perception at all. */
+  body.colorblindMode #hpBarWrap.low #hpBarFill { background: linear-gradient(180deg, #fff7d6 0%, #ffd166 45%, #b8860b 100%); }
+  body.colorblindMode #hpBarWrap.low { animation: hpLowPulse 0.6s ease-in-out infinite; }
+  @keyframes hpLowPulse {
+    0%, 100% { box-shadow: 0 0 0 rgba(255,255,255,0); }
+    50% { box-shadow: 0 0 10px 3px rgba(255,255,255,0.85); }
+  }
   #hpBarGloss {
     position: absolute; left: 0; right: 0; top: 0; height: 45%; pointer-events: none;
     background: linear-gradient(180deg, rgba(255,255,255,0.5), rgba(255,255,255,0));
@@ -340,6 +351,63 @@
   }
   #homeConfirmYesBtn { background: #1b6; border: none; color: #012; }
   #homeConfirmNoBtn { background: transparent; color: var(--accent-cyan); border: 2px solid rgba(127,232,255,0.4); }
+  /* Settings modal: reachable from the start screen only. Same modal
+     language as Sector Select/Home Confirm; sits one z-index above Home
+     Confirm since nothing else needs to layer above it. */
+  #settingsOverlay {
+    position: fixed; inset: 0; z-index: 46; display: none; align-items: center; justify-content: center;
+    background: rgba(3,10,18,0.88); font-family: var(--font-ui); color: #eafcff;
+    padding: 20px; box-sizing: border-box;
+  }
+  #settingsOverlay.show { display: flex; }
+  #settingsPanel {
+    background: rgba(10,25,35,0.96); border: 2px solid rgba(150,220,240,0.5); border-radius: 12px;
+    padding: 20px 24px; max-width: 420px; width: 100%; max-height: 85vh; overflow-y: auto; box-sizing: border-box;
+  }
+  #settingsPanel h2 {
+    font-family: var(--font-display); font-weight: normal; letter-spacing: 0.15rem;
+    font-size: 1.4rem; color: #7fe8ff; margin: 0 0 16px;
+  }
+  .settingsRow { margin-bottom: 16px; }
+  .settingsRow > label { display: flex; align-items: center; justify-content: space-between; font-size: 0.85rem; color: #eafcff; gap: 10px; }
+  .settingsRow input[type="range"] { flex: 1; margin-left: 12px; accent-color: var(--accent-cyan); }
+  .settingsRow input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--accent-cyan); }
+  .settingsHint { display: block; font-size: 0.72rem; color: #6ea; margin-top: 4px; }
+  #settingsCloseBtn {
+    margin-top: 4px; padding: 0.5rem 1.2rem; font-size: 0.9rem; cursor: pointer;
+    background: transparent; color: var(--accent-cyan); border: 2px solid rgba(127,232,255,0.4); border-radius: 6px;
+  }
+  /* Left-handed controls (Settings toggle, mobile only): mirrors the two
+     controls thumbs actually rest on during play - joystick and
+     weapon-select - to the opposite side. The top-left button ribbon
+     (Restart/Pause/Music/etc.) isn't touched mid-combat so it's left alone. */
+  body.leftHandedControls #joyBase { left: auto; right: 24px; }
+  body.leftHandedControls #weaponBtns { right: auto; left: 30px; }
+  /* First-launch tutorial: same modal language again, auto-shown once (see
+     TUTORIAL_SEEN_KEY) and reachable afterward from the start screen. Only
+     one of the desktop/mobile content blocks is ever unhidden - same
+     isMobileUA branch the #hint text already uses. */
+  #tutorialOverlay {
+    position: fixed; inset: 0; z-index: 47; display: none; align-items: center; justify-content: center;
+    background: rgba(3,10,18,0.88); font-family: var(--font-ui); color: #eafcff;
+    padding: 20px; box-sizing: border-box;
+  }
+  #tutorialOverlay.show { display: flex; }
+  #tutorialPanel {
+    background: rgba(10,25,35,0.96); border: 2px solid rgba(150,220,240,0.5); border-radius: 12px;
+    padding: 20px 24px; max-width: 480px; width: 100%; max-height: 85vh; overflow-y: auto; box-sizing: border-box;
+  }
+  #tutorialPanel h2 {
+    font-family: var(--font-display); font-weight: normal; letter-spacing: 0.15rem;
+    font-size: 1.4rem; color: #7fe8ff; margin: 0 0 14px;
+  }
+  #tutorialPanel ul { margin: 0 0 16px; padding-left: 1.2rem; font-size: 0.85rem; color: #cfefff; line-height: 1.7; }
+  #tutorialPanel ul b { color: #7fe8ff; }
+  #tutorialPanel p.goal { font-size: 0.85rem; color: #9fd8e6; margin: 0 0 18px; }
+  #tutorialCloseBtn {
+    padding: 0.55rem 1.4rem; font-size: 0.95rem; font-weight: bold; cursor: pointer;
+    background: #1b6; border: none; color: #012; border-radius: 6px;
+  }
   #updateBanner {
     position: fixed; left: 50%; top: 14px; transform: translateX(-50%) translateY(-140%);
     z-index: 30; display: flex; align-items: center; gap: 10px;
@@ -407,7 +475,56 @@
     </div>
     <button id="startBtn">ENTER THE ICE</button>
     <button id="installBtn" class="secondary hidden">&#128241; Install App</button>
+    <button id="settingsBtn" class="secondary">&#9881; Settings</button>
+    <button id="howToPlayBtn" class="secondary">&#10067; How to Play</button>
     <p id="installHint" class="hidden"></p>
+  </div>
+</div>
+
+<div id="tutorialOverlay">
+  <div id="tutorialPanel">
+    <h2>How to Play</h2>
+    <ul id="tutorialDesktopContent">
+      <li><b>Move:</b> WASD</li>
+      <li><b>Look:</b> mouse (aim up/down matters - it's the difference between a body shot and a miss), or scroll to turn</li>
+      <li><b>Fire:</b> click and hold</li>
+      <li><b>Switch weapon:</b> 1 (Fish Blaster), 2 (Harpoon Cannon), 3 (Flamethrower)</li>
+      <li><b>Pause:</b> P, or the Pause button</li>
+      <li><b>Mute:</b> M, or the music/SFX icons</li>
+      <li><b>Home icon:</b> back to this screen to change difficulty - your run pauses first and asks you to confirm</li>
+    </ul>
+    <ul id="tutorialMobileContent" class="hidden">
+      <li><b>Move:</b> the joystick, bottom-left</li>
+      <li><b>Look/aim:</b> drag anywhere on the screen</li>
+      <li><b>Fire:</b> tap; hold for the Flamethrower</li>
+      <li><b>Switch weapon:</b> tap a weapon icon, bottom-right</li>
+      <li><b>Pause/Music/SFX/Sectors/Home:</b> the button column, top-left</li>
+    </ul>
+    <p class="goal">Goal: fight through all ten icy sectors. Clearing a sector unlocks it for direct
+       selection later (per difficulty) via Sectors.</p>
+    <button id="tutorialCloseBtn">Got it, let's play!</button>
+  </div>
+</div>
+
+<div id="settingsOverlay">
+  <div id="settingsPanel">
+    <h2>Settings</h2>
+    <div class="settingsRow">
+      <label for="sensitivitySlider"><span>Look sensitivity</span><span id="sensitivityValue">1.0x</span></label>
+      <input type="range" id="sensitivitySlider" min="0.4" max="2.5" step="0.1" value="1">
+    </div>
+    <div class="settingsRow">
+      <label for="invertYCheckbox"><span>Invert vertical look</span><input type="checkbox" id="invertYCheckbox"></label>
+    </div>
+    <div class="settingsRow">
+      <label for="leftHandedCheckbox"><span>Left-handed controls</span><input type="checkbox" id="leftHandedCheckbox"></label>
+      <span class="settingsHint">Swaps the movement joystick and weapon-select to the opposite side (mobile only).</span>
+    </div>
+    <div class="settingsRow">
+      <label for="colorblindCheckbox"><span>Colorblind-friendly HUD</span><input type="checkbox" id="colorblindCheckbox"></label>
+      <span class="settingsHint">Low-health warning switches from a red tint to a pulsing blue/amber cue.</span>
+    </div>
+    <button id="settingsCloseBtn">Close</button>
   </div>
 </div>
 
@@ -452,6 +569,24 @@
 
 <script>
 "use strict";
+
+// ---------------------------------------------------------------------------
+// All localStorage reads/writes below go through these two helpers instead of
+// calling localStorage directly. Direct access can throw synchronously (not
+// just return unexpected data) in environments this game will actually run
+// in once packaged for an app store: a WebView wrapper with DOM storage
+// disabled by device policy, or storage blocked by browser privacy settings.
+// Most calls below happen at top-level script scope during page load, so an
+// uncaught exception there wouldn't just lose one saved setting - it would
+// stop the whole script and leave a blank screen. One try/catch here
+// protects every call site instead of relying on each one to remember its own.
+// ---------------------------------------------------------------------------
+function storageGet(key) {
+  try { return localStorage.getItem(key); } catch (err) { return null; }
+}
+function storageSet(key, value) {
+  try { localStorage.setItem(key, value); return true; } catch (err) { return false; }
+}
 
 // ---------------------------------------------------------------------------
 // Maze generation: randomized DFS carve on an odd-sized grid, then a
@@ -1775,6 +1910,19 @@ const sectorSelectListEl = document.getElementById("sectorSelectList");
 const sectorSelectCloseBtnEl = document.getElementById("sectorSelectCloseBtn");
 const difficultyBtnEls = Array.from(document.querySelectorAll(".difficultyBtn"));
 const rotatePromptEl = document.getElementById("rotatePrompt");
+const settingsBtnEl = document.getElementById("settingsBtn");
+const settingsOverlayEl = document.getElementById("settingsOverlay");
+const settingsCloseBtnEl = document.getElementById("settingsCloseBtn");
+const sensitivitySliderEl = document.getElementById("sensitivitySlider");
+const sensitivityValueEl = document.getElementById("sensitivityValue");
+const invertYCheckboxEl = document.getElementById("invertYCheckbox");
+const leftHandedCheckboxEl = document.getElementById("leftHandedCheckbox");
+const colorblindCheckboxEl = document.getElementById("colorblindCheckbox");
+const howToPlayBtnEl = document.getElementById("howToPlayBtn");
+const tutorialOverlayEl = document.getElementById("tutorialOverlay");
+const tutorialCloseBtnEl = document.getElementById("tutorialCloseBtn");
+const tutorialDesktopContentEl = document.getElementById("tutorialDesktopContent");
+const tutorialMobileContentEl = document.getElementById("tutorialMobileContent");
 
 // ---------------------------------------------------------------------------
 // Responsive layout: #wrap is sized to the largest box matching the game's
@@ -1816,6 +1964,21 @@ if (isTouch) {
     joyBaseEl.classList.add("hidden");
   }
 }
+// Same isMobileUA branch as the hint text above, for the How to Play modal.
+if (isMobileUA) {
+  tutorialDesktopContentEl.classList.add("hidden");
+  tutorialMobileContentEl.classList.remove("hidden");
+}
+
+const TUTORIAL_SEEN_KEY = "penguoom_seen_tutorial_v1";
+function openTutorial() { tutorialOverlayEl.classList.add("show"); }
+function closeTutorial() {
+  tutorialOverlayEl.classList.remove("show");
+  storageSet(TUTORIAL_SEEN_KEY, "1");
+}
+howToPlayBtnEl.addEventListener("click", openTutorial);
+tutorialCloseBtnEl.addEventListener("click", closeTutorial);
+if (storageGet(TUTORIAL_SEEN_KEY) !== "1") openTutorial();
 
 const WEAPONS = {
   blaster: { name: "Fish Blaster", mode: "semi", damage: 1, cooldown: 280, range: 14, bodyColor: "#274b63", barrelColor: "#3a6f8f" },
@@ -2147,9 +2310,9 @@ const SFX_MUTE_KEY = "penguoom_sfx_muted_v1";
 // Music/SFX used to be a single combined mute button - fall back to that old
 // flag for anyone upgrading who'd already muted, so this split doesn't quietly
 // unmute them.
-const legacyMuted = localStorage.getItem("penguoom_muted_v1") === "1";
-let musicMuted = localStorage.getItem(MUSIC_MUTE_KEY) !== null ? localStorage.getItem(MUSIC_MUTE_KEY) === "1" : legacyMuted;
-let sfxMuted = localStorage.getItem(SFX_MUTE_KEY) !== null ? localStorage.getItem(SFX_MUTE_KEY) === "1" : legacyMuted;
+const legacyMuted = storageGet("penguoom_muted_v1") === "1";
+let musicMuted = storageGet(MUSIC_MUTE_KEY) !== null ? storageGet(MUSIC_MUTE_KEY) === "1" : legacyMuted;
+let sfxMuted = storageGet(SFX_MUTE_KEY) !== null ? storageGet(SFX_MUTE_KEY) === "1" : legacyMuted;
 function applyMuteState() {
   if (musicGain) musicGain.gain.value = musicMuted ? 0 : MUSIC_VOL;
   if (sfxGain) sfxGain.gain.value = sfxMuted ? 0 : SFX_VOL;
@@ -2170,12 +2333,12 @@ function applyMuteState() {
 }
 function toggleMusicMute() {
   musicMuted = !musicMuted;
-  try { localStorage.setItem(MUSIC_MUTE_KEY, musicMuted ? "1" : "0"); } catch (err) { /* storage unavailable — mute still works for this session */ }
+  storageSet(MUSIC_MUTE_KEY, musicMuted ? "1" : "0");
   applyMuteState();
 }
 function toggleSfxMute() {
   sfxMuted = !sfxMuted;
-  try { localStorage.setItem(SFX_MUTE_KEY, sfxMuted ? "1" : "0"); } catch (err) { /* storage unavailable — mute still works for this session */ }
+  storageSet(SFX_MUTE_KEY, sfxMuted ? "1" : "0");
   applyMuteState();
 }
 // Keyboard "M" is kept as a single "mute everything" shortcut: if either
@@ -2184,12 +2347,55 @@ function toggleAllMute() {
   const nextMuted = !(musicMuted && sfxMuted);
   musicMuted = nextMuted;
   sfxMuted = nextMuted;
-  try {
-    localStorage.setItem(MUSIC_MUTE_KEY, musicMuted ? "1" : "0");
-    localStorage.setItem(SFX_MUTE_KEY, sfxMuted ? "1" : "0");
-  } catch (err) { /* storage unavailable — mute still works for this session */ }
+  storageSet(MUSIC_MUTE_KEY, musicMuted ? "1" : "0");
+  storageSet(SFX_MUTE_KEY, sfxMuted ? "1" : "0");
   applyMuteState();
 }
+
+// Settings: look sensitivity, invert-Y, left-handed mobile controls, and a
+// colorblind-friendly HUD palette. All four are read once at startup and
+// applied immediately on change - no restart needed - and are guarded
+// against a corrupted/missing localStorage value (a bad sensitivity number
+// would otherwise multiply straight into the turn-speed math every frame).
+const LOOK_SENS_KEY = "penguoom_look_sensitivity_v1";
+const INVERT_Y_KEY = "penguoom_invert_y_v1";
+const LEFT_HANDED_KEY = "penguoom_left_handed_v1";
+const COLORBLIND_KEY = "penguoom_colorblind_v1";
+let lookSensitivity = parseFloat(storageGet(LOOK_SENS_KEY));
+if (!Number.isFinite(lookSensitivity) || lookSensitivity < 0.4 || lookSensitivity > 2.5) lookSensitivity = 1;
+let invertY = storageGet(INVERT_Y_KEY) === "1";
+let leftHanded = storageGet(LEFT_HANDED_KEY) === "1";
+let colorblindMode = storageGet(COLORBLIND_KEY) === "1";
+function applySettings() {
+  sensitivitySliderEl.value = String(lookSensitivity);
+  sensitivityValueEl.textContent = lookSensitivity.toFixed(1) + "x";
+  invertYCheckboxEl.checked = invertY;
+  leftHandedCheckboxEl.checked = leftHanded;
+  colorblindCheckboxEl.checked = colorblindMode;
+  document.body.classList.toggle("leftHandedControls", leftHanded);
+  document.body.classList.toggle("colorblindMode", colorblindMode);
+}
+settingsBtnEl.addEventListener("click", () => settingsOverlayEl.classList.add("show"));
+settingsCloseBtnEl.addEventListener("click", () => settingsOverlayEl.classList.remove("show"));
+sensitivitySliderEl.addEventListener("input", () => {
+  lookSensitivity = parseFloat(sensitivitySliderEl.value);
+  sensitivityValueEl.textContent = lookSensitivity.toFixed(1) + "x";
+  storageSet(LOOK_SENS_KEY, String(lookSensitivity));
+});
+invertYCheckboxEl.addEventListener("change", () => {
+  invertY = invertYCheckboxEl.checked;
+  storageSet(INVERT_Y_KEY, invertY ? "1" : "0");
+});
+leftHandedCheckboxEl.addEventListener("change", () => {
+  leftHanded = leftHandedCheckboxEl.checked;
+  document.body.classList.toggle("leftHandedControls", leftHanded);
+  storageSet(LEFT_HANDED_KEY, leftHanded ? "1" : "0");
+});
+colorblindCheckboxEl.addEventListener("change", () => {
+  colorblindMode = colorblindCheckboxEl.checked;
+  document.body.classList.toggle("colorblindMode", colorblindMode);
+  storageSet(COLORBLIND_KEY, colorblindMode ? "1" : "0");
+});
 
 function noiseBuffer(duration) {
   const n = Math.max(1, Math.floor(audioCtx.sampleRate * duration));
@@ -2815,14 +3021,14 @@ let pickups = [];
 const HIGHSCORE_KEY = "penguoom_highscores_v1";
 function loadHighScores() {
   try {
-    const parsed = JSON.parse(localStorage.getItem(HIGHSCORE_KEY));
+    const parsed = JSON.parse(storageGet(HIGHSCORE_KEY));
     if (parsed && typeof parsed.bestSector === "number") return parsed;
-  } catch (err) { /* corrupt or unavailable storage — fall back to defaults */ }
+  } catch (err) { /* corrupt storage — fall back to defaults */ }
   return { bestSector: 0, bestTimeMs: null };
 }
 let highScores = loadHighScores();
 function saveHighScores() {
-  try { localStorage.setItem(HIGHSCORE_KEY, JSON.stringify(highScores)); } catch (err) { /* storage unavailable (e.g. private browsing) — best score just won't persist */ }
+  storageSet(HIGHSCORE_KEY, JSON.stringify(highScores));
 }
 function formatClockTime(ms) {
   const totalSec = Math.floor(ms / 1000);
@@ -2867,16 +3073,16 @@ function bestStatsText() {
 const SECTOR_PROGRESS_KEY = "penguoom_sector_progress_v1";
 function loadSectorProgress() {
   try {
-    const parsed = JSON.parse(localStorage.getItem(SECTOR_PROGRESS_KEY));
+    const parsed = JSON.parse(storageGet(SECTOR_PROGRESS_KEY));
     if (parsed && typeof parsed === "object") return parsed;
-  } catch (err) { /* corrupt or unavailable storage — fall back to no progress */ }
+  } catch (err) { /* corrupt storage — fall back to no progress */ }
   return {};
 }
 // { beginner: N, advanced: N, expert: N } - N is the highest 0-indexed
 // sector actually cleared on that difficulty, -1 meaning none yet.
 let clearedThroughByDifficulty = loadSectorProgress();
 function saveSectorProgress() {
-  try { localStorage.setItem(SECTOR_PROGRESS_KEY, JSON.stringify(clearedThroughByDifficulty)); } catch (err) { /* storage unavailable — won't persist */ }
+  storageSet(SECTOR_PROGRESS_KEY, JSON.stringify(clearedThroughByDifficulty));
 }
 function clearedThroughForCurrentDifficulty() {
   const v = clearedThroughByDifficulty[difficultyKey];
@@ -2895,12 +3101,12 @@ function recordSectorCleared(idx) {
 
 const SELECTED_SECTOR_KEY = "penguoom_selected_sector_v1";
 function loadSelectedSector() {
-  const n = parseInt(localStorage.getItem(SELECTED_SECTOR_KEY), 10);
+  const n = parseInt(storageGet(SELECTED_SECTOR_KEY), 10);
   return Number.isInteger(n) && n >= 0 && n < LEVELS.length ? n : 0;
 }
 let selectedStartSector = loadSelectedSector();
 function saveSelectedSector() {
-  try { localStorage.setItem(SELECTED_SECTOR_KEY, String(selectedStartSector)); } catch (err) { /* storage unavailable — won't persist */ }
+  storageSet(SELECTED_SECTOR_KEY, String(selectedStartSector));
 }
 
 function isSectorSelectUnlocked() { return clearedThroughForCurrentDifficulty() >= 0; }
@@ -2982,7 +3188,7 @@ const DIFFICULTIES = {
   expert: { label: "Expert", hpMult: 1.4, damageMult: 1.4 },
 };
 function loadDifficulty() {
-  const saved = localStorage.getItem(DIFFICULTY_KEY);
+  const saved = storageGet(DIFFICULTY_KEY);
   return DIFFICULTIES[saved] ? saved : "advanced";
 }
 let difficultyKey = loadDifficulty();
@@ -2990,7 +3196,7 @@ function currentDifficulty() { return DIFFICULTIES[difficultyKey]; }
 function setDifficulty(key) {
   if (!DIFFICULTIES[key]) return;
   difficultyKey = key;
-  try { localStorage.setItem(DIFFICULTY_KEY, key); } catch (err) { /* storage unavailable - difficulty just won't persist */ }
+  storageSet(DIFFICULTY_KEY, key);
   updateDifficultyUI();
   updateSectorSelectUI();
 }
@@ -3598,8 +3804,25 @@ function setPaused(next) {
     mouseDX = 0; mouseDY = 0; scrollTurn = 0;
   } else if (!isTouch) {
     tryPointerLock();
+    if (audioCtx && audioCtx.state === "suspended") audioCtx.resume();
   }
 }
+// The tab/app being backgrounded (phone call, switching apps, screen lock)
+// used to leave the game running invisibly - the update loop kept ticking,
+// enemies kept attacking, and the AudioContext kept eating battery until the
+// player came back to find themselves dead. Pausing on hide fixes the
+// gameplay side; suspending the AudioContext (rather than just relying on
+// the mobile OS to eventually do it) stops it from being counted against
+// the app for background CPU/battery use, which matters for store review.
+// Deliberately does not auto-resume on return to foreground - resuming
+// combat the instant the screen comes back, with no chance to reorient, is
+// disorienting on mobile; the player taps Play same as any other pause.
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) {
+    if (running) setPaused(true);
+    if (audioCtx && audioCtx.state === "running") audioCtx.suspend();
+  }
+});
 pauseBtnDesktopEl.addEventListener("click", () => setPaused(!paused));
 pauseBtnMobileEl.addEventListener("touchstart", e => {
   e.preventDefault();
@@ -4720,8 +4943,11 @@ function update(dt) {
   }
   if (gameOver || won) return;
 
-  // Mouse look (moving the mouse right turns the view right)
-  const turnSpeed = 0.0024;
+  // Mouse look (moving the mouse right turns the view right). Also feeds the
+  // touch drag-look path (mouseDX/mouseDY are shared - see the canvas
+  // touchmove handler), so lookSensitivity covers both input methods with
+  // one slider.
+  const turnSpeed = 0.0024 * lookSensitivity;
   const mouseRot = mouseDX * turnSpeed;
   mouseDX = 0;
   if (mouseRot !== 0) rotatePlayer(mouseRot);
@@ -4730,11 +4956,12 @@ function update(dt) {
   // sprites up/down on screen — this is what lets a shot actually land on
   // an enemy's feet vs its head instead of always hitting body-center).
   const MAX_PITCH = 130;
-  pitch = Math.max(-MAX_PITCH, Math.min(MAX_PITCH, pitch - mouseDY * 0.8));
+  const pitchSign = invertY ? 1 : -1;
+  pitch = Math.max(-MAX_PITCH, Math.min(MAX_PITCH, pitch + pitchSign * mouseDY * 0.8 * lookSensitivity));
   mouseDY = 0;
 
   // Scroll-wheel look: scrolling right turns right, scrolling left turns left.
-  const scrollTurnSpeed = 0.0022;
+  const scrollTurnSpeed = 0.0022 * lookSensitivity;
   if (scrollTurn !== 0) {
     rotatePlayer(scrollTurn * scrollTurnSpeed);
     scrollTurn = 0;
@@ -5533,6 +5760,7 @@ function frame(now) {
 }
 bestStatsEl.textContent = bestStatsText();
 applyMuteState();
+applySettings();
 updateDifficultyUI();
 populateSectorSelectList();
 updateSectorSelectUI();

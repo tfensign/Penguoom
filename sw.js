@@ -1,8 +1,9 @@
-const CACHE = "penguoom-v39";
+const CACHE = "penguoom-v43";
 const ASSETS = [
   "./",
   "./index.html",
   "./manifest.json",
+  "./privacy.html",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
   "./icons/icon-512-maskable.png",
