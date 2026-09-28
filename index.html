@@ -2016,14 +2016,21 @@ const LEVELS = [
       { type: "icespike", count: 10, scale: 1.3 },
       { type: "bannerIce", count: 4, scale: 1.3 },
     ],
+    // Good King Wenceslas (13th c. tune, public domain), key G major,
+    // transcribed note-for-note (pitch:beats) from pd_winter_game_notes.txt,
+    // cross-checked against the companion .abc encoding (identical on every
+    // note/duration for this tune). "Ice Fortress" is the opening sector -
+    // Grok's own tag for this piece ("march across ice") is exactly right.
     music: {
-      root: 220, scale: scaleFrom(220, [0, 3, 5, 7, 10, 12]),
+      root: 196, scale: scaleFrom(196, [0, 2, 4, 5, 7, 9, 11, 12]),
       pattern: [
-        0, null, 2, null, 4, 3, null, 2, null, 0, null, 3, 2, null, null, null,
-        4, null, 5, null, 4, 3, null, 2, null, 3, null, 2, 0, null, null, null,
+        0, 0, 0, 1, 0, 0, 4, null, 5, 4, 5, 6, 4, null, null, null,
+        0, 0, 0, 1, 0, 0, 4, null, 5, 4, 5, 6, 4, null, null, null,
+        4, 5, 6, 4, 5, 6, 0, null, 4, 5, 6, 4, 5, 6, 0, null,
+        0, 0, 0, 1, 0, 0, 4, null, 5, 4, 5, 6, 4, null, null, null,
       ],
-      variation: { step: 28, degree: 2 },
-      stepMs: 460, padWave: "sine", filterBase: 800, windFreq: 500, windGain: 0.02, timbre: "bell",
+      variation: { step: 63, degree: 0 },
+      stepMs: 273, padWave: "sine", filterBase: 800, windFreq: 500, windGain: 0.02, timbre: "bell",
     },
   },
   {
@@ -2038,14 +2045,22 @@ const LEVELS = [
     decor: [
       { type: "icespike", count: 12, scale: 1.2 },
     ],
+    // God Rest You Merry, Gentlemen (English traditional, public domain),
+    // key E minor. Natural-minor degrees here: do=0 re=1 me=2(b3) fa=3
+    // sol=4 le=5(b6) te=6(b7). Transcribed note-for-note from
+    // pd_winter_game_notes.txt, cross-checked against the .abc encoding
+    // (identical). Dark, minor-key, atmospheric - fits this cavern's sparse
+    // dripping ambience and near-black palette.
     music: {
-      root: 165, scale: scaleFrom(165, [0, 3, 5, 7, 10, 12]),
+      root: 164.81, scale: scaleFrom(164.81, [0, 2, 3, 5, 7, 8, 10, 12]),
       pattern: [
-        null, 0, null, null, 2, null, 3, null, null, 0, null, 2, null, null, 3, null,
-        null, 3, null, null, 4, null, 2, null, null, 0, null, null, 2, null, null, null,
+        0, null, 0, 1, 2, null, 3, 4, 5, 4, 3, 2, 1, null, 0, 6,
+        0, null, 0, 1, 2, null, 3, 4, 5, null, 4, 3, 4, null, null, null,
+        4, null, 4, 4, 0, null, 6, 5, 4, 3, 2, 1, 0, null, 1, 2,
+        3, null, 2, 1, 0, null, 6, null, 0, null, 2, 1, 0, null, null, null,
       ],
-      variation: { step: 28, degree: 3 },
-      stepMs: 520, padWave: "sine", filterBase: 550, windFreq: 350, windGain: 0.012, timbre: "bell",
+      variation: { step: 63, degree: 0 },
+      stepMs: 300, padWave: "sine", filterBase: 550, windFreq: 350, windGain: 0.012, timbre: "bell",
     },
   },
   {
@@ -2061,14 +2076,22 @@ const LEVELS = [
       { type: "crate", count: 6, scale: 0.9 },
       { type: "barrel", count: 6, scale: 0.85 },
     ],
+    // In the Bleak Midwinter, Gustav Holst's 1906 "Cranham" tune (public
+    // domain), key F major. Unit is a plain quarter note here (not eighth,
+    // per the source), so stepMs is a full quarter note at q=72 - a slow,
+    // somber dirge, deliberately matched to this sector rather than "fast
+    // combat" music: it's the harshest storm in the game (highest snow
+    // rate of any level), and a bleak, contemplative tune under visual
+    // chaos reads as haunting rather than mismatched.
     music: {
-      root: 247, scale: scaleFrom(247, [0, 3, 5, 7, 10, 12]),
+      root: 174.61, scale: scaleFrom(174.61, [0, 2, 4, 5, 7, 9, 11, 12]),
       pattern: [
-        0, 2, null, 3, 0, null, 2, 4, null, 3, 2, null, 0, 2, null, 4,
-        3, 4, null, 5, 4, null, 2, 3, null, 0, 2, null, 4, 3, null, 0,
+        0, 1, 2, 3, null, 2, 1, 0, 5, 4, null, 4, 0, 1, 2, 3,
+        null, 2, 1, 0, 1, 2, null, null, 4, 4, 2, 3, null, 2, 1, 0,
+        5, 4, null, 4, 0, 1, 2, 1, 0, 5, 4, null, null, 0, null, null,
       ],
-      variation: { step: 31, degree: 4 },
-      stepMs: 380, padWave: "sine", filterBase: 1000, windFreq: 700, windGain: 0.04, timbre: "bell",
+      variation: { step: 47, degree: 4 },
+      stepMs: 833, padWave: "sine", filterBase: 1000, windFreq: 700, windGain: 0.04, timbre: "bell",
     },
   },
   {
@@ -2084,14 +2107,18 @@ const LEVELS = [
       { type: "brazier", count: 8, scale: 1.1 },
       { type: "bannerImperial", count: 5, scale: 1.3 },
     ],
+    // Sousa's "The Liberty Bell" (1893, public domain), key F major, in its
+    // native compound 6/8 - stepMs is an eighth note at dotted-quarter=120.
+    // A marching-band fortress fanfare for the Emperor's Guard's own keep.
     music: {
-      root: 130.5, scale: scaleFrom(130.5, [0, 3, 5, 7, 10, 12]),
+      root: 174.61, scale: scaleFrom(174.61, [0, 2, 4, 5, 7, 9, 11, 12]),
       pattern: [
-        0, null, null, 3, null, 2, null, null, 5, null, 3, null, null, 2, null, 0,
-        0, null, null, 2, null, 4, null, null, 5, null, 4, null, null, 3, null, 0,
+        0, null, 0, 2, null, 2, 4, null, null, 2, null, 0, 1, null, 1, 3,
+        null, 3, 2, null, null, 0, null, 4, 0, null, 0, 2, null, 2, 4, null,
+        null, 2, null, 0, 1, null, 6, 4, null, 6, 0, null, null, null, null,
       ],
-      variation: { step: 31, degree: 2 },
-      stepMs: 420, padWave: "sine", filterBase: 600, windFreq: 260, windGain: 0.02, timbre: "bell",
+      variation: { step: 46, degree: 0 },
+      stepMs: 167, padWave: "sine", filterBase: 600, windFreq: 260, windGain: 0.02, timbre: "bell",
     },
   },
   {
@@ -2107,14 +2134,19 @@ const LEVELS = [
       { type: "crate", count: 8, scale: 0.9 },
       { type: "barrel", count: 8, scale: 0.85 },
     ],
+    // Drunken Sailor (traditional sea shanty, public domain), key E minor -
+    // an obvious pick for a dock/harbor sector, and the most universally
+    // recognized shanty of the set.
     music: {
-      root: 196, scale: scaleFrom(196, [0, 3, 5, 7, 10, 12]),
+      root: 164.81, scale: scaleFrom(164.81, [0, 2, 3, 5, 7, 8, 10, 12]),
       pattern: [
-        0, null, 3, 2, null, 0, null, 5, 3, null, 2, null, 0, null, null, 2,
-        4, null, 3, 2, null, 4, null, 5, 3, null, 2, null, 0, null, null, 0,
+        0, null, 0, null, 0, null, 2, null, 4, null, 4, null, 4, null, null, null,
+        3, null, 3, null, 3, null, 5, null, 4, null, 3, null, 2, null, 1, null,
+        0, null, 0, null, 0, null, 2, null, 4, null, 4, null, 4, null, null, null,
+        3, null, 5, null, 4, null, 3, null, 2, null, 1, null, 0, null, null, null,
       ],
-      variation: { step: 31, degree: 3 },
-      stepMs: 430, padWave: "sine", filterBase: 700, windFreq: 420, windGain: 0.025, timbre: "bell",
+      variation: { step: 63, degree: 4 },
+      stepMs: 214, padWave: "sine", filterBase: 700, windFreq: 420, windGain: 0.025, timbre: "bell",
     },
   },
   {
@@ -2129,14 +2161,20 @@ const LEVELS = [
     decor: [
       { type: "icespike", count: 14, scale: 1.4 },
     ],
+    // Shchedryk / "Carol of the Bells" (Mykola Leontovych, 1916, public
+    // domain), key A minor. Its whole identity is a hypnotic 4-note
+    // ostinato - looping it isn't the liability it would be for a short
+    // motif, since the repetition IS the piece. A bell-like ostinato under
+    // this cavern's glowing crystal veins is a natural pairing.
     music: {
-      root: 174.6, scale: scaleFrom(174.6, [0, 3, 5, 7, 10, 12]),
+      root: 220, scale: scaleFrom(220, [0, 2, 3, 5, 7, 8, 10, 12]),
       pattern: [
-        null, 2, null, 4, null, 5, null, 4, null, 2, null, 0, null, null, 2, null,
-        null, 3, null, 4, null, 5, null, 3, null, 2, null, 0, null, null, null, null,
+        4, 4, 4, null, null, 3, 2, null, 3, null, 4, null, 4, 4, 4, null,
+        null, 3, 2, null, 3, null, 4, null, 4, null, 0, null, 6, null, 4, null,
+        0, null, 6, null, 4, 4, 4, null, null, 3, 2, null, null, null, null, null,
       ],
-      variation: { step: 27, degree: 2 },
-      stepMs: 500, padWave: "sine", filterBase: 500, windFreq: 900, windGain: 0.01, timbre: "bell",
+      variation: { step: 47, degree: 0 },
+      stepMs: 208, padWave: "sine", filterBase: 500, windFreq: 900, windGain: 0.01, timbre: "bell",
     },
   },
   {
@@ -2151,14 +2189,20 @@ const LEVELS = [
     decor: [
       { type: "cairn", count: 9, scale: 1.4 },
     ],
+    // Dance of the Sugar Plum Fairy (Tchaikovsky, 1892, public domain), key
+    // E minor, pitched up an octave from its source register for a bright,
+    // celesta-like sparkle - whimsical "ice-magic" fits an aurora better
+    // than anything else in the set.
     music: {
-      root: 261.63, scale: scaleFrom(261.63, [0, 3, 5, 7, 10, 12]),
+      root: 329.63, scale: scaleFrom(329.63, [0, 2, 3, 5, 7, 8, 10, 12]),
       pattern: [
-        0, 2, 4, null, 3, 2, null, 0, 5, null, 4, 2, null, 3, null, 0,
-        4, 5, null, 4, 3, 2, null, 0, 5, 4, null, 2, 3, null, 2, 0,
+        4, null, null, null, 6, null, 0, null, 1, null, null, null, 0, null, 6, null,
+        0, null, null, null, 4, null, null, null, 4, null, null, null, null, null, null, null,
+        4, null, null, null, 6, null, 0, null, 1, null, null, null, 3, null, 2, null,
+        1, null, null, null, 0, null, 6, null, 0, null, null, null, null, null, null, null,
       ],
-      variation: { step: 31, degree: 4 },
-      stepMs: 360, padWave: "sine", filterBase: 1100, windFreq: 750, windGain: 0.045, timbre: "bell",
+      variation: { step: 63, degree: 4 },
+      stepMs: 208, padWave: "sine", filterBase: 1100, windFreq: 750, windGain: 0.045, timbre: "bell",
     },
   },
   {
@@ -2234,14 +2278,18 @@ const LEVELS = [
     decor: [
       { type: "cairn", count: 10, scale: 1.3 },
     ],
+    // Danse Macabre's opening figure (Camille Saint-Saens, 1874, public
+    // domain), key G minor - an eerie waltz-like tread for crumbling,
+    // mysterious ruins.
     music: {
-      root: 146.8, scale: scaleFrom(146.8, [0, 3, 5, 7, 10, 12]),
+      root: 196, scale: scaleFrom(196, [0, 2, 3, 5, 7, 8, 10, 12]),
       pattern: [
-        0, null, null, 4, 3, null, 2, null, null, 5, null, 3, null, 2, null, null,
-        0, null, null, 3, 4, null, 5, null, null, 4, null, 2, null, 3, null, 0,
+        4, null, 4, null, 4, null, 5, null, null, null, 4, null, 3, null, 3, null,
+        3, null, 4, null, null, null, null, null, 4, null, 4, null, 4, null, 5, null,
+        null, null, 4, null, 3, null, 2, null, 1, null, 0, null, null, null, null, null,
       ],
-      variation: { step: 31, degree: 2 },
-      stepMs: 470, padWave: "sine", filterBase: 620, windFreq: 480, windGain: 0.018, timbre: "bell",
+      variation: { step: 47, degree: 0 },
+      stepMs: 227, padWave: "sine", filterBase: 620, windFreq: 480, windGain: 0.018, timbre: "bell",
     },
   },
   {
@@ -2257,14 +2305,25 @@ const LEVELS = [
       { type: "brazier", count: 8, scale: 1.2 },
       { type: "bannerImperial", count: 6, scale: 1.4 },
     ],
+    // In the Hall of the Mountain King (Edvard Grieg, 1875, public domain),
+    // key B minor - the final boss level. The source material explicitly
+    // calls for speeding this up each loop "for the classic effect"; see
+    // cfg.accelerate in startMusicForLevel, which shrinks the step interval
+    // a little further every time the pattern completes a full pass,
+    // floored so it never turns into an unplayable blur. The pattern's
+    // second half restates the same figure an octave up, matching the
+    // source's own orchestration (strings low, then higher voices join).
     music: {
-      root: 116.5, scale: scaleFrom(116.5, [0, 1, 3, 6, 7, 10]),
+      root: 123.47, scale: scaleFrom(123.47, [0, 2, 3, 5, 7, 8, 10, 12]),
       pattern: [
-        0, null, 3, null, 2, null, 5, null, 3, null, 0, null, 2, null, 3, null,
-        0, null, 3, null, 4, null, 5, null, 4, null, 3, null, 2, null, 1, null,
+        0, 1, 2, 3, 4, 5, 4, 3, 2, 3, 2, 1, 0, null, 4, null,
+        0, 1, 2, 3, 4, 5, 4, 3, 2, 3, 2, 1, 0, null, null, null,
+        0, 1, 2, 3, 4, 5, 4, 3, 2, 3, 2, 1, 0, null, 4, null,
+        0, 1, 2, 3, 4, 5, 4, 3, 2, 3, 2, 1, 0, null, null, null,
       ],
-      variation: { step: 30, degree: 3 },
-      stepMs: 320, padWave: "sine", filterBase: 480, windFreq: 300, windGain: 0.02, timbre: "bell",
+      variation: { step: 63, degree: 0 },
+      accelerate: { factor: 0.94, minStepMs: 130 },
+      stepMs: 250, padWave: "sine", filterBase: 480, windFreq: 300, windGain: 0.02, timbre: "bell",
     },
   },
 ];
@@ -3040,15 +3099,9 @@ function playBassPulse(freq) {
 }
 
 // Currently-playing pad/wind oscillators plus the melody's setInterval id,
-// torn down by stopMusic() before the next sector's track starts. The
-// horn-swell layer below is a self-rescheduling setTimeout chain rather than
-// a single interval (its spacing is randomized, not a fixed step rate) - its
-// own one-shot notes stop themselves and need no cleanup, but the chain
-// itself must be cancelled here or it'd keep spawning new notes into
-// whatever level plays next.
+// torn down by stopMusic() before the next sector's track starts.
 let musicNodes = [];
 let musicIntervalId = null;
-let hornSwellTimeoutId = null;
 let sleighShakeTimeoutId = null;
 
 // Continuous sleigh-bell shimmer: a quick, quiet, metallic noise tick with
@@ -3161,9 +3214,7 @@ function playWalkingBass(freq) {
   osc.start(t0); osc.stop(t0 + 0.22);
 }
 // Big-band "shout chorus" stab: the full triad at once, sawtooth through a
-// resonant bandpass standing in for a horn section, short and punchy rather
-// than playHornSwell's slow cinematic swell (that's still used separately,
-// rarely, as an occasional grander flourish on top of this).
+// resonant bandpass standing in for a horn section, short and punchy.
 function playBrassStab(chord) {
   const t0 = audioCtx.currentTime;
   for (const f of [chord.root, chord.third, chord.fifth]) {
@@ -3218,7 +3269,6 @@ function startBigBandChristmas(cfg) {
 
 function stopMusic() {
   if (musicIntervalId !== null) { clearInterval(musicIntervalId); musicIntervalId = null; }
-  if (hornSwellTimeoutId !== null) { clearTimeout(hornSwellTimeoutId); hornSwellTimeoutId = null; }
   if (sleighShakeTimeoutId !== null) { clearTimeout(sleighShakeTimeoutId); sleighShakeTimeoutId = null; }
   if (bigBandStepTimeoutId !== null) { clearTimeout(bigBandStepTimeoutId); bigBandStepTimeoutId = null; }
   if (audioCtx) {
@@ -3230,35 +3280,6 @@ function stopMusic() {
   musicNodes = [];
 }
 
-// Occasional cinematic brass/horn swell (a fifth interval, the classic
-// "horn call"), built the same way the bear roar's formant sweep is - a
-// slow-opening resonant lowpass standing in for a horn section's timbre.
-// Rare and slow (a filter sweep over several seconds) so it reads as an
-// occasional epic underline, not a competing melody.
-function playHornSwell(root) {
-  const t0 = audioCtx.currentTime;
-  const dur = 3.2;
-  const osc1 = audioCtx.createOscillator();
-  osc1.type = "sawtooth"; osc1.frequency.value = root / 2;
-  const osc2 = audioCtx.createOscillator();
-  osc2.type = "sawtooth"; osc2.frequency.value = (root / 2) * Math.pow(2, 7 / 12);
-  const filt = audioCtx.createBiquadFilter();
-  filt.type = "lowpass"; filt.Q.value = 1.2;
-  filt.frequency.setValueAtTime(300, t0);
-  filt.frequency.linearRampToValueAtTime(900, t0 + dur * 0.5);
-  filt.frequency.linearRampToValueAtTime(300, t0 + dur);
-  const g = audioCtx.createGain();
-  g.gain.setValueAtTime(0.0001, t0);
-  g.gain.exponentialRampToValueAtTime(0.1, t0 + dur * 0.4);
-  g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-  osc1.connect(filt); osc2.connect(filt); filt.connect(g); g.connect(musicGain);
-  osc1.start(t0); osc2.start(t0);
-  osc1.stop(t0 + dur + 0.1); osc2.stop(t0 + dur + 0.1);
-}
-function scheduleHornSwell(root) {
-  const delay = 10000 + Math.random() * 8000;
-  hornSwellTimeoutId = setTimeout(() => { playHornSwell(root); scheduleHornSwell(root); }, delay);
-}
 
 function startMusicForLevel(level) {
   stopMusic();
@@ -3285,10 +3306,6 @@ function startMusicForLevel(level) {
     windSrc.start();
     musicNodes = [windSrc];
 
-    // No scheduleHornSwell here (unlike the generic path below) - a random
-    // cinematic swell dropping into an actual recognizable song reads as a
-    // mistake, not an enhancement, in a way it doesn't for the other levels'
-    // abstract ambient loops.
     if (cfg.timbre === "sleigh") {
       const shake = () => {
         playSleighShimmer();
@@ -3342,8 +3359,6 @@ function startMusicForLevel(level) {
 
   musicNodes = [padOsc1, padOsc1detune, padOsc2, lfo, windSrc];
 
-  scheduleHornSwell(cfg.root);
-
   // The sleigh-bell shimmer is keyed off the melody's own timbre rather
   // than a one-off per-level flag - "sleigh" already means "this level's
   // melody voice is jingle bells", so anything using it gets the ambient
@@ -3366,6 +3381,7 @@ function startMusicForLevel(level) {
   // footing, and cfg.variation swaps in one alternate note every other pass
   // through the whole pattern, so even the repeat isn't bit-for-bit identical.
   let step = 0;
+  let currentStepMs = cfg.stepMs;
   const playStep = () => {
     const idx = step % cfg.pattern.length;
     const pass = Math.floor(step / cfg.pattern.length);
@@ -3375,9 +3391,23 @@ function startMusicForLevel(level) {
     if (cfg.variation && idx === cfg.variation.step && pass % 2 === 1) degree = cfg.variation.degree;
     step++;
     if (degree !== null) playMelodyNote(cfg.scale, degree, cfg.timbre);
+    // cfg.accelerate (The Frozen Throne's "In the Hall of the Mountain King"
+    // only, so far): the source material explicitly calls for speeding up
+    // each loop for the classic effect - a fixed setInterval can't do that,
+    // so a completed pattern pass instead shrinks the step duration for a
+    // self-rescheduling setTimeout chain below, floored so it never becomes
+    // an unplayable blur.
+    if (cfg.accelerate && idx === cfg.pattern.length - 1) {
+      currentStepMs = Math.max(cfg.accelerate.minStepMs, currentStepMs * cfg.accelerate.factor);
+    }
   };
   playStep();
-  musicIntervalId = setInterval(playStep, cfg.stepMs);
+  if (cfg.accelerate) {
+    const tick = () => { playStep(); musicIntervalId = setTimeout(tick, currentStepMs); };
+    musicIntervalId = setTimeout(tick, currentStepMs);
+  } else {
+    musicIntervalId = setInterval(playStep, cfg.stepMs);
+  }
 }
 
 function ensureAudio() {
