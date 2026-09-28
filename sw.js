@@ -1,4 +1,4 @@
-const CACHE = "penguoom-v31";
+const CACHE = "penguoom-v32";
 const ASSETS = [
   "./",
   "./index.html",
@@ -7,6 +7,7 @@ const ASSETS = [
   "./icons/icon-512.png",
   "./icons/icon-512-maskable.png",
   "./icons/apple-touch-icon.png",
+  "./icons/favicon.ico",
   "./fonts/audiowide-regular.woff2",
 ];
 

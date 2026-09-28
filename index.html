@@ -2008,6 +2008,32 @@ function playNoise({ duration = 0.2, gain = 0.4, filterFreq = 1200, filterType =
   src.start(t0); src.stop(t0 + duration + 0.02);
 }
 
+// A handful of pre-generated noise buffers shared by grain-heavy effects
+// (currently just the bear roar's ~23-grain growl bed) instead of calling
+// noiseBuffer() - and filling a fresh buffer with Math.random() - once per
+// grain. Reused with a random start offset each time so it still sounds
+// like independent noise bursts rather than one looping sample.
+const NOISE_POOL_SIZE = 4;
+const NOISE_POOL_DURATION = 1.0;
+let noisePool = [];
+function playPooledNoiseGrain({ duration, gain, filterFreq, filterType = "lowpass", delay = 0 }) {
+  if (!noisePool.length) {
+    for (let i = 0; i < NOISE_POOL_SIZE; i++) noisePool.push(noiseBuffer(NOISE_POOL_DURATION));
+  }
+  const t0 = audioCtx.currentTime + delay;
+  const buffer = noisePool[Math.floor(Math.random() * noisePool.length)];
+  const offset = Math.random() * Math.max(0, buffer.duration - duration - 0.02);
+  const src = audioCtx.createBufferSource();
+  src.buffer = buffer;
+  const filt = audioCtx.createBiquadFilter();
+  filt.type = filterType; filt.frequency.value = filterFreq;
+  const g = audioCtx.createGain();
+  g.gain.setValueAtTime(gain, t0);
+  g.gain.exponentialRampToValueAtTime(0.0005, t0 + duration);
+  src.connect(filt); filt.connect(g); g.connect(sfxGain);
+  src.start(t0, offset, duration + 0.02);
+}
+
 function sfxClick() { playTone({ freq: 900, endFreq: 700, type: "square", duration: 0.05, gain: 0.15 }); }
 function sfxPickup() {
   playTone({ freq: 520, endFreq: 780, type: "sine", duration: 0.09, gain: 0.22 });
@@ -2101,11 +2127,10 @@ function sfxRoar() {
     const gt = i * grainSpacing;
     const envelope = Math.sin((gt / dur) * Math.PI);
     const gain = (0.16 + Math.random() * 0.07) * envelope;
-    playNoise({
+    playPooledNoiseGrain({
       duration: grainSpacing * 1.6,
       gain,
       filterFreq: 220 + Math.random() * 180,
-      filterType: "lowpass",
       delay: delay + gt,
     });
   }
@@ -2485,10 +2510,23 @@ function startMusicForLevel(level) {
 function ensureAudio() {
   if (audioCtx) { if (audioCtx.state === "suspended") audioCtx.resume(); return; }
   audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  // A master limiter: with the pad, bass pulse, horn swell, melody+harmony,
+  // and layered SFX (a bear roar alone is ~25 overlapping grains) all
+  // possibly landing in the same instant, the summed signal can exceed the
+  // valid range and hard-clip. A gentle compressor ahead of destination
+  // gives real headroom instead of having to hand-balance every possible
+  // combination of simultaneous sounds.
+  const masterLimiter = audioCtx.createDynamicsCompressor();
+  masterLimiter.threshold.value = -12;
+  masterLimiter.knee.value = 6;
+  masterLimiter.ratio.value = 12;
+  masterLimiter.attack.value = 0.003;
+  masterLimiter.release.value = 0.25;
+  masterLimiter.connect(audioCtx.destination);
   musicGain = audioCtx.createGain();
-  musicGain.connect(audioCtx.destination);
+  musicGain.connect(masterLimiter);
   sfxGain = audioCtx.createGain();
-  sfxGain.connect(audioCtx.destination);
+  sfxGain.connect(masterLimiter);
   applyMuteState();
   initFlameLoop();
 }
@@ -4678,9 +4716,9 @@ function renderMinimap() {
   }
   for (const e of enemies) {
     if (!e.alive) continue;
-    mmCtx.fillStyle = e.type === "walrus" ? "#c9a878" : e.type === "polarbear" ? "#ffffff" : e.type === "stoat" ? "#cfe6e8" : e.type === "owl" ? "#f0b429" : "#7fe8ff";
+    mmCtx.fillStyle = e.type === "emperorpenguin" ? "#ffd54a" : e.type === "walrus" ? "#c9a878" : e.type === "polarbear" ? "#ffffff" : e.type === "stoat" ? "#cfe6e8" : e.type === "owl" ? "#f0b429" : "#7fe8ff";
     mmCtx.beginPath();
-    mmCtx.arc(e.x * scale, e.y * scale, e.type === "walrus" ? 4 : e.type === "polarbear" ? 3 : e.type === "stoat" ? 1.4 : e.type === "owl" ? 1.8 : 2, 0, Math.PI * 2);
+    mmCtx.arc(e.x * scale, e.y * scale, e.type === "emperorpenguin" ? 5 : e.type === "walrus" ? 4 : e.type === "polarbear" ? 3 : e.type === "stoat" ? 1.4 : e.type === "owl" ? 1.8 : 2, 0, Math.PI * 2);
     mmCtx.fill();
   }
   mmCtx.fillStyle = "#7fffb0";
@@ -4790,9 +4828,13 @@ function frame(now) {
       update(dt);
       sanitizePlayerState();
       render();
+      // paused is checked before levelTransition: update() already freezes
+      // the transition timer while paused (so nothing is lost), but without
+      // this ordering the "SECTOR CLEARED" banner kept showing with no
+      // visual cue that the game was actually stopped.
       if (gameOver || won) renderEndState();
-      else if (levelTransition) renderLevelTransition();
       else if (paused) renderPausedState();
+      else if (levelTransition) renderLevelTransition();
       // Restart stays available through the whole run - including mid-fight -
       // since the desktop player has no other way to bail out of a run short
       // of dying. Pause only makes sense while there's live play to freeze.
