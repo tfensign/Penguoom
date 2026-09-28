@@ -4095,17 +4095,31 @@ function getFlowField() {
 }
 
 // Waypoint (world-space) a hunting enemy at (ex, ey) should walk toward this
-// frame: straight at the player once in the same or an adjacent cell (for a
-// precise final approach), otherwise the center of the flow field's next
-// cell. Falls back to the player's own position if the maze loosening ever
-// produced an unreachable pocket (shouldn't happen — the maze is carved as
-// one connected tree before loosening only adds shortcuts).
+// frame: straight at the player only once actually sharing their cell (no
+// wall can separate two points inside one open cell, so that's always
+// safe), otherwise the center of the flow field's next cell. Falls back to
+// the player's own position if the maze loosening ever produced an
+// unreachable pocket (shouldn't happen — the maze is carved as one
+// connected tree before loosening only adds shortcuts).
+//
+// An adjacent cell (flow.dist === 1) used to get the same direct-aim
+// treatment, as a "precise final approach" - but the straight line from an
+// enemy's position to the player's arbitrary sub-cell position can clip a
+// diagonally-solid neighboring cell's corner (two cells can be cardinally
+// connected - no wall directly between them - while still having a solid
+// cell diagonally between the two specific points inside them). That's the
+// exact wedging bug the flow field's cell-center routing exists to avoid;
+// special-casing dist === 1 reintroduced it for the final cell transition,
+// and an enemy that happened to approach a doorway from the wrong angle
+// could get permanently stuck against that corner. Routing dist === 1
+// through the normal branch below instead aims it at the shared cell's
+// center, which stays clear of any corner.
 function chaseWaypoint(ex, ey) {
   const flow = getFlowField();
   const ecx = Math.floor(ex), ecy = Math.floor(ey);
   const eIdx = mapIdx(ecx, ecy);
   const pcx = Math.floor(player.x), pcy = Math.floor(player.y);
-  if ((ecx === pcx && ecy === pcy) || flow.dist[eIdx] === 1 || flow.dist[eIdx] === 0) {
+  if ((ecx === pcx && ecy === pcy) || flow.dist[eIdx] === 0) {
     return [player.x, player.y];
   }
   if (flow.dist[eIdx] > 0) {
@@ -5070,7 +5084,19 @@ function update(dt) {
     const wasAware = e.aware;
     const aware = dist < stats.detect && hasLineOfSight(e.x, e.y, player.x, player.y);
     e.aware = aware;
-    if (aware && !wasAware) {
+    // An enemy wedged against a wall corner - or just peeking around one
+    // mid-chase - can have hasLineOfSight flicker true/false from one frame
+    // to the next: the DDA raycast above is exact-position-based, and a
+    // sightline that grazes a corner cell is right on the numerical boundary
+    // of "blocked" vs. "clear". Without a cooldown, every flicker re-fires
+    // the full alert cue (aware && !wasAware) - for the roar/bellow/screech
+    // cues, each ~5-25 overlapping grains, that's a nasty rapid-fire wall of
+    // noise instead of a single "spotted!" cue. ALERT_RECOOLDOWN_MS caps how
+    // often the same enemy can re-announce itself, regardless of how often
+    // the underlying aware flag actually flickers.
+    const ALERT_RECOOLDOWN_MS = 4000;
+    if (aware && !wasAware && now - (e.lastAlertMs || -Infinity) > ALERT_RECOOLDOWN_MS) {
+      e.lastAlertMs = now;
       if (e.type === "polarbear") scheduleAlertSfx(sfxRoar);
       else if (e.type === "walrus") scheduleAlertSfx(sfxWalrusBellow);
       else if (e.type === "owl") scheduleAlertSfx(sfxOwlScreech);
