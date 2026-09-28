@@ -2458,6 +2458,22 @@ function sfxEmperorPenguinCall() {
   playEmperorTrumpetNote(0);
   playEmperorTrumpetNote(0.42);
 }
+// The heavy alert cues (roar/bellow/screech/etc.) each layer many grains,
+// and several enemies can all first spot the player on the same frame in a
+// crowded room. Firing them all at the literal same instant is what stacked
+// enough simultaneous voices to slam the SFX limiter. Queuing them through a
+// shared time cursor spreads those starts out by a fraction of a second —
+// short enough nothing feels delayed, long enough that the peak polyphony
+// never piles up. Nothing is dropped, every cue still plays in full.
+let nextAlertSlot = 0;
+const ALERT_STAGGER_MS = 90;
+function scheduleAlertSfx(fn) {
+  const now = performance.now();
+  const at = Math.max(now, nextAlertSlot);
+  nextAlertSlot = at + ALERT_STAGGER_MS;
+  const wait = at - now;
+  if (wait <= 0) fn(); else setTimeout(fn, wait);
+}
 // Environmental gimmick cues: a low wind whoosh for a blizzard gust kicking
 // in, and a sharp crackle for stepping onto treacherous ice.
 function sfxGustHit() {
@@ -2746,23 +2762,30 @@ function startMusicForLevel(level) {
 function ensureAudio() {
   if (audioCtx) { if (audioCtx.state === "suspended") audioCtx.resume(); return; }
   audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  // A master limiter: with the pad, bass pulse, horn swell, melody+harmony,
-  // and layered SFX (a bear roar alone is ~25 overlapping grains) all
-  // possibly landing in the same instant, the summed signal can exceed the
-  // valid range and hard-clip. A gentle compressor ahead of destination
-  // gives real headroom instead of having to hand-balance every possible
-  // combination of simultaneous sounds.
-  const masterLimiter = audioCtx.createDynamicsCompressor();
-  masterLimiter.threshold.value = -12;
-  masterLimiter.knee.value = 6;
-  masterLimiter.ratio.value = 12;
-  masterLimiter.attack.value = 0.003;
-  masterLimiter.release.value = 0.25;
-  masterLimiter.connect(audioCtx.destination);
+  // Separate limiters per bus, not one shared master limiter. A pile of SFX
+  // (a bear roar alone is ~25 overlapping grains, and several enemies can
+  // spot the player in the same instant) used to duck the *entire* mix,
+  // music included, for the compressor's full release time — audible as
+  // everything briefly cutting out. Splitting the buses means an SFX spike
+  // only ever pulls down SFX; the music bed keeps playing underneath it.
   musicGain = audioCtx.createGain();
-  musicGain.connect(masterLimiter);
+  const musicLimiter = audioCtx.createDynamicsCompressor();
+  musicLimiter.threshold.value = -6;
+  musicLimiter.knee.value = 6;
+  musicLimiter.ratio.value = 4;
+  musicLimiter.attack.value = 0.01;
+  musicLimiter.release.value = 0.25;
+  musicGain.connect(musicLimiter);
+  musicLimiter.connect(audioCtx.destination);
   sfxGain = audioCtx.createGain();
-  sfxGain.connect(masterLimiter);
+  const sfxLimiter = audioCtx.createDynamicsCompressor();
+  sfxLimiter.threshold.value = -18;
+  sfxLimiter.knee.value = 6;
+  sfxLimiter.ratio.value = 8;
+  sfxLimiter.attack.value = 0.003;
+  sfxLimiter.release.value = 0.12;
+  sfxGain.connect(sfxLimiter);
+  sfxLimiter.connect(audioCtx.destination);
   applyMuteState();
   initFlameLoop();
 }
@@ -4821,12 +4844,12 @@ function update(dt) {
     const aware = dist < stats.detect && hasLineOfSight(e.x, e.y, player.x, player.y);
     e.aware = aware;
     if (aware && !wasAware) {
-      if (e.type === "polarbear") sfxRoar();
-      else if (e.type === "walrus") sfxWalrusBellow();
-      else if (e.type === "owl") sfxOwlScreech();
-      else if (e.type === "penguin") sfxPenguinChirp();
-      else if (e.type === "stoat") sfxStoatChitter();
-      else if (e.type === "emperorpenguin") sfxEmperorPenguinCall();
+      if (e.type === "polarbear") scheduleAlertSfx(sfxRoar);
+      else if (e.type === "walrus") scheduleAlertSfx(sfxWalrusBellow);
+      else if (e.type === "owl") scheduleAlertSfx(sfxOwlScreech);
+      else if (e.type === "penguin") scheduleAlertSfx(sfxPenguinChirp);
+      else if (e.type === "stoat") scheduleAlertSfx(sfxStoatChitter);
+      else if (e.type === "emperorpenguin") scheduleAlertSfx(sfxEmperorPenguinCall);
     }
 
     // Emperor Penguin boss fight: crossing half HP triggers a one-time
