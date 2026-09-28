@@ -88,6 +88,24 @@
     max-width: 420px; margin: 0.6rem auto 0; font-size: 0.8rem; line-height: 1.5;
     color: #9fd8e6;
   }
+  #difficultySelect {
+    margin-top: 1rem; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: center;
+  }
+  #difficultyLabel { color: #9fd8e6; font-size: 0.85rem; }
+  /* Overrides #overlay button's default (large, green, primary-CTA) look -
+     these are a toggle group, not another call to action. Needs the
+     "#overlay" prefix to actually win: #overlay button is an ID selector, so
+     it beats a bare .difficultyBtn class rule regardless of source order -
+     that's why neither the base style nor .selected was ever visibly taking
+     effect before. */
+  #overlay .difficultyBtn {
+    margin-top: 0; font-size: 0.85rem; font-weight: normal; padding: 0.35rem 0.9rem;
+    background: transparent; color: var(--accent-cyan); border: 2px solid rgba(127,232,255,0.4);
+    border-radius: 6px; cursor: pointer;
+  }
+  #overlay .difficultyBtn.selected {
+    background: rgba(127,232,255,0.18); border-color: var(--accent-cyan); color: #eafcff; font-weight: bold;
+  }
   #hud {
     position: absolute; left: 0; right: 0; bottom: 0; display: flex; justify-content: space-between;
     align-items: flex-end; gap: 10px; padding: 10px 16px; font-family: var(--font-ui);
@@ -169,20 +187,32 @@
   #crosshair.hit::before, #crosshair.hit::after { background: #fff; }
   #crosshair::before { left: 8px; top: 0; width: 2px; height: 18px; }
   #crosshair::after { top: 8px; left: 0; width: 18px; height: 2px; }
-  /* Desktop-only restart/pause chips (mobile has its own always-on pair
-     top-left, untouched - see #restartBtnMobile/#pauseBtnMobile). Pinned
-     below the minimap rather than centered over the canvas, since restart
-     must stay clickable mid-gameplay now (not just over the game-over
-     banner) and a middle-of-screen button would sit right in the player's
-     line of sight while playing. */
-  #restartBtnDesktop, #pauseBtnDesktop {
-    position: absolute; right: 12px; padding: 8px 12px; border-radius: 8px;
+  /* Desktop-only settings column (mobile has its own always-on left ribbon -
+     see #restartBtnMobile etc. below): Restart, Pause, Music, SFX stacked
+     top-left under the hint text, all sharing one small pill style so the
+     column reads as one consistent group instead of mismatched button
+     shapes. Left instead of centered-over-canvas since Restart must stay
+     clickable mid-gameplay (not just over the game-over banner), and a
+     middle-of-screen button would sit right in the player's line of sight.
+     44px increments (chip height + gap) keep every entry evenly spaced. */
+  #restartBtnDesktop, #pauseBtnDesktop, #musicBtnDesktop, #sfxBtnDesktop, #sectorSelectBtnDesktop {
+    position: absolute; left: 12px; padding: 8px 12px; border-radius: 8px;
     font-size: 0.85rem; font-weight: bold; cursor: pointer;
     background: rgba(20,40,55,0.65); border: 2px solid rgba(150,220,240,0.5); color: #eafcff;
     font-family: var(--font-ui);
   }
-  #restartBtnDesktop { top: 184px; }
-  #pauseBtnDesktop { top: 228px; }
+  #restartBtnDesktop { top: 44px; }
+  #pauseBtnDesktop { top: 88px; }
+  #musicBtnDesktop { top: 132px; }
+  #sfxBtnDesktop { top: 176px; }
+  #musicBtnDesktop.muted, #sfxBtnDesktop.muted { opacity: 0.6; }
+  /* Sector Select: grayed out/unclickable until Sector 1's been cleared once
+     on the currently-picked difficulty (see clearedThroughByDifficulty),
+     then lit green like every other "achievement" cue in the game, opening
+     #sectorSelectOverlay. */
+  #sectorSelectBtnDesktop { top: 220px; }
+  #sectorSelectBtnDesktop.locked { opacity: 0.4; cursor: default; }
+  #sectorSelectBtnDesktop.unlocked { border-color: #7fffb0; background: rgba(40,120,90,0.55); }
   #minimapFrame { position: absolute; top: 12px; right: 12px; padding: 4px; }
   #minimap { display: block; background: rgba(0,10,20,0.5); }
   #hint { position: absolute; top: 12px; left: 12px; color: #cfefff; font-family: var(--font-ui); font-size: 0.8rem; opacity: 0.8; max-width: 60%; }
@@ -212,58 +242,34 @@
   /* Fire button removed - tapping/holding the canvas already shoots (see the
      canvas touchstart/touchend handlers), so a dedicated button was
      redundant. Moving the weapon-select column down into its old footprint
-     is what frees the room above for a separate Music and SFX button. */
+     is what frees the room the settings column now uses on the left. */
   #weaponBtns { position: absolute; right: 30px; bottom: 30px; display: flex; flex-direction: column; gap: 8px; }
   .weaponBtn {
     width: 52px; height: 52px; border-radius: 10px; background: rgba(20,40,55,0.65); border: 2px solid rgba(150,220,240,0.5);
     color: #eafcff; font-size: 1.4rem; display: flex; align-items: center; justify-content: center;
   }
   .weaponBtn.selected { border-color: #7fffb0; background: rgba(40,90,70,0.65); }
-  /* Pinned to the true screen edge like the rest of the touch controls (not
-     inside #wrap, so it can't ever land on top of the letterboxed minimap).
-     Sits well clear above the weapon-select column with a deliberate gap so
-     the pair doesn't read as extra weapon choices. Split into two buttons
-     (was one combined mute button) so music and sound effects can be muted
-     independently, stacked in roughly that same spot. */
-  #musicBtn, #sfxBtn {
-    position: fixed; right: 30px; z-index: 7;
-    width: 52px; height: 44px; display: flex; align-items: center; justify-content: center;
-    border-radius: 10px; background: rgba(20,40,55,0.65); border: 2px solid rgba(150,220,240,0.5);
-    font-size: 1.3rem; line-height: 1; cursor: pointer; pointer-events: auto; user-select: none;
-  }
-  #musicBtn { bottom: 372px; }
-  #sfxBtn { bottom: 320px; }
-  #musicBtn.muted, #sfxBtn.muted { opacity: 0.6; }
-  #restartBtnMobile, #pauseBtnMobile {
+  /* Mobile's settings column - Restart, Pause, Music, SFX, then Sector
+     Select - all pinned to the true screen edge (not inside #wrap, so it
+     can't ever land on top of the letterboxed minimap), sharing one pill
+     style and 44px spacing rhythm. */
+  #restartBtnMobile, #pauseBtnMobile, #musicBtnMobile, #sfxBtnMobile, #sectorSelectBtnMobile {
     position: absolute; left: 2px; padding: 8px 12px; border-radius: 8px;
     background: rgba(20,40,55,0.65); border: 2px solid rgba(150,220,240,0.5); color: #eafcff;
     font-family: var(--font-ui); font-size: 0.85rem;
   }
   #restartBtnMobile { top: 14px; }
   #pauseBtnMobile { top: 58px; }
-  /* Save-point indicators, in the same left-edge column as Restart/Pause but
-     with a bigger gap under the Pause/Play chip so it doesn't read as part
-     of that button group. Grayed out until that sector's been cleared at
-     least once (see updateCheckpointUI), then lit green to match the game's
-     existing "achievement" color (best-score banner, level-clear text). */
-  #checkpointIndicators {
-    position: absolute; left: 2px; top: 140px; display: flex; flex-direction: column; gap: 6px;
-  }
-  /* Same 34px width as the dots below it (monospace font, so even a short
-     word can spill past a narrow letterbox strip at normal sizing) - broken
-     across two short lines instead of one long label that runs wider than
-     the dots and off the edge of the black ribbon. */
-  #checkpointLabel {
-    width: 34px; color: rgba(207,239,255,0.65); font-family: var(--font-ui); font-size: 0.5rem;
-    line-height: 1.25; text-align: center; text-transform: uppercase; margin-bottom: 3px;
-  }
-  .checkpointDot {
-    width: 30px; height: 30px; border-radius: 50%; box-sizing: border-box;
-    background: rgba(20,40,55,0.5); border: 2px solid rgba(150,190,210,0.3); color: rgba(200,225,240,0.4);
-    display: flex; align-items: center; justify-content: center;
-    font-family: var(--font-ui); font-size: 0.8rem; font-weight: bold;
-  }
-  .checkpointDot.achieved { background: rgba(40,120,90,0.7); border-color: #7fffb0; color: #eafcff; }
+  #musicBtnMobile { top: 102px; }
+  #sfxBtnMobile { top: 146px; }
+  #musicBtnMobile.muted, #sfxBtnMobile.muted { opacity: 0.6; }
+  /* Sector Select: grayed out/unclickable until Sector 1's been cleared once
+     on the currently-picked difficulty (see clearedThroughByDifficulty),
+     then lit green to match the game's "achievement" color (best-score
+     banner, level-clear text) and opens #sectorSelectOverlay. */
+  #sectorSelectBtnMobile { top: 200px; cursor: pointer; }
+  #sectorSelectBtnMobile.locked { opacity: 0.4; cursor: default; }
+  #sectorSelectBtnMobile.unlocked { border-color: #7fffb0; background: rgba(40,120,90,0.55); }
   #rotatePrompt {
     position: fixed; inset: 0; z-index: 20; display: none; align-items: center; justify-content: center;
     flex-direction: column; text-align: center; background: #030a12; color: #eafcff;
@@ -271,6 +277,38 @@
   }
   #rotatePrompt.show { display: flex; }
   #rotatePrompt .spin { font-size: 2.6rem; margin-bottom: 0.6rem; }
+  /* Sector Select modal: only reachable once #sectorSelectBtnDesktop/Mobile
+     is unlocked. Sits above everything (including the pause/game-over
+     canvas overlays, which keep drawing behind it) since opening it while a
+     run is in progress auto-pauses (see openSectorSelect). */
+  #sectorSelectOverlay {
+    position: fixed; inset: 0; z-index: 40; display: none; align-items: center; justify-content: center;
+    background: rgba(3,10,18,0.88); font-family: var(--font-ui); color: #eafcff;
+    padding: 20px; box-sizing: border-box;
+  }
+  #sectorSelectOverlay.show { display: flex; }
+  #sectorSelectPanel {
+    background: rgba(10,25,35,0.96); border: 2px solid rgba(150,220,240,0.5); border-radius: 12px;
+    padding: 20px 24px; max-width: 480px; width: 100%; max-height: 85vh; overflow-y: auto; box-sizing: border-box;
+  }
+  #sectorSelectPanel h2 {
+    font-family: var(--font-display); font-weight: normal; letter-spacing: 0.15rem;
+    font-size: 1.4rem; color: #7fe8ff; margin: 0 0 4px;
+  }
+  #sectorSelectPanel p { margin: 0 0 14px; font-size: 0.8rem; color: #9fd8e6; }
+  #sectorSelectList { display: flex; flex-direction: column; gap: 8px; }
+  .sectorSelectItem {
+    display: block; width: 100%; text-align: left; padding: 0.55rem 0.9rem; font-size: 0.9rem;
+    background: rgba(20,40,55,0.65); border: 2px solid rgba(150,220,240,0.4); border-radius: 8px;
+    color: #eafcff; cursor: pointer; font-family: var(--font-ui);
+  }
+  .sectorSelectItem:hover { border-color: var(--accent-cyan); }
+  .sectorSelectItem.locked { opacity: 0.4; cursor: default; }
+  .sectorSelectItem.locked:hover { border-color: rgba(150,220,240,0.4); }
+  #sectorSelectCloseBtn {
+    margin-top: 16px; padding: 0.5rem 1.2rem; font-size: 0.9rem; cursor: pointer;
+    background: transparent; color: var(--accent-cyan); border: 2px solid rgba(127,232,255,0.4); border-radius: 6px;
+  }
   #updateBanner {
     position: fixed; left: 50%; top: 14px; transform: translateX(-50%) translateY(-140%);
     z-index: 30; display: flex; align-items: center; gap: 10px;
@@ -296,6 +334,9 @@
   <div id="crosshair"></div>
   <button id="restartBtnDesktop" class="hidden">&#8635; Restart</button>
   <button id="pauseBtnDesktop" class="hidden">&#9208; Pause</button>
+  <button id="musicBtnDesktop" class="hidden">&#127925;</button>
+  <button id="sfxBtnDesktop" class="hidden">&#128266;</button>
+  <button id="sectorSelectBtnDesktop" class="hidden locked" title="Beat Sector 1 to unlock">Sectors</button>
   <div id="hint">WASD move · mouse to look (aim up/down matters!) · scroll to turn · hold click to fire · 1/2/3 weapon · M mute</div>
   <div id="hud">
     <div id="hpPanel" class="hudPanel">
@@ -326,15 +367,18 @@
        Click to lock your mouse and begin. Press 1/2/3 to switch between the
        Fish Blaster, Harpoon Cannon, and Flamethrower.</p>
     <p id="bestStats"></p>
+    <div id="difficultySelect">
+      <span id="difficultyLabel">Difficulty</span>
+      <button class="difficultyBtn" data-difficulty="beginner">Beginner</button>
+      <button class="difficultyBtn" data-difficulty="advanced">Advanced</button>
+      <button class="difficultyBtn" data-difficulty="expert">Expert</button>
+    </div>
     <button id="startBtn">ENTER THE ICE</button>
-    <button id="restartFromOneBtn" class="secondary hidden">Start from Sector 1</button>
     <button id="installBtn" class="secondary hidden">&#128241; Install App</button>
     <p id="installHint" class="hidden"></p>
   </div>
 </div>
 
-<div id="musicBtn" title="Mute music (M)">&#127925;</div>
-<div id="sfxBtn" title="Mute sound effects (M)">&#128266;</div>
 <div id="mobileControls">
   <div id="joyBase" class="touchBtn"><div id="joyKnob"></div></div>
   <div id="weaponBtns">
@@ -344,16 +388,22 @@
   </div>
   <div id="restartBtnMobile" class="touchBtn">&#8635; Restart</div>
   <div id="pauseBtnMobile" class="touchBtn hidden">&#9208; Pause</div>
-  <div id="checkpointIndicators">
-    <div id="checkpointLabel">Save<br>Points</div>
-    <div class="checkpointDot" data-sector="3" title="Save point: Sector 3">3</div>
-    <div class="checkpointDot" data-sector="6" title="Save point: Sector 6">6</div>
-    <div class="checkpointDot" data-sector="9" title="Save point: Sector 9">9</div>
-  </div>
+  <div id="musicBtnMobile" class="touchBtn" title="Mute music (M)">&#127925;</div>
+  <div id="sfxBtnMobile" class="touchBtn" title="Mute sound effects (M)">&#128266;</div>
+  <div id="sectorSelectBtnMobile" class="touchBtn locked" title="Beat Sector 1 to unlock">Sectors</div>
 </div>
 <div id="rotatePrompt">
   <div class="spin">&#8635;</div>
   <p>Rotate your device to landscape<br>to play PENGUOOM.</p>
+</div>
+
+<div id="sectorSelectOverlay">
+  <div id="sectorSelectPanel">
+    <h2>Select Sector</h2>
+    <p>Jump straight into any sector you've unlocked on this difficulty. Starts a fresh run there (full HP, starting weapon).</p>
+    <div id="sectorSelectList"></div>
+    <button id="sectorSelectCloseBtn">Close</button>
+  </div>
 </div>
 
 <script>
@@ -446,17 +496,29 @@ function makeSpriteCanvas() {
 }
 
 // Renders drawFn at ANIM_FRAME_COUNT evenly-spaced gait phases, for both a
-// calm and an aggressive (spotted-the-player) expression.
+// calm and an aggressive (spotted-the-player) expression, plus two held
+// "mid-attack" poses (bite/claw/slap/talons, see each drawXFrame's own
+// `attacking` branch) - a single frame each is enough since it only shows
+// for ATTACK_ANIM_DURATION, too brief to need a walk-cycle of its own. Two
+// rather than one so an attack can alternate between them (currently just
+// the penguin's slap, alternating which flipper swings - see
+// currentSpriteFrame/e.attackAltToggle); other types simply draw the same
+// pose for both and the alternation is invisible on them.
 function buildFrameSet(drawFn) {
-  const set = { neutral: [], aggressive: [] };
+  const set = { neutral: [], aggressive: [], attacking: [] };
   for (const aggressive of [false, true]) {
     const frames = aggressive ? set.aggressive : set.neutral;
     for (let i = 0; i < ANIM_FRAME_COUNT; i++) {
       const phase = (i / ANIM_FRAME_COUNT) * Math.PI * 2;
       const canvas = makeSpriteCanvas();
-      drawFn(canvas.getContext("2d"), SPRITE_SIZE, phase, aggressive);
+      drawFn(canvas.getContext("2d"), SPRITE_SIZE, phase, aggressive, false);
       frames.push(canvas);
     }
+  }
+  for (const altPhase of [0, Math.PI]) {
+    const attackCanvas = makeSpriteCanvas();
+    drawFn(attackCanvas.getContext("2d"), SPRITE_SIZE, altPhase, true, true);
+    set.attacking.push(attackCanvas);
   }
   return set;
 }
@@ -474,7 +536,7 @@ function buildAlphaMask(canvas) {
   return mask;
 }
 
-function drawPenguinFrame(c, s, phase, aggressive) {
+function drawPenguinFrame(c, s, phase, aggressive, attacking) {
   c.clearRect(0, 0, s, s);
   const legLift1 = Math.sin(phase) * 0.028;
   const legLift2 = Math.sin(phase + Math.PI) * 0.028;
@@ -519,13 +581,28 @@ function drawPenguinFrame(c, s, phase, aggressive) {
   }
 
   // little wings (behind head, in front of body edge) — swing opposite the
-  // legs so the waddle reads as a real gait instead of a static pose
+  // legs so the waddle reads as a real gait instead of a static pose. Mid-
+  // slap (attacking), one flipper instead swings far forward/up as if
+  // mid-strike, the other braced back for balance - alternating which side
+  // leads between attacks (buildFrameSet bakes this pose twice, once at
+  // phase 0 and once at phase PI, and currentSpriteFrame picks between them).
   const wingGrad = c.createLinearGradient(s * 0.18, s * 0.4, s * 0.3, s * 0.75);
   wingGrad.addColorStop(0, "#20282c");
   wingGrad.addColorStop(1, "#0a0e10");
   c.fillStyle = wingGrad;
-  c.beginPath(); c.ellipse(s * 0.24, s * 0.58, s * 0.06, s * 0.18, -0.3 + wingSwing1, 0, Math.PI * 2); c.fill();
-  c.beginPath(); c.ellipse(s * 0.76, s * 0.58, s * 0.06, s * 0.18, 0.3 + wingSwing2, 0, Math.PI * 2); c.fill();
+  if (attacking) {
+    const altSide = phase > 1;
+    if (!altSide) {
+      c.beginPath(); c.ellipse(s * 0.32, s * 0.40, s * 0.08, s * 0.22, -1.0, 0, Math.PI * 2); c.fill();
+      c.beginPath(); c.ellipse(s * 0.74, s * 0.66, s * 0.06, s * 0.17, 0.7, 0, Math.PI * 2); c.fill();
+    } else {
+      c.beginPath(); c.ellipse(s * 0.68, s * 0.40, s * 0.08, s * 0.22, 1.0, 0, Math.PI * 2); c.fill();
+      c.beginPath(); c.ellipse(s * 0.26, s * 0.66, s * 0.06, s * 0.17, -0.7, 0, Math.PI * 2); c.fill();
+    }
+  } else {
+    c.beginPath(); c.ellipse(s * 0.24, s * 0.58, s * 0.06, s * 0.18, -0.3 + wingSwing1, 0, Math.PI * 2); c.fill();
+    c.beginPath(); c.ellipse(s * 0.76, s * 0.58, s * 0.06, s * 0.18, 0.3 + wingSwing2, 0, Math.PI * 2); c.fill();
+  }
 
   // head
   c.fillStyle = "#151b1f";
@@ -591,7 +668,7 @@ function drawPenguinFrame(c, s, phase, aggressive) {
 // a plain white belly), plus a small gold crown - the two cheapest possible
 // signals ("bigger" via ENEMY_TYPES.scale, "regal" via color/crown) that
 // this is the boss, without needing a whole new silhouette.
-function drawEmperorPenguinFrame(c, s, phase, aggressive) {
+function drawEmperorPenguinFrame(c, s, phase, aggressive, attacking) {
   c.clearRect(0, 0, s, s);
   const legLift1 = Math.sin(phase) * 0.028;
   const legLift2 = Math.sin(phase + Math.PI) * 0.028;
@@ -640,8 +717,15 @@ function drawEmperorPenguinFrame(c, s, phase, aggressive) {
   wingGrad.addColorStop(0, "#241c30");
   wingGrad.addColorStop(1, "#0c0810");
   c.fillStyle = wingGrad;
-  c.beginPath(); c.ellipse(s * 0.24, s * 0.58, s * 0.06, s * 0.18, -0.3 + wingSwing1, 0, Math.PI * 2); c.fill();
-  c.beginPath(); c.ellipse(s * 0.76, s * 0.58, s * 0.06, s * 0.18, 0.3 + wingSwing2, 0, Math.PI * 2); c.fill();
+  if (attacking) {
+    // Wings swept back for a lunging bite instead of the regular penguin's
+    // slap - the boss's attack reads as "bigger bite", not a flipper swing.
+    c.beginPath(); c.ellipse(s * 0.20, s * 0.62, s * 0.07, s * 0.20, -0.7, 0, Math.PI * 2); c.fill();
+    c.beginPath(); c.ellipse(s * 0.80, s * 0.62, s * 0.07, s * 0.20, 0.7, 0, Math.PI * 2); c.fill();
+  } else {
+    c.beginPath(); c.ellipse(s * 0.24, s * 0.58, s * 0.06, s * 0.18, -0.3 + wingSwing1, 0, Math.PI * 2); c.fill();
+    c.beginPath(); c.ellipse(s * 0.76, s * 0.58, s * 0.06, s * 0.18, 0.3 + wingSwing2, 0, Math.PI * 2); c.fill();
+  }
 
   c.fillStyle = "#1a1420";
   c.beginPath();
@@ -670,7 +754,14 @@ function drawEmperorPenguinFrame(c, s, phase, aggressive) {
   beakGrad.addColorStop(1, "#c5590f");
   c.fillStyle = beakGrad;
   c.beginPath();
-  if (aggressive) {
+  if (attacking) {
+    // Wide-open lunging bite gape - noticeably bigger than the aggressive
+    // hiss below, since this is the pose that lands the boss's actual hit.
+    c.moveTo(s * 0.5, s * 0.255);
+    c.lineTo(s * 0.5 - 0.11 * s, s * 0.32);
+    c.lineTo(s * 0.5, s * 0.375);
+    c.lineTo(s * 0.5 + 0.11 * s, s * 0.32);
+  } else if (aggressive) {
     c.moveTo(s * 0.5, s * 0.265);
     c.lineTo(s * 0.5 - 0.075 * s, s * 0.30);
     c.lineTo(s * 0.5, s * 0.335);
@@ -682,7 +773,10 @@ function drawEmperorPenguinFrame(c, s, phase, aggressive) {
   }
   c.closePath();
   c.fill();
-  if (aggressive) {
+  if (attacking) {
+    c.fillStyle = "#7a1c14";
+    c.beginPath(); c.ellipse(s * 0.5, s * 0.325, s * 0.045, s * 0.03, 0, 0, Math.PI * 2); c.fill();
+  } else if (aggressive) {
     c.fillStyle = "#7a1c14";
     c.beginPath(); c.ellipse(s * 0.5, s * 0.30, s * 0.025, s * 0.018, 0, 0, Math.PI * 2); c.fill();
   }
@@ -715,12 +809,15 @@ function drawEmperorPenguinFrame(c, s, phase, aggressive) {
   c.stroke();
 }
 
-function drawPolarBearFrame(c, s, phase, aggressive) {
+function drawPolarBearFrame(c, s, phase, aggressive, attacking) {
   c.clearRect(0, 0, s, s);
   const legLift1 = Math.sin(phase) * 0.022;
   const legLift2 = Math.sin(phase + Math.PI) * 0.022;
 
-  // paws (with claws), alternating up/down across the gait phase
+  // paws (with claws), alternating up/down across the gait phase - claws
+  // extend noticeably longer when attacking (a swipe), on top of the wide
+  // roaring mouth below (already the aggressive pose, forced on for the
+  // attack frame), so the pose reads as "biting and clawing" together.
   c.fillStyle = "#c7d3d8";
   c.beginPath(); c.ellipse(s * 0.30, s * (0.94 + legLift1), s * 0.13, s * 0.065, 0, 0, Math.PI * 2); c.fill();
   c.beginPath(); c.ellipse(s * 0.70, s * (0.94 + legLift2), s * 0.13, s * 0.065, 0, 0, Math.PI * 2); c.fill();
@@ -730,7 +827,8 @@ function drawPolarBearFrame(c, s, phase, aggressive) {
   c.fillStyle = "#4a4f53";
   for (const px of [0.22, 0.30, 0.38, 0.62, 0.70, 0.78]) {
     const lift = px < 0.5 ? legLift1 : legLift2;
-    c.beginPath(); c.ellipse(s * px, s * (0.96 + lift), s * 0.012, s * 0.018, 0, 0, Math.PI * 2); c.fill();
+    const clawLen = attacking ? 0.034 : 0.018;
+    c.beginPath(); c.ellipse(s * px, s * (0.96 + lift), s * 0.012, s * clawLen, 0, 0, Math.PI * 2); c.fill();
   }
 
   // body, radially shaded so it reads as round fur rather than a flat disc
@@ -814,7 +912,7 @@ function drawPolarBearFrame(c, s, phase, aggressive) {
   c.beginPath(); c.ellipse(s * 0.5, s * 0.62, s * 0.37, s * 0.33, 0, 0, Math.PI * 2); c.stroke();
 }
 
-function drawWalrusFrame(c, s, phase, aggressive) {
+function drawWalrusFrame(c, s, phase, aggressive, attacking) {
   c.clearRect(0, 0, s, s);
   const legLift1 = Math.sin(phase) * 0.016;
   const legLift2 = Math.sin(phase + Math.PI) * 0.016;
@@ -871,8 +969,12 @@ function drawWalrusFrame(c, s, phase, aggressive) {
     c.beginPath(); c.moveTo(s * 0.67, s * 0.235); c.lineTo(s * 0.58, s * 0.255); c.stroke();
   }
 
-  // mouth: bellowing open when aggressive, a closed line otherwise
-  if (aggressive) {
+  // mouth: wide-open mid-bite when attacking, bellowing open when merely
+  // aggressive, a closed line otherwise
+  if (attacking) {
+    c.fillStyle = "#4a1f18";
+    c.beginPath(); c.ellipse(s * 0.5, s * 0.47, s * 0.13, s * 0.09, 0, 0, Math.PI * 2); c.fill();
+  } else if (aggressive) {
     c.fillStyle = "#4a1f18";
     c.beginPath(); c.ellipse(s * 0.5, s * 0.46, s * 0.09, s * 0.06, 0, 0, Math.PI * 2); c.fill();
   } else {
@@ -880,18 +982,20 @@ function drawWalrusFrame(c, s, phase, aggressive) {
     c.beginPath(); c.moveTo(s * 0.44, s * 0.44); c.quadraticCurveTo(s * 0.5, s * 0.455, s * 0.56, s * 0.44); c.stroke();
   }
 
-  // tusks — hang further and gleam brighter when aggressive
-  const tuskLen = aggressive ? 0.30 : 0.24;
+  // tusks — hang further and gleam brighter when aggressive, and flare
+  // outward wider still mid-bite (attacking) for a real gore-you gesture
+  const tuskLen = attacking ? 0.34 : aggressive ? 0.30 : 0.24;
+  const tuskSpread = attacking ? 1.3 : 1.0;
   const tuskGrad = c.createLinearGradient(0, s * 0.42, 0, s * (0.42 + tuskLen));
   tuskGrad.addColorStop(0, "#fffbe8");
   tuskGrad.addColorStop(1, "#e8dcb8");
   c.fillStyle = tuskGrad;
   for (const side of [-1, 1]) {
     c.beginPath();
-    c.moveTo(s * (0.5 + side * 0.09), s * 0.44);
-    c.quadraticCurveTo(s * (0.5 + side * 0.135), s * (0.44 + tuskLen * 0.6), s * (0.5 + side * 0.095), s * (0.44 + tuskLen));
-    c.lineTo(s * (0.5 + side * 0.055), s * (0.44 + tuskLen * 0.92));
-    c.quadraticCurveTo(s * (0.5 + side * 0.075), s * (0.44 + tuskLen * 0.5), s * (0.5 + side * 0.05), s * 0.44);
+    c.moveTo(s * (0.5 + side * 0.09 * tuskSpread), s * 0.44);
+    c.quadraticCurveTo(s * (0.5 + side * 0.135 * tuskSpread), s * (0.44 + tuskLen * 0.6), s * (0.5 + side * 0.095 * tuskSpread), s * (0.44 + tuskLen));
+    c.lineTo(s * (0.5 + side * 0.055 * tuskSpread), s * (0.44 + tuskLen * 0.92));
+    c.quadraticCurveTo(s * (0.5 + side * 0.075 * tuskSpread), s * (0.44 + tuskLen * 0.5), s * (0.5 + side * 0.05 * tuskSpread), s * 0.44);
     c.closePath();
     c.fill();
     c.strokeStyle = "rgba(120,100,60,0.4)"; c.lineWidth = 0.8; c.stroke();
@@ -907,7 +1011,7 @@ function drawWalrusFrame(c, s, phase, aggressive) {
 // penguin/bear/walrus) with an elongated body and a black-tipped tail so its
 // silhouette reads as a quick weasel-like animal even at its tiny on-screen
 // size.
-function drawStoatFrame(c, s, phase, aggressive) {
+function drawStoatFrame(c, s, phase, aggressive, attacking) {
   c.clearRect(0, 0, s, s);
   const legLift1 = Math.sin(phase * 2) * 0.05;
   const legLift2 = Math.sin(phase * 2 + Math.PI) * 0.05;
@@ -964,7 +1068,17 @@ function drawStoatFrame(c, s, phase, aggressive) {
   c.beginPath(); c.ellipse(s * 0.25, s * 0.485, s * 0.025, s * 0.028, 0, 0, Math.PI * 2); c.fill();
   c.fillStyle = "rgba(255,255,255,0.75)";
   c.beginPath(); c.ellipse(s * 0.245, s * 0.478, s * 0.008, s * 0.009, 0, 0, Math.PI * 2); c.fill();
-  if (aggressive) {
+  if (attacking) {
+    // Small open jaw right at the snout tip with two bared fangs - kept
+    // close against the head/snout instead of the earlier version's dark
+    // wedge, which reached well past the head's own silhouette and read as
+    // a disconnected floating shape rather than an open mouth.
+    c.fillStyle = "#3a1810";
+    c.beginPath(); c.ellipse(s * 0.155, s * 0.575, s * 0.045, s * 0.03, -0.15, 0, Math.PI * 2); c.fill();
+    c.fillStyle = "#fff";
+    c.beginPath(); c.moveTo(s * 0.135, s * 0.562); c.lineTo(s * 0.115, s * 0.582); c.lineTo(s * 0.152, s * 0.570); c.closePath(); c.fill();
+    c.beginPath(); c.moveTo(s * 0.165, s * 0.585); c.lineTo(s * 0.148, s * 0.603); c.lineTo(s * 0.185, s * 0.592); c.closePath(); c.fill();
+  } else if (aggressive) {
     c.fillStyle = "#fff";
     c.beginPath(); c.moveTo(s * 0.16, s * 0.565); c.lineTo(s * 0.12, s * 0.605); c.lineTo(s * 0.19, s * 0.585); c.closePath(); c.fill();
   }
@@ -984,7 +1098,7 @@ function drawStoatFrame(c, s, phase, aggressive) {
 // diving in to strike" (see currentSpriteFrame's owl special-case) rather
 // than merely aware: talons swing forward into a striking pose, the eyes
 // flare orange, and the wingbeat deepens, only while it's actually stooping.
-function drawOwlFrame(c, s, phase, aggressive) {
+function drawOwlFrame(c, s, phase, aggressive, attacking) {
   c.clearRect(0, 0, s, s);
   // A dive's animPhase already advances faster than a hover's (see the AI
   // update), so the beat is quicker on its own — deepen the stroke too, for
@@ -1040,9 +1154,18 @@ function drawOwlFrame(c, s, phase, aggressive) {
     c.beginPath(); c.ellipse(s * (0.5 + dx), s * dy + bodyBob, s * w, s * 0.018, 0, 0, Math.PI); c.stroke();
   }
 
-  // talons: tucked while calm, thrust forward into a striking pose once aggressive
+  // talons: tucked while calm, thrust forward into a striking pose once
+  // aggressive/diving, and spread wider still with a second scratch claw at
+  // the instant of the actual bite/scratch (attacking).
   c.fillStyle = "#e0a030";
-  if (aggressive) {
+  if (attacking) {
+    for (const side of [-1, 1]) {
+      c.beginPath(); c.ellipse(s * (0.5 + side * 0.13), s * 0.85 + bodyBob, s * 0.055, s * 0.032, side * 0.4, 0, Math.PI * 2); c.fill();
+      c.strokeStyle = "#3a2c1c"; c.lineWidth = s * 0.017;
+      c.beginPath(); c.moveTo(s * (0.5 + side * 0.13), s * 0.87 + bodyBob); c.lineTo(s * (0.5 + side * 0.20), s * 0.96 + bodyBob); c.stroke();
+      c.beginPath(); c.moveTo(s * (0.5 + side * 0.11), s * 0.87 + bodyBob); c.lineTo(s * (0.5 + side * 0.16), s * 0.97 + bodyBob); c.stroke();
+    }
+  } else if (aggressive) {
     for (const side of [-1, 1]) {
       c.beginPath(); c.ellipse(s * (0.5 + side * 0.10), s * 0.84 + bodyBob, s * 0.05, s * 0.03, side * 0.3, 0, Math.PI * 2); c.fill();
       c.strokeStyle = "#3a2c1c"; c.lineWidth = s * 0.015;
@@ -1077,12 +1200,19 @@ function drawOwlFrame(c, s, phase, aggressive) {
     c.beginPath(); c.moveTo(s * 0.66, s * 0.19); c.lineTo(s * 0.54, s * 0.22); c.stroke();
   }
 
-  // small hooked black beak
+  // small hooked black beak — gapes open for the bite when attacking
   c.fillStyle = "#2a2420";
   c.beginPath();
-  c.moveTo(s * 0.5, s * 0.315);
-  c.quadraticCurveTo(s * 0.455, s * 0.35, s * 0.5, s * 0.375);
-  c.quadraticCurveTo(s * 0.545, s * 0.35, s * 0.5, s * 0.315);
+  if (attacking) {
+    c.moveTo(s * 0.5, s * 0.31);
+    c.quadraticCurveTo(s * 0.44, s * 0.36, s * 0.47, s * 0.405);
+    c.quadraticCurveTo(s * 0.5, s * 0.425, s * 0.53, s * 0.405);
+    c.quadraticCurveTo(s * 0.56, s * 0.36, s * 0.5, s * 0.31);
+  } else {
+    c.moveTo(s * 0.5, s * 0.315);
+    c.quadraticCurveTo(s * 0.455, s * 0.35, s * 0.5, s * 0.375);
+    c.quadraticCurveTo(s * 0.545, s * 0.35, s * 0.5, s * 0.315);
+  }
   c.closePath();
   c.fill();
 
@@ -1272,6 +1402,26 @@ function drawHerringProp(c, s) {
 // levels fit its theme (ice sectors get icespike, dock/wreck sectors get
 // crate+barrel, ancient/wilderness sectors get cairn, fire-lit sectors get
 // brazier+bannerImperial) rather than one bespoke prop per sector.
+// A flat floor decal rather than a standing object: this billboard engine
+// always renders sprites upright facing the camera, so "on the ground"
+// isn't literally possible - instead this draws the whole shape squashed
+// into the bottom sliver of the square sprite canvas, which is exactly
+// where the billboard's anchor sits at floor level (see projectSprite's
+// floorY), so it reads as a sheen on the floor rather than a sign board.
+function drawIcePatchProp(c, s) {
+  c.clearRect(0, 0, s, s);
+  c.fillStyle = "rgba(180,225,245,0.45)";
+  c.beginPath(); c.ellipse(s * 0.5, s * 0.92, s * 0.46, s * 0.10, 0, 0, Math.PI * 2); c.fill();
+  c.fillStyle = "rgba(220,245,255,0.35)";
+  c.beginPath(); c.ellipse(s * 0.40, s * 0.90, s * 0.16, s * 0.045, -0.1, 0, Math.PI * 2); c.fill();
+  c.beginPath(); c.ellipse(s * 0.62, s * 0.94, s * 0.13, s * 0.035, 0.15, 0, Math.PI * 2); c.fill();
+  c.strokeStyle = "rgba(255,255,255,0.5)"; c.lineWidth = 0.8;
+  c.beginPath(); c.moveTo(s * 0.30, s * 0.90); c.lineTo(s * 0.42, s * 0.935); c.lineTo(s * 0.5, s * 0.90); c.stroke();
+  c.beginPath(); c.moveTo(s * 0.58, s * 0.95); c.lineTo(s * 0.68, s * 0.92); c.stroke();
+  c.strokeStyle = "rgba(140,190,220,0.4)"; c.lineWidth = 1;
+  c.beginPath(); c.ellipse(s * 0.5, s * 0.92, s * 0.46, s * 0.10, 0, 0, Math.PI * 2); c.stroke();
+}
+
 function drawIceSpikeProp(c, s) {
   c.clearRect(0, 0, s, s);
   const spikes = [
@@ -1417,6 +1567,7 @@ function drawBannerIceProp(c, s) { drawBannerShape(c, s, "#bfe8ff", "#4a90c0"); 
 function drawBannerImperialProp(c, s) { drawBannerShape(c, s, "#e8b04a", "#8a1f1f"); }
 
 const PROP_CANVASES = {
+  icepatch: makePropCanvas(drawIcePatchProp),
   tree: makePropCanvas(drawTreeProp),
   gift: makePropCanvas(drawGiftProp),
   candycane: makePropCanvas(drawCandyCaneProp),
@@ -1453,6 +1604,9 @@ function pickFoodType() {
 // deeper wingbeat) is tied to its dive state instead, only showing while
 // it's actually stooping in to strike.
 function currentSpriteFrame(stats, e) {
+  // A landed bite/claw/slap briefly overrides everything else, including
+  // the owl's dive pose - it's the more specific, more recent event.
+  if (e.attackAnimTimer > 0) return stats.frames.attacking[e.attackAltToggle ? 1 : 0];
   const isAggressivePose = e.type === "owl" ? e.owlState === "dive" : e.aware;
   const frames = stats.frames[isAggressivePose ? "aggressive" : "neutral"];
   const t = e.animPhase - Math.floor(e.animPhase);
@@ -1550,7 +1704,6 @@ const scoreEl = document.getElementById("score");
 const overlay = document.getElementById("overlay");
 const bestStatsEl = document.getElementById("bestStats");
 const startBtn = document.getElementById("startBtn");
-const restartFromOneBtnEl = document.getElementById("restartFromOneBtn");
 const wrapEl = document.getElementById("wrap");
 const hintEl = document.getElementById("hint");
 const crosshairEl = document.getElementById("crosshair");
@@ -1562,9 +1715,16 @@ const restartBtnMobileEl = document.getElementById("restartBtnMobile");
 const restartBtnDesktopEl = document.getElementById("restartBtnDesktop");
 const pauseBtnMobileEl = document.getElementById("pauseBtnMobile");
 const pauseBtnDesktopEl = document.getElementById("pauseBtnDesktop");
-const musicBtnEl = document.getElementById("musicBtn");
-const sfxBtnEl = document.getElementById("sfxBtn");
-const checkpointDotEls = Array.from(document.querySelectorAll(".checkpointDot"));
+const musicBtnDesktopEl = document.getElementById("musicBtnDesktop");
+const sfxBtnDesktopEl = document.getElementById("sfxBtnDesktop");
+const musicBtnMobileEl = document.getElementById("musicBtnMobile");
+const sfxBtnMobileEl = document.getElementById("sfxBtnMobile");
+const sectorSelectBtnDesktopEl = document.getElementById("sectorSelectBtnDesktop");
+const sectorSelectBtnMobileEl = document.getElementById("sectorSelectBtnMobile");
+const sectorSelectOverlayEl = document.getElementById("sectorSelectOverlay");
+const sectorSelectListEl = document.getElementById("sectorSelectList");
+const sectorSelectCloseBtnEl = document.getElementById("sectorSelectCloseBtn");
+const difficultyBtnEls = Array.from(document.querySelectorAll(".difficultyBtn"));
 const rotatePromptEl = document.getElementById("rotatePrompt");
 
 // ---------------------------------------------------------------------------
@@ -1944,12 +2104,20 @@ let sfxMuted = localStorage.getItem(SFX_MUTE_KEY) !== null ? localStorage.getIte
 function applyMuteState() {
   if (musicGain) musicGain.gain.value = musicMuted ? 0 : MUSIC_VOL;
   if (sfxGain) sfxGain.gain.value = sfxMuted ? 0 : SFX_VOL;
-  musicBtnEl.textContent = musicMuted ? "\u{1F507}" : "\u{1F3B5}";
-  musicBtnEl.classList.toggle("muted", musicMuted);
-  musicBtnEl.title = (musicMuted ? "Unmute" : "Mute") + " music (M)";
-  sfxBtnEl.textContent = sfxMuted ? "\u{1F507}" : "\u{1F50A}";
-  sfxBtnEl.classList.toggle("muted", sfxMuted);
-  sfxBtnEl.title = (sfxMuted ? "Unmute" : "Mute") + " sound effects (M)";
+  const musicLabel = musicMuted ? "\u{1F507}" : "\u{1F3B5}";
+  const musicTitle = (musicMuted ? "Unmute" : "Mute") + " music (M)";
+  const sfxLabel = sfxMuted ? "\u{1F507}" : "\u{1F50A}";
+  const sfxTitle = (sfxMuted ? "Unmute" : "Mute") + " sound effects (M)";
+  for (const el of [musicBtnDesktopEl, musicBtnMobileEl]) {
+    el.textContent = musicLabel;
+    el.classList.toggle("muted", musicMuted);
+    el.title = musicTitle;
+  }
+  for (const el of [sfxBtnDesktopEl, sfxBtnMobileEl]) {
+    el.textContent = sfxLabel;
+    el.classList.toggle("muted", sfxMuted);
+    el.title = sfxTitle;
+  }
 }
 function toggleMusicMute() {
   musicMuted = !musicMuted;
@@ -2065,6 +2233,13 @@ function sfxKill(enemyType) {
 function sfxPlayerHurt() {
   playNoise({ duration: 0.16, gain: 0.35, filterFreq: 700, filterType: "lowpass" });
   playTone({ freq: 140, endFreq: 60, type: "sawtooth", duration: 0.2, gain: 0.25 });
+}
+// Short "incoming!" cue for the Emperor Penguin boss's charge windup (see
+// the chargeState handling in update()) - a quick rising tone, distinct
+// from its own vocal call, so the charge warning reads differently from
+// just being spotted.
+function sfxAttackTelegraph() {
+  playTone({ freq: 220, endFreq: 480, type: "triangle", duration: 0.18, gain: 0.16 });
 }
 // Bear roar. The old version was a clean pitch-swept tone plus a couple of
 // long, high-ish filtered noise bursts — those two long dry noise blasts are
@@ -2233,6 +2408,18 @@ function playEmperorTrumpetNote(delay) {
 function sfxEmperorPenguinCall() {
   playEmperorTrumpetNote(0);
   playEmperorTrumpetNote(0.42);
+}
+// Environmental gimmick cues: a low wind whoosh for a blizzard gust kicking
+// in, and a sharp crackle for stepping onto treacherous ice.
+function sfxGustHit() {
+  playNoise({ duration: 0.9, gain: 0.26, filterFreq: 500, filterType: "bandpass" });
+  playNoise({ duration: 0.6, gain: 0.16, filterFreq: 1600, filterType: "highpass", delay: 0.05 });
+}
+function sfxIceCrackle() {
+  for (let i = 0; i < 4; i++) {
+    playNoise({ duration: 0.05, gain: 0.15, filterFreq: 2200 + i * 300, filterType: "bandpass", delay: i * 0.06 });
+  }
+  playTone({ freq: 1800, endFreq: 1200, type: "sine", duration: 0.12, gain: 0.12, delay: 0.02 });
 }
 function sfxLevelClear() {
   [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => playTone({ freq: f, type: "triangle", duration: 0.5, gain: 0.22, delay: i * 0.11 }));
@@ -2542,7 +2729,6 @@ let lastShotTime = { blaster: 0, harpoon: 0 };
 let levelIndex = 0;
 let levelTransition = false;
 let levelTransitionTimer = 0;
-let justReachedCheckpoint = false;
 let ambientParticles = [];
 let ambientSpawnAccum = 0;
 let levelProps = [];
@@ -2595,41 +2781,149 @@ function bestStatsText() {
 }
 
 // ---------------------------------------------------------------------------
-// Save points: clearing sector 3, 6, or 9 permanently unlocks resuming a run
-// at sector 4, 7, or 10, so dying later doesn't send the player all the way
-// back to Sector 1. Stored as the (1-indexed) sector number just cleared —
-// which, conveniently, is exactly the 0-indexed levelIndex to resume at
-// (clearing sector 3 means starting back up at levelIndex 3 = Sector 4).
-// Restarting after a death always resumes here; the start screen additionally
-// offers an explicit "Start from Sector 1" so a checkpoint is never a one-way
-// door away from replaying the earlier sectors.
+// Sector Select: beating Sector 1 unlocks the menu itself; from there,
+// clearing each sector unlocks the next one, same as any normal level-select
+// screen. Tracked per difficulty (see clearedThroughByDifficulty) since
+// unlocking Sector 4 on Beginner shouldn't also unlock it on Advanced or
+// Expert — they're separate progress tracks. Before Sector 1's first clear,
+// sectors just play in order 1-10 like normal, and dying restarts at
+// Sector 1. selectedStartSector is whichever sector you last explicitly
+// picked from the menu (or 0 by default) — every restart path (R key,
+// Restart button, the start screen) resumes there, so choosing a sector
+// "sticks" until you choose a different one.
 // ---------------------------------------------------------------------------
-const CHECKPOINT_KEY = "penguoom_checkpoint_v1";
-const CHECKPOINT_SECTORS = [3, 6, 9];
-function loadCheckpoint() {
+const SECTOR_PROGRESS_KEY = "penguoom_sector_progress_v1";
+function loadSectorProgress() {
   try {
-    const n = parseInt(localStorage.getItem(CHECKPOINT_KEY), 10);
-    if (CHECKPOINT_SECTORS.includes(n)) return n;
-  } catch (err) { /* corrupt or unavailable storage — fall back to no checkpoint */ }
-  return 0;
+    const parsed = JSON.parse(localStorage.getItem(SECTOR_PROGRESS_KEY));
+    if (parsed && typeof parsed === "object") return parsed;
+  } catch (err) { /* corrupt or unavailable storage — fall back to no progress */ }
+  return {};
 }
-let checkpointSector = loadCheckpoint();
-function saveCheckpoint() {
-  try { localStorage.setItem(CHECKPOINT_KEY, String(checkpointSector)); } catch (err) { /* storage unavailable — checkpoint just won't persist */ }
+// { beginner: N, advanced: N, expert: N } - N is the highest 0-indexed
+// sector actually cleared on that difficulty, -1 meaning none yet.
+let clearedThroughByDifficulty = loadSectorProgress();
+function saveSectorProgress() {
+  try { localStorage.setItem(SECTOR_PROGRESS_KEY, JSON.stringify(clearedThroughByDifficulty)); } catch (err) { /* storage unavailable — won't persist */ }
 }
-function updateCheckpointUI() {
-  for (const el of checkpointDotEls) {
-    el.classList.toggle("achieved", checkpointSector >= parseInt(el.dataset.sector, 10));
+function clearedThroughForCurrentDifficulty() {
+  const v = clearedThroughByDifficulty[difficultyKey];
+  return typeof v === "number" ? v : -1;
+}
+// Called from killIfDead whenever a sector's enemies are all cleared
+// (including the final sector, i.e. a win) - idx is the 0-indexed sector
+// just cleared.
+function recordSectorCleared(idx) {
+  if (idx > clearedThroughForCurrentDifficulty()) {
+    clearedThroughByDifficulty[difficultyKey] = idx;
+    saveSectorProgress();
+    updateSectorSelectUI();
   }
 }
-function updateStartScreenForCheckpoint() {
-  if (checkpointSector > 0) {
-    startBtn.textContent = "CONTINUE FROM SECTOR " + (checkpointSector + 1);
-    restartFromOneBtnEl.classList.remove("hidden");
-  } else {
-    startBtn.textContent = "ENTER THE ICE";
-    restartFromOneBtnEl.classList.add("hidden");
+
+const SELECTED_SECTOR_KEY = "penguoom_selected_sector_v1";
+function loadSelectedSector() {
+  const n = parseInt(localStorage.getItem(SELECTED_SECTOR_KEY), 10);
+  return Number.isInteger(n) && n >= 0 && n < LEVELS.length ? n : 0;
+}
+let selectedStartSector = loadSelectedSector();
+function saveSelectedSector() {
+  try { localStorage.setItem(SELECTED_SECTOR_KEY, String(selectedStartSector)); } catch (err) { /* storage unavailable — won't persist */ }
+}
+
+function isSectorSelectUnlocked() { return clearedThroughForCurrentDifficulty() >= 0; }
+// A given sector is choosable once you've either already cleared it or
+// it's the very next one past your current frontier - lets you attempt the
+// next new sector without needing to already have cleared it too.
+function isSectorChoosable(idx) { return idx <= Math.min(LEVELS.length - 1, clearedThroughForCurrentDifficulty() + 1); }
+function updateSectorSelectUI() {
+  const unlocked = isSectorSelectUnlocked();
+  for (const el of [sectorSelectBtnDesktopEl, sectorSelectBtnMobileEl]) {
+    el.classList.toggle("locked", !unlocked);
+    el.classList.toggle("unlocked", unlocked);
+    el.title = unlocked ? "Jump to an unlocked sector" : "Beat Sector 1 to unlock";
   }
+  refreshSectorSelectList();
+}
+
+let sectorSelectItemEls = [];
+function populateSectorSelectList() {
+  LEVELS.forEach((level, idx) => {
+    const btn = document.createElement("button");
+    btn.className = "sectorSelectItem";
+    btn.textContent = "Sector " + (idx + 1) + ": " + level.name;
+    btn.addEventListener("click", () => { if (isSectorChoosable(idx)) selectSector(idx); });
+    sectorSelectListEl.appendChild(btn);
+    sectorSelectItemEls.push(btn);
+  });
+}
+// Re-checked every time the menu opens (and whenever progress changes) since
+// which sectors are choosable depends on the currently-picked difficulty and
+// can grow over the course of play.
+function refreshSectorSelectList() {
+  sectorSelectItemEls.forEach((btn, idx) => {
+    const choosable = isSectorChoosable(idx);
+    btn.classList.toggle("locked", !choosable);
+    btn.disabled = !choosable;
+    btn.title = choosable ? "" : "Clear the previous sector to unlock";
+  });
+}
+
+// Only meaningful while a run is already in progress: opening the menu
+// mid-fight auto-pauses (same reasoning as the Pause button itself - the
+// world shouldn't keep simulating behind a modal covering the screen), and
+// closing without picking a sector resumes only if the menu was what paused
+// it (so it doesn't un-pause a game the player had already paused).
+let pausedBySectorSelect = false;
+function openSectorSelect() {
+  if (!isSectorSelectUnlocked()) return;
+  if (running && !paused) { pausedBySectorSelect = true; setPaused(true); }
+  refreshSectorSelectList();
+  sectorSelectOverlayEl.classList.add("show");
+}
+function closeSectorSelect() {
+  sectorSelectOverlayEl.classList.remove("show");
+  if (pausedBySectorSelect) { setPaused(false); pausedBySectorSelect = false; }
+}
+function selectSector(idx) {
+  selectedStartSector = idx;
+  saveSelectedSector();
+  sectorSelectOverlayEl.classList.remove("show");
+  pausedBySectorSelect = false;
+  overlay.style.display = "none";
+  newGame(idx);
+  tryPointerLock();
+}
+
+// ---------------------------------------------------------------------------
+// Difficulty: scales enemy HP and damage only - the per-sector roster mix,
+// count, and enemy cap curve tuned earlier stays identical across all three
+// tiers. Applied at the point HP is assigned (makeEnemy) and damage is dealt
+// (the two player.hp -= ... attack sites) rather than mutating ENEMY_TYPES
+// itself, so switching tiers never leaves a stale multiplied value behind.
+// Picked once on the start screen and persisted, like everything else here.
+// ---------------------------------------------------------------------------
+const DIFFICULTY_KEY = "penguoom_difficulty_v1";
+const DIFFICULTIES = {
+  beginner: { label: "Beginner", hpMult: 0.7, damageMult: 0.7 },
+  advanced: { label: "Advanced", hpMult: 1.0, damageMult: 1.0 },
+  expert: { label: "Expert", hpMult: 1.4, damageMult: 1.4 },
+};
+function loadDifficulty() {
+  const saved = localStorage.getItem(DIFFICULTY_KEY);
+  return DIFFICULTIES[saved] ? saved : "advanced";
+}
+let difficultyKey = loadDifficulty();
+function currentDifficulty() { return DIFFICULTIES[difficultyKey]; }
+function setDifficulty(key) {
+  if (!DIFFICULTIES[key]) return;
+  difficultyKey = key;
+  try { localStorage.setItem(DIFFICULTY_KEY, key); } catch (err) { /* storage unavailable - difficulty just won't persist */ }
+  updateDifficultyUI();
+  updateSectorSelectUI();
+}
+function updateDifficultyUI() {
+  for (const el of difficultyBtnEls) el.classList.toggle("selected", el.dataset.difficulty === difficultyKey);
 }
 
 function distance(x1, y1, x2, y2) { return Math.hypot(x2 - x1, y2 - y1); }
@@ -2640,11 +2934,11 @@ function isOpen(x, y) {
   return MAP[mapIdx(mx, my)] === 0;
 }
 
-// startIndex: which sector (0-indexed) to begin at. Defaults to the highest
-// unlocked save point (0 if none yet) so every restart-after-death path
-// (R key, both platforms' Restart button) picks it up automatically without
-// having to know about checkpoints itself — only the explicit "Start from
-// Sector 1" button overrides it by passing 0.
+// startIndex: which sector (0-indexed) to begin at. Defaults to
+// selectedStartSector (0 until Sector Select has ever been used) so every
+// restart-after-death path (R key, both platforms' Restart button, the start
+// screen) resumes wherever was last explicitly chosen - only Sector Select's
+// own selectSector() overrides it, passing the sector the player just clicked.
 function newGame(startIndex) {
   ensureAudio();
   player = { x: 0, y: 0, dirX: 1, dirY: 0, planeX: 0, planeY: FOV_PLANE, hp: 100 };
@@ -2680,7 +2974,7 @@ function newGame(startIndex) {
   levelTransitionTimer = 0;
   joyReset();
   weaponBtnEls.forEach(b => b.classList.toggle("selected", b.dataset.weapon === "blaster"));
-  startLevel(startIndex !== undefined ? startIndex : checkpointSector);
+  startLevel(startIndex !== undefined ? startIndex : selectedStartSector);
 }
 
 // Rolls the base roster type for a regular (non-walrus) spawn: a chance of
@@ -2697,7 +2991,7 @@ function pickBaseEnemyType(level) {
 function makeEnemy(type, x, y) {
   const stats = ENEMY_TYPES[type];
   return {
-    type, x: x + 0.5, y: y + 0.5, hp: stats.hp, alive: true, hitFlash: 0, lastAttack: 0,
+    type, x: x + 0.5, y: y + 0.5, hp: Math.max(1, Math.round(stats.hp * currentDifficulty().hpMult)), alive: true, hitFlash: 0, lastAttack: 0,
     hunting: false, aware: false, wanderDirX: 0, wanderDirY: 0, wanderTimer: Math.random() * 2,
     animPhase: Math.random() * 4, zigzagPhase: Math.random() * Math.PI * 2,
     // Owl-only dive cycle: "hover" (circles/chases at altitude) -> "dive"
@@ -2708,7 +3002,117 @@ function makeEnemy(type, x, y) {
     // other type.
     altitude: type === "owl" ? stats.hoverAlt : 0,
     owlState: "hover", retreatTimer: 0,
+    // Attack animation: a brief override to the walk-cycle frame when a bite
+    // actually lands, distinct per type (see currentSpriteFrame/drawXFrame).
+    // attackAltToggle flips each landed hit, alternating between the two
+    // attacking frames (currently only visibly different on the penguin's
+    // slap, which fin swings forward).
+    attackAnimTimer: 0, attackAltToggle: false,
+    // Emperor Penguin boss fight only (see the phase-2/charge handling in
+    // update()) - harmless unused fields on every other type.
+    enraged: false, chargeState: "idle", chargeTimer: 0,
+    chargeDirX: 0, chargeDirY: 0, chargeTargetX: 0, chargeTargetY: 0,
+    chargeCooldown: 5 + Math.random() * 3,
   };
+}
+
+// Shared "an enemy's attack just connected" feedback - damage (scaled by
+// difficulty), hurt flash, shake, sound, and the game-over check. Used by
+// every attack site (the owl's dive-strike and the generic ground-enemy
+// attack, telegraphed or not) so they can't drift out of sync with each
+// other.
+function landPlayerHit(stats) {
+  const dmg = stats.damage * currentDifficulty().damageMult;
+  player.hp -= dmg;
+  hurtFlash = HURT_FLASH_PEAK;
+  addShake(0.1 + dmg * 0.006);
+  sfxPlayerHurt();
+  if (player.hp <= 0) { player.hp = 0; gameOver = true; recordRunEnd(false); sfxGameOver(); }
+  updateHud();
+}
+
+// ---------------------------------------------------------------------------
+// Environmental gimmicks: two hazards that phase in as the game gets harder
+// rather than being present from Sector 1. Both are physical/visible rather
+// than a text toast:
+// - Blizzard gusts (Sector 6+): a randomly-timed, screen-wide wind blast -
+//   visible streaking particles, a camera shake "hit", and reduced fog
+//   density for its duration. Still just runtime state (see resetGimmicks),
+//   never mutates the shared LEVELS config.
+// - Treacherous ice (Sector 8+): actual patches placed on specific floor
+//   cells when the sector is generated (see startLevel/iceCells), not a
+//   timer - standing on one saps movement control for as long as you're on
+//   it (plus a brief momentum carry-over after stepping off), the same way
+//   real ice would.
+// ---------------------------------------------------------------------------
+let gustFactor = 1;      // multiplies level.fogDensity in render() - <1 during a gust
+let gustTimer = 0;       // countdown to the next possible gust
+let gustActiveTimer = 0; // time remaining in an active gust
+let gustParticles = [];  // screen-space streak particles, visible during a gust
+let gustSpawnAccum = 0;
+let iceCells = new Set();     // mapIdx() values placed as ice patches this sector (see startLevel)
+let iceMomentum = 0;          // 0 = normal traction, up to ~0.8 = heavy slide; decays after leaving ice
+let iceDirX = 0, iceDirY = 0; // last-used movement direction, for ice's residual coast/blend
+let gimmickBannerText = "";   // still used by the boss fight's own cues (rage/charge) - see update()
+let gimmickBannerTimer = 0;
+
+function resetGimmicks() {
+  gustFactor = 1; gustActiveTimer = 0; gustTimer = 8 + Math.random() * 6;
+  gustParticles = []; gustSpawnAccum = 0;
+  iceCells = new Set();
+  iceMomentum = 0; iceDirX = 0; iceDirY = 0;
+  gimmickBannerText = ""; gimmickBannerTimer = 0;
+}
+
+function showGimmickBanner(text) {
+  gimmickBannerText = text;
+  gimmickBannerTimer = 2.2;
+}
+
+function spawnGustParticle() {
+  const fromLeft = Math.random() < 0.5;
+  gustParticles.push({
+    x: fromLeft ? -20 : SCREEN_W + 20,
+    y: Math.random() * SCREEN_H,
+    vx: (fromLeft ? 1 : -1) * (520 + Math.random() * 320),
+    vy: (Math.random() - 0.5) * 50,
+    life: 0.5 + Math.random() * 0.3,
+    len: 22 + Math.random() * 34,
+  });
+}
+
+function updateGustParticles(dt) {
+  for (let i = gustParticles.length - 1; i >= 0; i--) {
+    const p = gustParticles[i];
+    p.life -= dt;
+    p.x += p.vx * dt;
+    p.y += p.vy * dt;
+    if (p.life <= 0 || p.x < -60 || p.x > SCREEN_W + 60) gustParticles.splice(i, 1);
+  }
+}
+
+function updateGimmicks(dt) {
+  const sector = levelIndex + 1;
+
+  if (sector >= 6) {
+    if (gustActiveTimer > 0) {
+      gustActiveTimer -= dt;
+      gustSpawnAccum += dt * 55;
+      while (gustSpawnAccum >= 1) { gustSpawnAccum -= 1; spawnGustParticle(); }
+      if (gustActiveTimer <= 0) { gustFactor = 1; gustTimer = 11 + Math.random() * 9; }
+    } else {
+      gustTimer -= dt;
+      if (gustTimer <= 0) {
+        gustActiveTimer = 2.5 + Math.random() * 1.5;
+        gustFactor = Math.max(0.35, 0.75 - (sector - 6) * 0.08);
+        addShake(0.2);
+        if (audioCtx) sfxGustHit();
+      }
+    }
+  }
+  updateGustParticles(dt);
+
+  if (gimmickBannerTimer > 0) gimmickBannerTimer -= dt;
 }
 
 // Rebuilds the maze and enemy roster for a sector without touching HP,
@@ -2721,6 +3125,7 @@ function startLevel(idx) {
   player.x = startCell[0] + 0.5;
   player.y = startCell[1] + 0.5;
   player.dirX = 1; player.dirY = 0; player.planeX = 0; player.planeY = FOV_PLANE;
+  resetGimmicks();
 
   // Place enemies on open cells far enough from the player's start that
   // even the fastest enemy (a stoat, 2.2 tiles/sec) can't reach biting range
@@ -2778,6 +3183,23 @@ function startLevel(idx) {
     }
   }
 
+  // Treacherous ice patches (Sector 8+): visible floor decals (see
+  // PROP_CANVASES.icepatch) that also register in iceCells for the
+  // movement code in update() to check against - placed once here rather
+  // than on a timer, so they're a fixed part of the level layout you can
+  // learn and route around, with more of them the further you've gotten.
+  if (idx >= 7) {
+    const iceCandidates = openCells.filter(([x, y]) => distance(x, y, player.x, player.y) > 3 && !usedCells.has(mapIdx(x, y)));
+    const shuffledIce = iceCandidates.sort(() => Math.random() - 0.5);
+    const iceCount = Math.min(shuffledIce.length, 3 + (idx - 7) * 2);
+    for (let i = 0; i < iceCount; i++) {
+      const [x, y] = shuffledIce[i];
+      usedCells.add(mapIdx(x, y));
+      iceCells.add(mapIdx(x, y));
+      levelProps.push({ x: x + 0.5, y: y + 0.5, canvas: PROP_CANVASES.icepatch, scale: 1.1 });
+    }
+  }
+
   // Scattered arctic-food pickups (salmon, herring): 5-7 per sector, walking
   // over one heals the player (see the pickup check in update()).
   pickups = [];
@@ -2817,11 +3239,11 @@ function updateHud() {
 document.addEventListener("keydown", e => {
   keys[e.code] = true;
   // Locked out during live gameplay so a stray R doesn't force an accidental
-  // restart — only live once the run has actually ended. A win restarts
-  // fresh at Sector 1 rather than resuming at the checkpoint - there's
-  // nothing left to "resume" once the whole game's been cleared, and
-  // looping back into just Sector 10 forever isn't a real replay.
-  if (e.code === "KeyR" && (gameOver || won)) newGame(won ? 0 : undefined);
+  // restart — only live once the run has actually ended. Always resumes at
+  // selectedStartSector (see Sector Select) - the player has full explicit
+  // control over where that is now, so there's no need for a special case
+  // on a win.
+  if (e.code === "KeyR" && (gameOver || won)) newGame();
   if (e.code === "KeyM") toggleAllMute();
   if (e.code === "Digit1") currentWeaponKey = "blaster";
   if (e.code === "Digit2") currentWeaponKey = "harpoon";
@@ -2866,11 +3288,13 @@ startBtn.addEventListener("click", () => {
   newGame();
   tryPointerLock();
 });
-restartFromOneBtnEl.addEventListener("click", () => {
-  overlay.style.display = "none";
-  newGame(0);
-  tryPointerLock();
-});
+for (const btn of difficultyBtnEls) {
+  btn.addEventListener("click", () => setDifficulty(btn.dataset.difficulty));
+}
+sectorSelectBtnDesktopEl.addEventListener("click", openSectorSelect);
+sectorSelectBtnMobileEl.addEventListener("click", openSectorSelect);
+sectorSelectBtnMobileEl.addEventListener("touchstart", e => { e.preventDefault(); openSectorSelect(); }, { passive: false });
+sectorSelectCloseBtnEl.addEventListener("click", closeSectorSelect);
 
 // ---------------------------------------------------------------------------
 // Touch controls: a virtual joystick for movement, drag-to-look anywhere on
@@ -3027,13 +3451,13 @@ for (const btn of weaponBtnEls) {
 
 function restartFromMobileChip() {
   overlay.style.display = "none";
-  newGame(won ? 0 : undefined);
+  newGame();
 }
 restartBtnMobileEl.addEventListener("touchstart", e => { e.preventDefault(); restartFromMobileChip(); }, { passive: false });
 restartBtnMobileEl.addEventListener("click", restartFromMobileChip);
 
 restartBtnDesktopEl.addEventListener("click", () => {
-  newGame(won ? 0 : undefined);
+  newGame();
   tryPointerLock();
 });
 
@@ -3063,13 +3487,15 @@ pauseBtnMobileEl.addEventListener("touchstart", e => {
 }, { passive: false });
 pauseBtnMobileEl.addEventListener("click", () => setPaused(!paused));
 
-musicBtnEl.addEventListener("click", () => toggleMusicMute());
-musicBtnEl.addEventListener("touchstart", e => {
+musicBtnDesktopEl.addEventListener("click", () => toggleMusicMute());
+musicBtnMobileEl.addEventListener("click", () => toggleMusicMute());
+musicBtnMobileEl.addEventListener("touchstart", e => {
   e.preventDefault();
   toggleMusicMute();
 });
-sfxBtnEl.addEventListener("click", () => toggleSfxMute());
-sfxBtnEl.addEventListener("touchstart", e => {
+sfxBtnDesktopEl.addEventListener("click", () => toggleSfxMute());
+sfxBtnMobileEl.addEventListener("click", () => toggleSfxMute());
+sfxBtnMobileEl.addEventListener("touchstart", e => {
   e.preventDefault();
   toggleSfxMute();
 });
@@ -3170,18 +3596,11 @@ function killIfDead(e) {
     e.alive = false;
     addShake(0.08 + ENEMY_TYPES[e.type].hp * 0.012);
     if (enemies.every(x => !x.alive)) {
+      recordSectorCleared(levelIndex);
       if (levelIndex < LEVELS.length - 1) {
         levelTransition = true;
         levelTransitionTimer = 2.4;
         sfxLevelClear();
-        const clearedSector = levelIndex + 1;
-        justReachedCheckpoint = CHECKPOINT_SECTORS.includes(clearedSector) && clearedSector > checkpointSector;
-        if (justReachedCheckpoint) {
-          checkpointSector = clearedSector;
-          saveCheckpoint();
-          updateCheckpointUI();
-          updateStartScreenForCheckpoint();
-        }
       } else {
         won = true;
         recordRunEnd(true);
@@ -3357,6 +3776,16 @@ function chaseWaypoint(ex, ey) {
 let muzzleFlash = 0;
 const HURT_FLASH_PEAK = 20;
 let hurtFlash = 0;
+// How long an enemy's attack-animation pose (see e.attackAnimTimer, set
+// whenever a bite/swipe lands) stays showing before reverting to the normal
+// walk-cycle frame - seconds, not frames, so it's frame-rate independent.
+const ATTACK_ANIM_DURATION = 0.35;
+// How strong treacherous ice's traction loss gets once you're standing on
+// a patch (see iceCells/iceMomentum in updateGimmicks and the movement code
+// in update()) - constant across every sector that has ice at all (only the
+// number of patches scales with how far you've gotten, not how slick any
+// one patch is).
+const ICE_SLIDE_STRENGTH = 0.65;
 let crosshairHitTimer = 0;
 let recoilOffset = 0;
 let flameShakeX = 0;
@@ -3643,6 +4072,25 @@ function drawAmbient() {
     ctx.beginPath();
     ctx.ellipse(p.x, p.y, p.size, p.size, 0, 0, Math.PI * 2);
     ctx.fill();
+  }
+  ctx.restore();
+}
+
+// Screen-space wind streaks visible for as long as a blizzard gust is active
+// (see updateGimmicks) - the actual "you can see and feel the gust hit you"
+// replacement for what used to just be a text toast.
+function drawGustParticles() {
+  ctx.save();
+  ctx.strokeStyle = "rgba(230,240,250,0.55)";
+  ctx.lineWidth = 1.5;
+  ctx.lineCap = "round";
+  for (const p of gustParticles) {
+    ctx.globalAlpha = Math.max(0, Math.min(1, p.life / 0.3)) * 0.75;
+    const dirX = p.vx > 0 ? 1 : -1;
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y);
+    ctx.lineTo(p.x - dirX * p.len, p.y);
+    ctx.stroke();
   }
   ctx.restore();
 }
@@ -4177,6 +4625,20 @@ function update(dt) {
   if (keys["ArrowLeft"]) rotatePlayer(-kTurn);
   if (keys["ArrowRight"]) rotatePlayer(kTurn);
 
+  // Treacherous ice: sourced from iceCells, placed once when the sector was
+  // generated (see startLevel) - not a timer. Momentum snaps to full
+  // strength the instant you're standing on a patch and decays over the
+  // following ~0.7s after leaving one, so stepping off still carries a
+  // brief slide instead of regaining full control the instant you cross
+  // the edge.
+  const onIce = iceCells.has(mapIdx(Math.floor(player.x), Math.floor(player.y)));
+  if (onIce) {
+    if (iceMomentum <= 0.05 && audioCtx) sfxIceCrackle();
+    iceMomentum = ICE_SLIDE_STRENGTH;
+  } else {
+    iceMomentum = Math.max(0, iceMomentum - dt * 1.4);
+  }
+
   const moveSpeed = 3.0 * dt;
   let mx = 0, my = 0;
   if (keys["KeyW"]) { mx += player.dirX; my += player.dirY; }
@@ -4188,13 +4650,35 @@ function update(dt) {
   mx += player.dirX * joyForward - player.dirY * joyStrafe;
   my += player.dirY * joyForward + player.dirX * joyStrafe;
   const mlen = Math.hypot(mx, my);
+  const pad = 0.2;
   if (mlen > 0) {
-    mx = (mx / mlen) * moveSpeed;
-    my = (my / mlen) * moveSpeed;
-    const pad = 0.2;
+    mx /= mlen; my /= mlen; // unit direction
+    // Blend toward the new input direction instead of snapping to it while
+    // on/leaving ice, and keep sliding on it below when input direction is
+    // unchanged - the higher iceMomentum is, the less responsive turning
+    // underfoot becomes.
+    if (iceMomentum > 0) {
+      const blend = 1 - iceMomentum * 0.85;
+      mx = iceDirX + (mx - iceDirX) * blend;
+      my = iceDirY + (my - iceDirY) * blend;
+      const norm = Math.hypot(mx, my) || 1;
+      mx /= norm; my /= norm;
+    }
+    iceDirX = mx; iceDirY = my;
+    mx *= moveSpeed; my *= moveSpeed;
     if (isOpen(player.x + mx + Math.sign(mx) * pad, player.y)) player.x += mx;
     if (isOpen(player.x, player.y + my + Math.sign(my) * pad)) player.y += my;
+  } else if (iceMomentum > 0 && (iceDirX !== 0 || iceDirY !== 0)) {
+    // No input at all, but still coasting on the ice from residual momentum.
+    const slideSpeed = moveSpeed * iceMomentum * 0.6;
+    const sx = iceDirX * slideSpeed, sy = iceDirY * slideSpeed;
+    if (isOpen(player.x + sx + Math.sign(sx) * pad, player.y)) player.x += sx;
+    if (isOpen(player.x, player.y + sy + Math.sign(sy) * pad)) player.y += sy;
+    iceDirX *= 0.9; iceDirY *= 0.9;
+    if (Math.hypot(iceDirX, iceDirY) < 0.05) { iceDirX = 0; iceDirY = 0; }
   }
+
+  updateGimmicks(dt);
 
   // Food pickups: walking within range consumes it and restores HP (capped
   // at 100), even if some heal goes to waste — simpler and more predictable
@@ -4227,6 +4711,7 @@ function update(dt) {
   for (const e of enemies) {
     if (!e.alive) continue;
     if (e.hitFlash > 0) e.hitFlash--;
+    if (e.attackAnimTimer > 0) e.attackAnimTimer = Math.max(0, e.attackAnimTimer - dt);
     const stats = ENEMY_TYPES[e.type];
     const dx = player.x - e.x, dy = player.y - e.y;
     const dist = Math.hypot(dx, dy);
@@ -4245,6 +4730,53 @@ function update(dt) {
       else if (e.type === "penguin") sfxPenguinChirp();
       else if (e.type === "stoat") sfxStoatChitter();
       else if (e.type === "emperorpenguin") sfxEmperorPenguinCall();
+    }
+
+    // Emperor Penguin boss fight: crossing half HP triggers a one-time
+    // "rage" (cue + a periodic telegraphed charge attack for the rest of
+    // the fight, toggled on below). While an active charge is in any of its
+    // three phases, it fully takes over this enemy's turn (movement and
+    // attack) and skips every other branch below via `continue` - separate
+    // from, and layered on top of, the generic ground-enemy AI it otherwise
+    // shares with every non-owl type.
+    if (e.type === "emperorpenguin" && !e.enraged && e.hp <= ENEMY_TYPES.emperorpenguin.hp * currentDifficulty().hpMult * 0.5) {
+      e.enraged = true;
+      showGimmickBanner("⚠ THE EMPEROR RAGES");
+      addShake(0.4);
+      sfxEmperorPenguinCall();
+    }
+    if (e.type === "emperorpenguin" && e.chargeState !== "idle") {
+      if (e.chargeState === "windup") {
+        e.chargeTimer -= dt;
+        if (e.chargeTimer <= 0) {
+          e.chargeState = "dash";
+          e.chargeTimer = 1.4;
+          const clen = Math.hypot(e.chargeTargetX - e.x, e.chargeTargetY - e.y) || 1;
+          e.chargeDirX = (e.chargeTargetX - e.x) / clen;
+          e.chargeDirY = (e.chargeTargetY - e.y) / clen;
+        }
+      } else if (e.chargeState === "dash") {
+        e.chargeTimer -= dt;
+        const chargeSpeed = stats.speed * 3.2 * dt;
+        const nx = e.x + e.chargeDirX * chargeSpeed;
+        const ny = e.y + e.chargeDirY * chargeSpeed;
+        const openX = isOpen(nx, e.y), openY = isOpen(e.x, ny);
+        if (openX) e.x = nx;
+        if (openY) e.y = ny;
+        if (dist <= stats.attackRange + 0.3 && now - e.lastAttack > 500) {
+          e.lastAttack = now;
+          landPlayerHit({ damage: stats.damage * 1.5 });
+          addShake(0.5);
+          e.chargeState = "recover"; e.chargeTimer = 1.2;
+        } else if ((!openX && !openY) || e.chargeTimer <= 0) {
+          e.chargeState = "recover"; e.chargeTimer = 1.2;
+        }
+      } else if (e.chargeState === "recover") {
+        e.chargeTimer -= dt;
+        if (e.chargeTimer <= 0) { e.chargeState = "idle"; e.chargeCooldown = 6 + Math.random() * 4; }
+      }
+      e.animPhase += dt * stats.speed * 2.0;
+      continue;
     }
 
     // Owl dive cycle: unlike every other enemy (which just closes to
@@ -4270,12 +4802,9 @@ function update(dt) {
         if (dist <= stats.attackRange && now - e.lastAttack > stats.attackCooldown) {
           struck = true;
           e.lastAttack = now;
-          player.hp -= stats.damage;
-          hurtFlash = HURT_FLASH_PEAK;
-          addShake(0.1 + stats.damage * 0.006);
-          sfxPlayerHurt();
-          if (player.hp <= 0) { player.hp = 0; gameOver = true; recordRunEnd(false); sfxGameOver(); }
-          updateHud();
+          e.attackAnimTimer = ATTACK_ANIM_DURATION;
+          e.attackAltToggle = !e.attackAltToggle;
+          landPlayerHit(stats);
           sfxHit(e.type);
         }
         // Strike landed, or the dive dragged on too long (player dodged /
@@ -4347,6 +4876,16 @@ function update(dt) {
 
     if (hunting) {
       e.hunting = true;
+      if (e.type === "emperorpenguin" && e.enraged) {
+        e.chargeCooldown -= dt;
+        if (e.chargeCooldown <= 0) {
+          e.chargeState = "windup";
+          e.chargeTimer = 0.7;
+          e.chargeTargetX = player.x; e.chargeTargetY = player.y;
+          showGimmickBanner("⚠ EMPEROR CHARGING");
+          sfxAttackTelegraph();
+        }
+      }
       const [wx, wy] = chaseWaypoint(e.x, e.y);
       let wdx = wx - e.x, wdy = wy - e.y;
       let wdist = Math.hypot(wdx, wdy) || 1;
@@ -4371,12 +4910,9 @@ function update(dt) {
       e.hunting = false;
       if (aware && dist <= stats.attackRange && now - e.lastAttack > stats.attackCooldown) {
         e.lastAttack = now;
-        player.hp -= stats.damage;
-        hurtFlash = HURT_FLASH_PEAK;
-        addShake(0.1 + stats.damage * 0.006);
-        sfxPlayerHurt();
-        if (player.hp <= 0) { player.hp = 0; gameOver = true; recordRunEnd(false); sfxGameOver(); }
-        updateHud();
+        e.attackAnimTimer = ATTACK_ANIM_DURATION;
+        e.attackAltToggle = !e.attackAltToggle;
+        landPlayerHit(stats);
       } else if (!aware) {
         // Idle roaming: penguins waddle, polar bears lumber, walruses barely
         // shuffle — all at a slow fraction of their (unchanged) chase speed,
@@ -4455,6 +4991,10 @@ function render() {
   }
 
   const level = LEVELS[levelIndex];
+  // A blizzard gust (see updateGimmicks) temporarily tightens visibility by
+  // scaling this down below 1 - never mutates level.fogDensity itself, so
+  // replaying the sector later isn't affected by a past gust.
+  const activeFogDensity = level.fogDensity * gustFactor;
   // Horizon shifts with vertical look (pitch) — walls, sprites and the
   // sky/floor split all move together so aiming up/down is consistent.
   const horizon = SCREEN_H / 2 + pitch;
@@ -4553,11 +5093,11 @@ function render() {
     let r = base[0] * variance, g = base[1] * variance, b = base[2] * variance;
     if (wallFrac < 0.05 || wallFrac > 0.95) { r *= 0.55; g *= 0.55; b *= 0.55; }
 
-    const shade = Math.max(0.12, 1 - dist / level.fogDensity);
+    const shade = Math.max(0.12, 1 - dist / activeFogDensity);
     r *= shade; g *= shade; b *= shade;
 
     // Fog blend: distant walls fade toward the sector's atmosphere color.
-    const fogT = Math.min(1, Math.max(0, (dist - level.fogDensity * 0.55) / (level.fogDensity * 0.9)));
+    const fogT = Math.min(1, Math.max(0, (dist - activeFogDensity * 0.55) / (activeFogDensity * 0.9)));
     r += (level.fogColor[0] - r) * fogT;
     g += (level.fogColor[1] - g) * fogT;
     b += (level.fogColor[2] - b) * fogT;
@@ -4568,6 +5108,7 @@ function render() {
 
   renderSprites();
   drawAmbient();
+  if (gustParticles.length) drawGustParticles();
 
   drawWeapon(currentWeaponKey, recoilOffset, flameShakeX);
   if (tracers.length) drawTracers();
@@ -4597,6 +5138,23 @@ function render() {
     ctx.save();
     ctx.fillStyle = vignette;
     ctx.fillRect(0, 0, SCREEN_W, SCREEN_H);
+    ctx.restore();
+  }
+
+  // Environmental gimmick banner: brief, unobtrusive text near the top of
+  // the screen when a blizzard gust or ice patch kicks in - a toast, not a
+  // full-screen interruption, since these fire mid-fight and shouldn't stop
+  // the player from seeing what's happening.
+  if (gimmickBannerTimer > 0) {
+    const t = Math.min(1, gimmickBannerTimer / 2.2);
+    const fade = Math.min(1, t * 4) * Math.min(1, gimmickBannerTimer * 2);
+    ctx.save();
+    ctx.globalAlpha = fade;
+    ctx.font = `18px ${FONT_UI}`;
+    ctx.fillStyle = "#bfe8ff";
+    ctx.textAlign = "center";
+    ctx.fillText(gimmickBannerText, SCREEN_W / 2, 40);
+    ctx.textAlign = "left";
     ctx.restore();
   }
 
@@ -4677,15 +5235,26 @@ function drawSpriteRun(e, spriteCanvas, drawStartX, drawStartY, spriteWidth, spr
   // instead of always rendering full-bright. Capped below 1 so enemies stay
   // readable/targetable even at max fog density.
   const level = LEVELS[levelIndex];
-  const fogT = Math.min(1, Math.max(0, (dist - level.fogDensity * 0.55) / (level.fogDensity * 0.9))) * 0.85;
+  const activeFogDensity = level.fogDensity * gustFactor;
+  const fogT = Math.min(1, Math.max(0, (dist - activeFogDensity * 0.55) / (activeFogDensity * 0.9))) * 0.85;
 
-  if (e.hitFlash > 0 || fogT > 0.02) {
+  if (e.hitFlash > 0 || e.chargeState === "windup" || fogT > 0.02) {
     spriteScratchCtx.clearRect(0, 0, SPRITE_SIZE, SPRITE_SIZE);
     spriteScratchCtx.drawImage(spriteCanvas, 0, 0);
     if (fogT > 0.02) {
       spriteScratchCtx.globalCompositeOperation = "source-atop";
       spriteScratchCtx.globalAlpha = fogT;
       spriteScratchCtx.fillStyle = `rgb(${level.fogColor[0] | 0}, ${level.fogColor[1] | 0}, ${level.fogColor[2] | 0})`;
+      spriteScratchCtx.fillRect(0, 0, SPRITE_SIZE, SPRITE_SIZE);
+    }
+    // Pulsing red for the boss's charge windup specifically - a distinct
+    // warning cue for that special attack only (the generic bite telegraph
+    // this game briefly had was removed - didn't read well and didn't add
+    // enough to be worth it).
+    if (e.chargeState === "windup") {
+      spriteScratchCtx.globalCompositeOperation = "source-atop";
+      spriteScratchCtx.globalAlpha = 0.45 + Math.sin(performance.now() * 0.035) * 0.3;
+      spriteScratchCtx.fillStyle = "#ff3030";
       spriteScratchCtx.fillRect(0, 0, SPRITE_SIZE, SPRITE_SIZE);
     }
     if (e.hitFlash > 0) {
@@ -4742,7 +5311,7 @@ function renderEndState() {
   ctx.fillText(bannerText, SCREEN_W / 2, SCREEN_H / 2 - 10);
   ctx.font = `20px ${FONT_UI}`;
   ctx.fillStyle = "#eafcff";
-  const restartHint = (isTouch ? "Click the Restart button to play again" : "Click Restart or press R to play again") + (won ? " from Sector 1" : "");
+  const restartHint = isTouch ? "Click the Restart button to play again" : "Click Restart or press R to play again";
   ctx.fillText(restartHint, SCREEN_W / 2, SCREEN_H / 2 + 30);
   ctx.font = `16px ${FONT_UI}`;
   ctx.fillStyle = lastRunNewRecord ? "#ffe27f" : "#9fd8e6";
@@ -4760,11 +5329,6 @@ function renderLevelTransition() {
   ctx.font = `20px ${FONT_UI}`;
   ctx.fillStyle = "#eafcff";
   ctx.fillText("Entering " + LEVELS[levelIndex + 1].name, SCREEN_W / 2, SCREEN_H / 2 + 22);
-  if (justReachedCheckpoint) {
-    ctx.font = `16px ${FONT_UI}`;
-    ctx.fillStyle = "#ffe27f";
-    ctx.fillText("⚑ SAVE POINT REACHED", SCREEN_W / 2, SCREEN_H / 2 + 50);
-  }
   ctx.textAlign = "left";
 }
 
@@ -4849,8 +5413,16 @@ function frame(now) {
 }
 bestStatsEl.textContent = bestStatsText();
 applyMuteState();
-updateCheckpointUI();
-updateStartScreenForCheckpoint();
+updateDifficultyUI();
+populateSectorSelectList();
+updateSectorSelectUI();
+// Unlike Restart/Pause (only meaningful once a run exists), Music/SFX/
+// Sector Select should be available immediately - including on the start
+// screen - so these are set once here rather than gated on `running` in
+// frame() below.
+musicBtnDesktopEl.classList.toggle("hidden", isTouch);
+sfxBtnDesktopEl.classList.toggle("hidden", isTouch);
+sectorSelectBtnDesktopEl.classList.toggle("hidden", isTouch);
 requestAnimationFrame(frame);
 
 // ---------------------------------------------------------------------------
