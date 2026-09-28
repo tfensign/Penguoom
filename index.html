@@ -2176,16 +2176,22 @@ const LEVELS = [
       { type: "candycane", count: 8, scale: 1.1 },
     ],
     music: {
-      // Leans on the classic "Jingle Bells" rhythmic device - three quick
-      // repeated notes, a breath, three more - rather than a generic
-      // pentatonic noodle, so it actually reads as a carol instead of just
-      // "major scale + sleigh bells".
-      root: 196, scale: scaleFrom(196, [0, 2, 4, 7, 9, 12]),
+      // The actual "Jingle Bells" chorus melody, transcribed by solfège
+      // degree (do=0 re=1 mi=2 fa=3 sol=4) rather than approximated - the
+      // previous version had the right call-and-response rhythm (three
+      // repeated notes, a breath, three more) but the wrong pitches: it
+      // opened on the *root* (do-do-do) instead of the real tune's mediant
+      // (mi-mi-mi), and its 6-note pentatonic scale had no degree for fa at
+      // all, so "oh what fun it is to ride" couldn't land on the right note
+      // no matter how the pattern was tuned. A full 8-degree major scale
+      // fixes both: line 1 is "mi mi mi, mi mi mi, mi sol do re mi(held)",
+      // line 2 is "fa fa fa fa, fa mi mi mi, mi re re mi, re(held) sol(held)".
+      root: 196, scale: scaleFrom(196, [0, 2, 4, 5, 7, 9, 11, 12]),
       pattern: [
-        0, 0, 0, null, 0, 0, 0, null, 2, 1, 0, null, 3, null, null, null,
-        3, 3, 3, null, 2, 2, 2, null, 4, 3, 2, 1, 0, null, null, null,
+        2, 2, 2, null, 2, 2, 2, null, 2, 4, 0, 1, 2, null, null, null,
+        3, 3, 3, 3, 3, 2, 2, 2, 2, 1, 1, 2, 1, null, 4, null,
       ],
-      variation: { step: 28, degree: 2 },
+      variation: { step: 31, degree: 0 },
       stepMs: 340, padWave: "triangle", filterBase: 1300, windFreq: 600, windGain: 0.012, timbre: "sleigh",
     },
   },
@@ -2992,10 +2998,23 @@ function playBassPulse(freq) {
 let musicNodes = [];
 let musicIntervalId = null;
 let hornSwellTimeoutId = null;
+let sleighShakeTimeoutId = null;
+
+// Continuous sleigh-bell shimmer: a quick, quiet, metallic noise tick with
+// a touch of pitch content, on its own steady fast pulse independent of the
+// melody grid - real sleigh bells jingle continuously under the tune, not
+// just on the beat, and that background shake is a big part of what makes
+// "Jingle Bells" specifically read as *that* song rather than just another
+// carol-shaped melody in bell tones.
+function playSleighShimmer() {
+  playNoise({ duration: 0.05, gain: 0.045, filterFreq: 5200 + Math.random() * 1800, filterType: "bandpass" });
+  playTone({ freq: 2600 + Math.random() * 400, type: "square", duration: 0.03, gain: 0.02 });
+}
 
 function stopMusic() {
   if (musicIntervalId !== null) { clearInterval(musicIntervalId); musicIntervalId = null; }
   if (hornSwellTimeoutId !== null) { clearTimeout(hornSwellTimeoutId); hornSwellTimeoutId = null; }
+  if (sleighShakeTimeoutId !== null) { clearTimeout(sleighShakeTimeoutId); sleighShakeTimeoutId = null; }
   if (audioCtx) {
     const t = audioCtx.currentTime;
     for (const node of musicNodes) {
@@ -3082,6 +3101,21 @@ function startMusicForLevel(level) {
   musicNodes = [padOsc1, padOsc1detune, padOsc2, lfo, windSrc];
 
   scheduleHornSwell(cfg.root);
+
+  // The sleigh-bell shimmer is keyed off the melody's own timbre rather
+  // than a one-off per-level flag - "sleigh" already means "this level's
+  // melody voice is jingle bells", so anything using it gets the ambient
+  // jingle texture underneath for free. Runs on its own faster, slightly
+  // randomized pulse (not locked to the melody's stepMs grid) so it reads
+  // as a continuous shake, not another rhythmic voice competing with the
+  // tune.
+  if (cfg.timbre === "sleigh") {
+    const shake = () => {
+      playSleighShimmer();
+      sleighShakeTimeoutId = setTimeout(shake, 110 + Math.random() * 70);
+    };
+    shake();
+  }
 
   // Melody, looped by re-triggering on an interval. Each level's pattern is
   // two 16-step phrases (a theme, then a developed answer to it) rather than
