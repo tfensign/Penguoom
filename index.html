@@ -209,14 +209,11 @@
     position: absolute; left: 50%; top: 50%; width: 54px; height: 54px; margin: -27px 0 0 -27px; border-radius: 50%;
     background: rgba(180,230,250,0.55); border: 2px solid rgba(220,245,255,0.75);
   }
-  #fireBtn {
-    position: absolute; right: 26px; bottom: 30px; width: 92px; height: 92px; border-radius: 50%;
-    background: rgba(255,90,70,0.35); border: 3px solid rgba(255,140,120,0.7);
-    color: #fff; font-family: var(--font-ui); font-weight: bold; font-size: 0.95rem;
-    display: flex; align-items: center; justify-content: center; text-align: center;
-  }
-  #fireBtn.pressed { background: rgba(255,90,70,0.65); }
-  #weaponBtns { position: absolute; right: 30px; bottom: 138px; display: flex; flex-direction: column; gap: 8px; }
+  /* Fire button removed - tapping/holding the canvas already shoots (see the
+     canvas touchstart/touchend handlers), so a dedicated button was
+     redundant. Moving the weapon-select column down into its old footprint
+     is what frees the room above for a separate Music and SFX button. */
+  #weaponBtns { position: absolute; right: 30px; bottom: 30px; display: flex; flex-direction: column; gap: 8px; }
   .weaponBtn {
     width: 52px; height: 52px; border-radius: 10px; background: rgba(20,40,55,0.65); border: 2px solid rgba(150,220,240,0.5);
     color: #eafcff; font-size: 1.4rem; display: flex; align-items: center; justify-content: center;
@@ -225,16 +222,20 @@
   /* Pinned to the true screen edge like the rest of the touch controls (not
      inside #wrap, so it can't ever land on top of the letterboxed minimap).
      Sits well clear above the weapon-select column with a deliberate gap so
-     it doesn't read as a 4th weapon choice. */
-  #muteBtn {
-    position: fixed; right: 30px; bottom: 372px; z-index: 7;
+     the pair doesn't read as extra weapon choices. Split into two buttons
+     (was one combined mute button) so music and sound effects can be muted
+     independently, stacked in roughly that same spot. */
+  #musicBtn, #sfxBtn {
+    position: fixed; right: 30px; z-index: 7;
     width: 52px; height: 44px; display: flex; align-items: center; justify-content: center;
     border-radius: 10px; background: rgba(20,40,55,0.65); border: 2px solid rgba(150,220,240,0.5);
     font-size: 1.3rem; line-height: 1; cursor: pointer; pointer-events: auto; user-select: none;
   }
-  #muteBtn.muted { opacity: 0.6; }
+  #musicBtn { bottom: 372px; }
+  #sfxBtn { bottom: 320px; }
+  #musicBtn.muted, #sfxBtn.muted { opacity: 0.6; }
   #restartBtnMobile, #pauseBtnMobile {
-    position: absolute; left: 8px; padding: 8px 12px; border-radius: 8px;
+    position: absolute; left: 2px; padding: 8px 12px; border-radius: 8px;
     background: rgba(20,40,55,0.65); border: 2px solid rgba(150,220,240,0.5); color: #eafcff;
     font-family: var(--font-ui); font-size: 0.85rem;
   }
@@ -308,7 +309,8 @@
   </div>
 </div>
 
-<div id="muteBtn" title="Mute audio (M)">&#128266;</div>
+<div id="musicBtn" title="Mute music (M)">&#127925;</div>
+<div id="sfxBtn" title="Mute sound effects (M)">&#128266;</div>
 <div id="mobileControls">
   <div id="joyBase" class="touchBtn"><div id="joyKnob"></div></div>
   <div id="weaponBtns">
@@ -316,7 +318,6 @@
     <div class="touchBtn weaponBtn" data-weapon="harpoon">&#127993;</div>
     <div class="touchBtn weaponBtn" data-weapon="flamethrower">&#128293;</div>
   </div>
-  <div id="fireBtn" class="touchBtn">FIRE</div>
   <div id="restartBtnMobile" class="touchBtn">&#8635; Restart</div>
   <div id="pauseBtnMobile" class="touchBtn hidden">&#9208; Pause</div>
 </div>
@@ -1387,13 +1388,13 @@ const crosshairEl = document.getElementById("crosshair");
 const mobileControlsEl = document.getElementById("mobileControls");
 const joyBaseEl = document.getElementById("joyBase");
 const joyKnobEl = document.getElementById("joyKnob");
-const fireBtnEl = document.getElementById("fireBtn");
 const weaponBtnEls = Array.from(document.querySelectorAll(".weaponBtn"));
 const restartBtnMobileEl = document.getElementById("restartBtnMobile");
 const restartBtnDesktopEl = document.getElementById("restartBtnDesktop");
 const pauseBtnMobileEl = document.getElementById("pauseBtnMobile");
 const pauseBtnDesktopEl = document.getElementById("pauseBtnDesktop");
-const muteBtnEl = document.getElementById("muteBtn");
+const musicBtnEl = document.getElementById("musicBtn");
+const sfxBtnEl = document.getElementById("sfxBtn");
 const rotatePromptEl = document.getElementById("rotatePrompt");
 
 // ---------------------------------------------------------------------------
@@ -1428,13 +1429,12 @@ if (isTouch) {
   // apply: a true phone/tablet gets touch-only wording, everything else
   // (including touch-laptops) keeps the keyboard/mouse hint below.
   if (isMobileUA) {
-    hintEl.textContent = "Left pad: move · drag screen: look · FIRE button: shoot · tap a weapon icon: switch · tap restart: play again · tap speaker: mute";
+    hintEl.textContent = "Left pad: move · drag screen: look · tap to shoot, hold for flamethrower · tap a weapon icon: switch · tap restart: play again · \u{1F3B5}/\u{1F50A} to mute";
   } else {
     // A touch-capable but non-mobile device (touchscreen laptop/desktop)
-    // already has a real keyboard and mouse, so the movement joystick and
-    // fire button are redundant clutter — only true phones/tablets need them.
+    // already has a real keyboard and mouse, so the movement joystick is
+    // redundant clutter — only true phones/tablets need it.
     joyBaseEl.classList.add("hidden");
-    fireBtnEl.classList.add("hidden");
   }
 }
 
@@ -1719,18 +1719,44 @@ let audioCtx = null, musicGain = null, sfxGain = null;
 let flameNoiseGain = null, flameFilter = null;
 const MUSIC_VOL = 0.5;
 const SFX_VOL = 0.6;
-const MUTE_KEY = "penguoom_muted_v1";
-let muted = localStorage.getItem(MUTE_KEY) === "1";
+const MUSIC_MUTE_KEY = "penguoom_music_muted_v1";
+const SFX_MUTE_KEY = "penguoom_sfx_muted_v1";
+// Music/SFX used to be a single combined mute button - fall back to that old
+// flag for anyone upgrading who'd already muted, so this split doesn't quietly
+// unmute them.
+const legacyMuted = localStorage.getItem("penguoom_muted_v1") === "1";
+let musicMuted = localStorage.getItem(MUSIC_MUTE_KEY) !== null ? localStorage.getItem(MUSIC_MUTE_KEY) === "1" : legacyMuted;
+let sfxMuted = localStorage.getItem(SFX_MUTE_KEY) !== null ? localStorage.getItem(SFX_MUTE_KEY) === "1" : legacyMuted;
 function applyMuteState() {
-  if (musicGain) musicGain.gain.value = muted ? 0 : MUSIC_VOL;
-  if (sfxGain) sfxGain.gain.value = muted ? 0 : SFX_VOL;
-  muteBtnEl.textContent = muted ? "\u{1F507}" : "\u{1F50A}";
-  muteBtnEl.classList.toggle("muted", muted);
-  muteBtnEl.title = (muted ? "Unmute" : "Mute") + " audio (M)";
+  if (musicGain) musicGain.gain.value = musicMuted ? 0 : MUSIC_VOL;
+  if (sfxGain) sfxGain.gain.value = sfxMuted ? 0 : SFX_VOL;
+  musicBtnEl.textContent = musicMuted ? "\u{1F507}" : "\u{1F3B5}";
+  musicBtnEl.classList.toggle("muted", musicMuted);
+  musicBtnEl.title = (musicMuted ? "Unmute" : "Mute") + " music (M)";
+  sfxBtnEl.textContent = sfxMuted ? "\u{1F507}" : "\u{1F50A}";
+  sfxBtnEl.classList.toggle("muted", sfxMuted);
+  sfxBtnEl.title = (sfxMuted ? "Unmute" : "Mute") + " sound effects (M)";
 }
-function toggleMute() {
-  muted = !muted;
-  try { localStorage.setItem(MUTE_KEY, muted ? "1" : "0"); } catch (err) { /* storage unavailable — mute still works for this session */ }
+function toggleMusicMute() {
+  musicMuted = !musicMuted;
+  try { localStorage.setItem(MUSIC_MUTE_KEY, musicMuted ? "1" : "0"); } catch (err) { /* storage unavailable — mute still works for this session */ }
+  applyMuteState();
+}
+function toggleSfxMute() {
+  sfxMuted = !sfxMuted;
+  try { localStorage.setItem(SFX_MUTE_KEY, sfxMuted ? "1" : "0"); } catch (err) { /* storage unavailable — mute still works for this session */ }
+  applyMuteState();
+}
+// Keyboard "M" is kept as a single "mute everything" shortcut: if either
+// channel is still on, mute both; if both are already muted, unmute both.
+function toggleAllMute() {
+  const nextMuted = !(musicMuted && sfxMuted);
+  musicMuted = nextMuted;
+  sfxMuted = nextMuted;
+  try {
+    localStorage.setItem(MUSIC_MUTE_KEY, musicMuted ? "1" : "0");
+    localStorage.setItem(SFX_MUTE_KEY, sfxMuted ? "1" : "0");
+  } catch (err) { /* storage unavailable — mute still works for this session */ }
   applyMuteState();
 }
 
@@ -2234,7 +2260,7 @@ document.addEventListener("keydown", e => {
   // Locked out during live gameplay so a stray R doesn't force an accidental
   // restart — only live once the run has actually ended.
   if (e.code === "KeyR" && (gameOver || won)) newGame();
-  if (e.code === "KeyM") toggleMute();
+  if (e.code === "KeyM") toggleAllMute();
   if (e.code === "Digit1") currentWeaponKey = "blaster";
   if (e.code === "Digit2") currentWeaponKey = "harpoon";
   if (e.code === "Digit3") currentWeaponKey = "flamethrower";
@@ -2282,8 +2308,9 @@ startBtn.addEventListener("click", () => {
 // ---------------------------------------------------------------------------
 // Touch controls: a virtual joystick for movement, drag-to-look anywhere on
 // the game view (reuses the same mouseDX/mouseDY the mouse path feeds, so
-// turning and vertical aim work identically), a fire button, weapon-select
-// icons, and a restart button (there's no keyboard to press R on).
+// turning and vertical aim work identically; a tap/hold on that same drag
+// also fires - see below), weapon-select icons, and a restart button
+// (there's no keyboard to press R on).
 // ---------------------------------------------------------------------------
 let joyTouchId = null, joyCenterX = 0, joyCenterY = 0, joyForward = 0, joyStrafe = 0;
 const JOY_RADIUS = 55;
@@ -2341,8 +2368,8 @@ function scaleTouchDelta(d) {
 
 // A touch that barely moved and didn't linger counts as a tap: fire the
 // current semi-auto weapon (blaster/harpoon), so aiming and shooting are one
-// continuous thumb motion instead of drag-then-relocate-to the separate FIRE
-// button. Longer or larger touches are a pure look-drag.
+// continuous thumb motion anywhere on the canvas (there's no separate FIRE
+// button). Longer or larger touches are a pure look-drag.
 //
 // The flamethrower can't use a tap (it's hold-to-fire, not one-shot), but a
 // canvas touch can't just fire it immediately either, or aiming alone sprays
@@ -2361,10 +2388,6 @@ let lookTouchId = null, lookLastX = 0, lookLastY = 0;
 let lookStartX = 0, lookStartY = 0, lookStartTime = 0;
 let flameCommitTimer = null;
 let flameDisqualified = false;
-// True only once THIS touch is the one that armed mouseHeld, so releasing it
-// doesn't stomp on an independent hold from the FIRE button (a second finger
-// can hold FIRE while this one drags to aim without the two interfering).
-let flameArmedByCanvas = false;
 canvas.addEventListener("touchstart", e => {
   e.preventDefault();
   if (paused) return;
@@ -2378,10 +2401,7 @@ canvas.addEventListener("touchstart", e => {
     clearTimeout(flameCommitTimer);
     flameCommitTimer = setTimeout(() => {
       if (lookTouchId === null || flameDisqualified) return;
-      if (WEAPONS[currentWeaponKey].mode === "auto") {
-        mouseHeld = true;
-        flameArmedByCanvas = true;
-      }
+      if (WEAPONS[currentWeaponKey].mode === "auto") mouseHeld = true;
     }, FLAME_COMMIT_WINDOW);
   }
 }, { passive: false });
@@ -2409,7 +2429,7 @@ canvas.addEventListener("touchend", e => {
     }
     lookTouchId = null;
     clearTimeout(flameCommitTimer);
-    if (flameArmedByCanvas) { mouseHeld = false; flameArmedByCanvas = false; }
+    mouseHeld = false;
   }
 });
 canvas.addEventListener("touchcancel", e => {
@@ -2417,24 +2437,8 @@ canvas.addEventListener("touchcancel", e => {
     if (t.identifier !== lookTouchId) continue;
     lookTouchId = null;
     clearTimeout(flameCommitTimer);
-    if (flameArmedByCanvas) { mouseHeld = false; flameArmedByCanvas = false; }
+    mouseHeld = false;
   }
-});
-
-fireBtnEl.addEventListener("touchstart", e => {
-  e.preventDefault();
-  fireBtnEl.classList.add("pressed");
-  mouseHeld = true;
-  if (WEAPONS[currentWeaponKey].mode === "semi") trySemiShot();
-}, { passive: false });
-fireBtnEl.addEventListener("touchend", e => {
-  e.preventDefault();
-  fireBtnEl.classList.remove("pressed");
-  mouseHeld = false;
-});
-fireBtnEl.addEventListener("touchcancel", () => {
-  fireBtnEl.classList.remove("pressed");
-  mouseHeld = false;
 });
 
 // Registered for both "touchstart" and "click": isTouch is a device guess
@@ -2492,10 +2496,15 @@ pauseBtnMobileEl.addEventListener("touchstart", e => {
 }, { passive: false });
 pauseBtnMobileEl.addEventListener("click", () => setPaused(!paused));
 
-muteBtnEl.addEventListener("click", () => toggleMute());
-muteBtnEl.addEventListener("touchstart", e => {
+musicBtnEl.addEventListener("click", () => toggleMusicMute());
+musicBtnEl.addEventListener("touchstart", e => {
   e.preventDefault();
-  toggleMute();
+  toggleMusicMute();
+});
+sfxBtnEl.addEventListener("click", () => toggleSfxMute());
+sfxBtnEl.addEventListener("touchstart", e => {
+  e.preventDefault();
+  toggleSfxMute();
 });
 
 // ---------------------------------------------------------------------------
