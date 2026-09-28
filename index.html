@@ -2176,22 +2176,41 @@ const LEVELS = [
       { type: "candycane", count: 8, scale: 1.1 },
     ],
     music: {
-      // The actual "Jingle Bells" chorus melody, transcribed by solfège
-      // degree (do=0 re=1 mi=2 fa=3 sol=4) rather than approximated - the
-      // previous version had the right call-and-response rhythm (three
-      // repeated notes, a breath, three more) but the wrong pitches: it
-      // opened on the *root* (do-do-do) instead of the real tune's mediant
-      // (mi-mi-mi), and its 6-note pentatonic scale had no degree for fa at
-      // all, so "oh what fun it is to ride" couldn't land on the right note
-      // no matter how the pattern was tuned. A full 8-degree major scale
-      // fixes both: line 1 is "mi mi mi, mi mi mi, mi sol do re mi(held)",
-      // line 2 is "fa fa fa fa, fa mi mi mi, mi re re mi, re(held) sol(held)".
+      // The full song, verse then chorus, rather than looping just the
+      // chorus forever - transcribed by solfège degree (do=0 re=1 mi=2 fa=3
+      // sol=4 la=5 ti=6) from the actual 1857 Pierpont piano score (public
+      // domain, Project Gutenberg #10535), not from memory.
+      //
+      // The CHORUS ("Jingle bells, jingle bells...") is unambiguous in the
+      // source - a plain stepwise line, no interpretation needed: "mi mi
+      // mi, mi mi mi, mi sol do re mi(held)" / "fa fa fa fa, fa mi mi mi,
+      // mi re re mi, re(held) sol(held)".
+      //
+      // The VERSE ("Dashing through the snow...") is different: that score
+      // writes it as a decorated parlor-piano arrangement - some notes are
+      // harmonized as two-note intervals rather than a single pitch, and a
+      // few spots are a repeated-chord tremolo (a bell-jingle ornament)
+      // rather than one note per syllable. Transcribed here using the
+      // standard convention for this style (melody = the top note of each
+      // harmonized interval) - confident in the plain stepwise runs, less
+      // certain of the harmonized/tremolo spots specifically. "Dashing
+      // through the snow(held), in a one-horse open sleigh(held), o'er the
+      // fields we go(held)" is sol mi re do sol(held) / sol mi re do
+      // la(held) la fa mi re / ti(held) [tremolo re-re-re, do-do-do] -
+      // repeated once more for the second couplet, then a closing
+      // ti/ti tremolo resolving down to do.
       root: 196, scale: scaleFrom(196, [0, 2, 4, 5, 7, 9, 11, 12]),
       pattern: [
+        // verse
+        4, 2, 1, 0, 4, null, null, null, null, 2, 1, 0, 5, null, null, null,
+        null, 3, 2, 1, 6, null, null, null, null, 1, 1, 1, null, 0, 0, 0,
+        4, 2, 1, 0, 4, null, null, null, null, 2, 1, 0, 5, null, null, null,
+        null, 3, 2, 1, null, 6, null, 6, null, 6, null, 6, 0, null, null, null,
+        // chorus
         2, 2, 2, null, 2, 2, 2, null, 2, 4, 0, 1, 2, null, null, null,
         3, 3, 3, 3, 3, 2, 2, 2, 2, 1, 1, 2, 1, null, 4, null,
       ],
-      variation: { step: 31, degree: 0 },
+      variation: { step: 95, degree: 0 },
       // "bigband": routes to startBigBandChristmas instead of the generic
       // pad+single-melody engine (see startMusicForLevel) - a full swung
       // rhythm section (kick/snare/hi-hat), a walking bass, and brass stabs
@@ -3266,7 +3285,10 @@ function startMusicForLevel(level) {
     windSrc.start();
     musicNodes = [windSrc];
 
-    scheduleHornSwell(cfg.root);
+    // No scheduleHornSwell here (unlike the generic path below) - a random
+    // cinematic swell dropping into an actual recognizable song reads as a
+    // mistake, not an enhancement, in a way it doesn't for the other levels'
+    // abstract ambient loops.
     if (cfg.timbre === "sleigh") {
       const shake = () => {
         playSleighShimmer();
