@@ -381,8 +381,18 @@
      controls thumbs actually rest on during play - joystick and
      weapon-select - to the opposite side. The top-left button ribbon
      (Restart/Pause/Music/etc.) isn't touched mid-combat so it's left alone. */
+  /* Full mirror, not just the joystick/weapon swap: the top-left menu
+     ribbon (Restart/Pause/Music/etc.) has to move to the right along with
+     the joystick, or the weapon-select column landing on the left just
+     overcrowds that same corner instead of fixing anything. */
   body.leftHandedControls #joyBase { left: auto; right: 24px; }
   body.leftHandedControls #weaponBtns { right: auto; left: 30px; }
+  body.leftHandedControls #restartBtnMobile, body.leftHandedControls #pauseBtnMobile,
+  body.leftHandedControls #musicBtnMobile, body.leftHandedControls #sfxBtnMobile,
+  body.leftHandedControls #sectorSelectBtnMobile, body.leftHandedControls #homeBtnMobile {
+    left: auto; right: 2px;
+  }
+  body.leftHandedControls #homeBtnMobile { right: 52px; }
   /* First-launch tutorial: same modal language again, auto-shown once (see
      TUTORIAL_SEEN_KEY) and reachable afterward from the start screen. Only
      one of the desktop/mobile content blocks is ever unhidden - same
@@ -1996,7 +2006,7 @@ const LEVELS = [
   {
     name: "Ice Fortress", mazeSize: 17, loosenChance: 0.22,
     sky: ["#0a1a2e", "#1c3a55"], floorColor: "#cfd9dd", floorShade: "#9fb3bd",
-    wallLow: [120, 190, 230], wallHigh: [165, 222, 250],
+    wallLow: [120, 190, 230], wallHigh: [165, 222, 250], wallTexture: "textures/wall_ice_fortress.png",
     fogColor: [10, 22, 38], fogDensity: 14,
     floorSpeckles: [{ color: "rgba(150,190,210,0.5)", count: 90, size: [0.6, 1.8] }],
     floorCracks: { count: 5, color: "rgba(70,100,120,0.35)" },
@@ -2019,7 +2029,7 @@ const LEVELS = [
   {
     name: "Frozen Caverns", mazeSize: 19, loosenChance: 0.16,
     sky: ["#04070a", "#141c22"], floorColor: "#39414a", floorShade: "#1e242a",
-    wallLow: [70, 92, 100], wallHigh: [118, 148, 158],
+    wallLow: [70, 92, 100], wallHigh: [118, 148, 158], wallTexture: "textures/wall_frozen_caverns.png",
     fogColor: [4, 7, 10], fogDensity: 10,
     floorSpeckles: [{ color: "rgba(20,26,30,0.5)", count: 70, size: [1, 3] }, { color: "rgba(150,210,230,0.18)", count: 20, size: [0.5, 1.4] }],
     floorCracks: { count: 8, color: "rgba(10,14,16,0.5)" },
@@ -2041,7 +2051,7 @@ const LEVELS = [
   {
     name: "Blizzard Wastes", mazeSize: 21, loosenChance: 0.3,
     sky: ["#7e97ab", "#c3d7e2"], floorColor: "#e9f1f5", floorShade: "#c2d3dc",
-    wallLow: [205, 218, 226], wallHigh: [240, 248, 252],
+    wallLow: [205, 218, 226], wallHigh: [240, 248, 252], wallTexture: "textures/wall_blizzard_wastes.png",
     fogColor: [205, 222, 232], fogDensity: 8,
     floorSpeckles: [{ color: "rgba(255,255,255,0.6)", count: 60, size: [0.6, 1.6] }],
     floorCracks: { count: 0, color: "transparent" },
@@ -2064,7 +2074,7 @@ const LEVELS = [
   {
     name: "Emperor's Keep", mazeSize: 19, loosenChance: 0.2,
     sky: ["#170808", "#3a1414"], floorColor: "#2b1616", floorShade: "#150a0a",
-    wallLow: [125, 58, 48], wallHigh: [188, 92, 66],
+    wallLow: [125, 58, 48], wallHigh: [188, 92, 66], wallTexture: "textures/wall_emperors_keep.png",
     fogColor: [18, 8, 8], fogDensity: 11,
     floorSpeckles: [{ color: "rgba(255,140,60,0.28)", count: 40, size: [0.6, 1.6] }, { color: "rgba(0,0,0,0.4)", count: 60, size: [1, 2.4] }],
     floorCracks: { count: 10, color: "rgba(0,0,0,0.5)" },
@@ -2087,7 +2097,7 @@ const LEVELS = [
   {
     name: "Frozen Harbor", mazeSize: 21, loosenChance: 0.24,
     sky: ["#0a1c22", "#1d3540"], floorColor: "#5a6b6e", floorShade: "#33403f",
-    wallLow: [70, 110, 120], wallHigh: [120, 168, 175],
+    wallLow: [70, 110, 120], wallHigh: [120, 168, 175], wallTexture: "textures/wall_frozen_harbor.png",
     fogColor: [8, 18, 22], fogDensity: 12,
     floorSpeckles: [{ color: "rgba(190,150,110,0.3)", count: 40, size: [0.8, 2.2] }, { color: "rgba(200,230,235,0.35)", count: 50, size: [0.6, 1.6] }],
     floorCracks: { count: 9, color: "rgba(15,25,25,0.4)" },
@@ -2110,7 +2120,7 @@ const LEVELS = [
   {
     name: "Crystal Caverns", mazeSize: 21, loosenChance: 0.18,
     sky: ["#050b18", "#0e1c33"], floorColor: "#2a3550", floorShade: "#151b2c",
-    wallLow: [60, 90, 160], wallHigh: [110, 150, 230],
+    wallLow: [60, 90, 160], wallHigh: [110, 150, 230], wallTexture: "textures/wall_crystal_caverns.png",
     fogColor: [6, 10, 20], fogDensity: 9,
     floorSpeckles: [{ color: "rgba(120,170,255,0.4)", count: 60, size: [0.5, 1.6] }],
     floorCracks: { count: 6, color: "rgba(90,140,230,0.3)" },
@@ -2132,7 +2142,7 @@ const LEVELS = [
   {
     name: "Aurora Tundra", mazeSize: 23, loosenChance: 0.34,
     sky: ["#0c2a24", "#123a52"], floorColor: "#dfeaf0", floorShade: "#b8ccd6",
-    wallLow: [150, 200, 190], wallHigh: [200, 240, 220],
+    wallLow: [150, 200, 190], wallHigh: [200, 240, 220], wallTexture: "textures/wall_aurora_tundra.png",
     fogColor: [150, 210, 195], fogDensity: 9,
     floorSpeckles: [{ color: "rgba(180,255,220,0.35)", count: 50, size: [0.6, 1.8] }],
     floorCracks: { count: 0, color: "transparent" },
@@ -2154,7 +2164,7 @@ const LEVELS = [
   {
     name: "Christmas Village", mazeSize: 21, loosenChance: 0.26,
     sky: ["#0b1f2e", "#142a1f"], floorColor: "#6b4226", floorShade: "#3f2717",
-    wallLow: [40, 90, 60], wallHigh: [90, 160, 105],
+    wallLow: [40, 90, 60], wallHigh: [90, 160, 105], wallTexture: "textures/wall_christmas_village.png",
     fogColor: [10, 20, 15], fogDensity: 11,
     floorSpeckles: [{ color: "rgba(255,214,120,0.35)", count: 30, size: [0.6, 1.6] }, { color: "rgba(255,255,255,0.4)", count: 50, size: [0.6, 1.6] }],
     floorCracks: { count: 4, color: "rgba(40,25,15,0.35)" },
@@ -2182,7 +2192,7 @@ const LEVELS = [
   {
     name: "Northern Lights Ruins", mazeSize: 23, loosenChance: 0.2,
     sky: ["#0a0a20", "#241238"], floorColor: "#463a55", floorShade: "#241c30",
-    wallLow: [90, 70, 140], wallHigh: [150, 120, 210],
+    wallLow: [90, 70, 140], wallHigh: [150, 120, 210], wallTexture: "textures/wall_northern_lights_ruins.png",
     fogColor: [12, 8, 22], fogDensity: 10,
     floorSpeckles: [{ color: "rgba(150,230,220,0.3)", count: 45, size: [0.6, 1.6] }],
     floorCracks: { count: 10, color: "rgba(10,5,20,0.5)" },
@@ -2204,7 +2214,7 @@ const LEVELS = [
   {
     name: "The Frozen Throne", mazeSize: 23, loosenChance: 0.18,
     sky: ["#120404", "#2c0808"], floorColor: "#1c0c0c", floorShade: "#0c0505",
-    wallLow: [140, 40, 40], wallHigh: [210, 80, 70],
+    wallLow: [140, 40, 40], wallHigh: [210, 80, 70], wallTexture: "textures/wall_frozen_throne.png",
     fogColor: [15, 5, 5], fogDensity: 12,
     floorSpeckles: [{ color: "rgba(255,120,60,0.3)", count: 45, size: [0.6, 1.8] }, { color: "rgba(0,0,0,0.4)", count: 55, size: [1, 2.4] }],
     floorCracks: { count: 12, color: "rgba(0,0,0,0.55)" },
@@ -2233,6 +2243,17 @@ function hash2(x, y) {
 
 function buildLevelAssets() {
   for (const level of LEVELS) {
+    // Wall texture: a real image asset (see textures/generate_wall_textures.py),
+    // sampled per-column in render() via drawImage instead of the old flat
+    // per-cell color fill. Loading is async, but render()'s texReady check
+    // (tex.complete && tex.naturalWidth > 0) falls back to a flat fill using
+    // wallLow/wallHigh for the handful of frames before it's decoded, so
+    // nothing needs to block on this - each level's texture has finished
+    // loading well before the player can reach it in practice.
+    const wallTex = new Image();
+    wallTex.src = level.wallTexture;
+    level.wallTexImg = wallTex;
+
     const floorCanvas = document.createElement("canvas");
     floorCanvas.width = 64; floorCanvas.height = 64;
     const fc = floorCanvas.getContext("2d");
@@ -2488,6 +2509,124 @@ function sfxKill(enemyType) {
 function sfxPlayerHurt() {
   playNoise({ duration: 0.16, gain: 0.35, filterFreq: 700, filterType: "lowpass" });
   playTone({ freq: 140, endFreq: 60, type: "sawtooth", duration: 0.2, gain: 0.25 });
+}
+
+// ---------------------------------------------------------------------------
+// Footsteps: one cue per stride (see the odometer in update() - both the
+// player and every ground enemy accumulate distance walked and fire when it
+// crosses their own stride length, rather than on a fixed timer, so cadence
+// naturally scales with how fast/slow each of them actually moves). Kept
+// deliberately quiet relative to combat/alert cues - this is ambient
+// texture, not something that should compete with them.
+// ---------------------------------------------------------------------------
+// Built by hand rather than via playNoise/playTone: both of those jump
+// straight to full gain at t0, and that instant attack is what makes any
+// burst read as a percussive "click" or "tick" no matter how it's
+// filtered - the highpass layer this used to have made it worse, but even
+// the lowpass layer alone would still click on every single step. A soft
+// linear ramp-in (no click) into a lowpass-only noise bed (no bright
+// content at all) plus a barely-there low thump underneath is what actually
+// reads as a padded footstep instead of a tick - and since the player hears
+// this on every stride of every run, it's worth the bespoke envelope.
+function sfxFootstepPlayer() {
+  const t0 = audioCtx.currentTime;
+  const dur = 0.11;
+  const src = audioCtx.createBufferSource();
+  src.buffer = noiseBuffer(dur);
+  const filt = audioCtx.createBiquadFilter();
+  filt.type = "lowpass";
+  filt.frequency.value = 420 + Math.random() * 160; // slight per-step variation
+  const g = audioCtx.createGain();
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.linearRampToValueAtTime(0.09, t0 + 0.018);
+  g.gain.exponentialRampToValueAtTime(0.0005, t0 + dur);
+  src.connect(filt); filt.connect(g); g.connect(sfxGain);
+  src.start(t0); src.stop(t0 + dur + 0.02);
+
+  const thump = audioCtx.createOscillator();
+  thump.type = "sine";
+  thump.frequency.setValueAtTime(120, t0);
+  thump.frequency.exponentialRampToValueAtTime(80, t0 + 0.07);
+  const tg = audioCtx.createGain();
+  tg.gain.setValueAtTime(0.0001, t0);
+  tg.gain.linearRampToValueAtTime(0.035, t0 + 0.015);
+  tg.gain.exponentialRampToValueAtTime(0.0005, t0 + 0.08);
+  thump.connect(tg); tg.connect(sfxGain);
+  thump.start(t0); thump.stop(t0 + 0.1);
+}
+// Heaviest ground step: low thump plus a deep, short noise thud.
+function sfxFootstepBear(g) {
+  playTone({ freq: 65, endFreq: 45, type: "sine", duration: 0.09, gain: 0.14 * g });
+  playNoise({ duration: 0.08, gain: 0.14 * g, filterFreq: 220, filterType: "lowpass" });
+}
+// Slower and even heavier than the bear, with a wetter/blubberier noise
+// character - a lumbering flop rather than a footfall.
+function sfxFootstepWalrus(g) {
+  playTone({ freq: 55, endFreq: 35, type: "sine", duration: 0.14, gain: 0.16 * g });
+  playNoise({ duration: 0.14, gain: 0.18 * g, filterFreq: 160, filterType: "lowpass" });
+}
+// Tiny, fast, light - just a quick high tick, no low end at all. Quietest of
+// the set on top of the shared distance falloff: a stoat's stride is short
+// and its speed stat is the highest of any enemy, so even after slowing its
+// cadence down (see ENEMY_STRIDE_LENGTH) it still ticks the most often.
+function sfxFootstepStoat(g) {
+  playNoise({ duration: 0.02, gain: 0.045 * g, filterFreq: 2800, filterType: "bandpass" });
+}
+function sfxFootstepPenguin(g) {
+  playNoise({ duration: 0.05, gain: 0.09 * g, filterFreq: 650, filterType: "lowpass" });
+}
+// Same waddle character as the regular penguin, scaled up for the boss's
+// much larger frame.
+function sfxFootstepEmperor(g) {
+  playTone({ freq: 90, endFreq: 60, type: "sine", duration: 0.1, gain: 0.16 * g });
+  playNoise({ duration: 0.09, gain: 0.15 * g, filterFreq: 300, filterType: "lowpass" });
+}
+// The owl never touches the ground, so it gets wingbeats instead of
+// footsteps: a couple of quick, airy noise puffs well above any ground
+// enemy's frequency range, with no low end at all.
+function sfxWingFlutter(g) {
+  playNoise({ duration: 0.05, gain: 0.06 * g, filterFreq: 1800, filterType: "bandpass", delay: 0 });
+  playNoise({ duration: 0.04, gain: 0.05 * g, filterFreq: 2400, filterType: "bandpass", delay: 0.035 });
+}
+// World units per stride. A stoat's top speed (2.2/s, the fastest of any
+// enemy) divided by its old 0.45 stride worked out to ~5 ticks/sec even at
+// a dead sprint - audibly a rapid-fire rattle rather than footsteps, and the
+// single biggest source of "competing noises" once several were nearby at
+// once. Lengthening its stride (and the owl's, the next-fastest stepper)
+// brings both down to roughly 2.5-3 steps/sec, in line with the rest.
+const ENEMY_STRIDE_LENGTH = {
+  polarbear: 1.1, walrus: 1.3, stoat: 0.85, penguin: 0.55, emperorpenguin: 0.8, owl: 0.65,
+};
+function playEnemyFootstep(type, gainMult) {
+  if (type === "polarbear") sfxFootstepBear(gainMult);
+  else if (type === "walrus") sfxFootstepWalrus(gainMult);
+  else if (type === "stoat") sfxFootstepStoat(gainMult);
+  else if (type === "penguin") sfxFootstepPenguin(gainMult);
+  else if (type === "emperorpenguin") sfxFootstepEmperor(gainMult);
+  else if (type === "owl") sfxWingFlutter(gainMult);
+}
+// Distant enemies wandering elsewhere in the sector - often out of sight,
+// sometimes on the far side of a wall - shouldn't be audible at all, let
+// alone at full volume: that was the other big contributor to the "wall of
+// noise" complaint. Two gates now apply on top of the stride odometer:
+// hasLineOfSight (silence anything actually behind a wall - sound doesn't
+// carry through solid ice any more than a bullet does in this game) and a
+// quadratic distance falloff within audible range, so a footstep reads as
+// "close" or "not really there", not a flat volume out to the cutoff.
+const FOOTSTEP_AUDIBLE_DIST = 10;
+function enemyFootstepCheck(e, prevEx, prevEy, dist) {
+  if (dist > FOOTSTEP_AUDIBLE_DIST) return;
+  const moved = Math.hypot(e.x - prevEx, e.y - prevEy);
+  if (moved <= 0) return;
+  e.strideDist = (e.strideDist || 0) + moved;
+  const strideLen = ENEMY_STRIDE_LENGTH[e.type] || 0.9;
+  if (e.strideDist <= strideLen) return;
+  e.strideDist -= strideLen;
+  if (!hasLineOfSight(e.x, e.y, player.x, player.y)) return;
+  const falloff = Math.max(0, 1 - dist / FOOTSTEP_AUDIBLE_DIST);
+  const gainMult = falloff * falloff;
+  if (gainMult < 0.04) return;
+  playEnemyFootstep(e.type, gainMult);
 }
 // Short "incoming!" cue for the Emperor Penguin boss's charge windup (see
 // the chargeState handling in update()) - a quick rising tone, distinct
@@ -2997,6 +3136,11 @@ function ensureAudio() {
 }
 
 let player, enemies, mouseDX, mouseDY, scrollTurn, running, gameOver, won;
+// Footstep odometer: how far (world units) the player has walked since the
+// last footstep sound, reset at the start of every run. See the movement
+// block in update() for where this accumulates and fires.
+let playerStrideDist = 0;
+const PLAYER_STRIDE_LENGTH = 0.9;
 let paused = false;
 let pitch = 0; // vertical look offset in screen pixels, shifts the horizon/sprites/walls
 let keys = {};
@@ -3250,6 +3394,7 @@ function newGame(startIndex) {
   ambientSpawnAccum = 0;
   levelTransition = false;
   levelTransitionTimer = 0;
+  playerStrideDist = 0;
   joyReset();
   weaponBtnEls.forEach(b => b.classList.toggle("selected", b.dataset.weapon === "blaster"));
   startLevel(startIndex !== undefined ? startIndex : selectedStartSector);
@@ -3305,7 +3450,17 @@ function landPlayerHit(stats) {
   hurtFlash = HURT_FLASH_PEAK;
   addShake(0.1 + dmg * 0.006);
   sfxPlayerHurt();
-  if (player.hp <= 0) { player.hp = 0; gameOver = true; recordRunEnd(false); sfxGameOver(); }
+  if (player.hp <= 0) {
+    player.hp = 0;
+    gameOver = true;
+    // Same reasoning as the win/level-clear branch in killIfDead(): stop it
+    // right here, not via update()'s normal per-frame toggle, which sits
+    // behind the gameOver early-return and would never run again - dying
+    // mid-flame used to leave it hissing until the player hit Restart.
+    flameLoopSetActive(false);
+    recordRunEnd(false);
+    sfxGameOver();
+  }
   updateHud();
 }
 
@@ -3940,6 +4095,15 @@ function killIfDead(e) {
     addShake(0.08 + ENEMY_TYPES[e.type].hp * 0.012);
     if (enemies.every(x => !x.alive)) {
       recordSectorCleared(levelIndex);
+      // Both branches below stop play for the rest of the run/transition,
+      // and update()'s normal flamethrower-off toggle (see the mouseHeld
+      // check further down) sits behind the levelTransition/gameOver/won
+      // early-returns - it would never run again to actually silence a
+      // still-hissing loop, leaving it audible until the next sector's
+      // startLevel() happened to reset things (or, on a loss, until the
+      // player restarted). Stop it here instead, right where the run
+      // actually ends, so it can't get stuck either way.
+      flameLoopSetActive(false);
       if (levelIndex < LEVELS.length - 1) {
         levelTransition = true;
         levelTransitionTimer = 2.4;
@@ -5000,6 +5164,7 @@ function update(dt) {
     iceMomentum = Math.max(0, iceMomentum - dt * 1.4);
   }
 
+  const prevPlayerX = player.x, prevPlayerY = player.y;
   const moveSpeed = 3.0 * dt;
   let mx = 0, my = 0;
   if (keys["KeyW"]) { mx += player.dirX; my += player.dirY; }
@@ -5039,6 +5204,15 @@ function update(dt) {
     if (Math.hypot(iceDirX, iceDirY) < 0.05) { iceDirX = 0; iceDirY = 0; }
   }
 
+  const playerMoved = Math.hypot(player.x - prevPlayerX, player.y - prevPlayerY);
+  if (playerMoved > 0) {
+    playerStrideDist += playerMoved;
+    if (playerStrideDist > PLAYER_STRIDE_LENGTH) {
+      playerStrideDist -= PLAYER_STRIDE_LENGTH;
+      sfxFootstepPlayer();
+    }
+  }
+
   updateGimmicks(dt);
 
   // Food pickups: walking within range consumes it and restores HP (capped
@@ -5071,6 +5245,7 @@ function update(dt) {
   frameFlowField = null;
   for (const e of enemies) {
     if (!e.alive) continue;
+    const prevEx = e.x, prevEy = e.y;
     if (e.hitFlash > 0) e.hitFlash--;
     if (e.attackAnimTimer > 0) e.attackAnimTimer = Math.max(0, e.attackAnimTimer - dt);
     const stats = ENEMY_TYPES[e.type];
@@ -5149,6 +5324,7 @@ function update(dt) {
         if (e.chargeTimer <= 0) { e.chargeState = "idle"; e.chargeCooldown = 6 + Math.random() * 4; }
       }
       e.animPhase += dt * stats.speed * 2.0;
+      enemyFootstepCheck(e, prevEx, prevEy, dist);
       continue;
     }
 
@@ -5242,6 +5418,7 @@ function update(dt) {
         }
       }
       e.animPhase += dt * stats.speed * (e.owlState === "dive" ? 3.4 : 2.0);
+      enemyFootstepCheck(e, prevEx, prevEy, dist);
       continue;
     }
 
@@ -5325,6 +5502,7 @@ function update(dt) {
     // than a waddling penguin.
     const moving = hunting || e.wanderDirX !== 0 || e.wanderDirY !== 0;
     e.animPhase += dt * stats.speed * (moving ? 2.2 : 0.6);
+    enemyFootstepCheck(e, prevEx, prevEy, dist);
   }
 
   if (muzzleFlash > 0) muzzleFlash--;
@@ -5457,26 +5635,64 @@ function render() {
     const drawStart = Math.max(0, -lineHeight / 2 + horizon);
     const drawEnd = Math.min(SCREEN_H, lineHeight / 2 + horizon);
 
-    // Block tint: each map cell gets a deterministic shade variance so walls
-    // don't read as one flat slab, plus a darker mortar line at cell edges.
+    // Wall texture: wallX/wallFrac is the properly perspective-corrected
+    // position along the wall face (the raycaster's texture-U coordinate),
+    // so the sampled column sits at a fixed spot in world space - it doesn't
+    // swim as the player moves. Each cell independently maps its own
+    // wallFrac 0..1 across the *entire* texture image (not a small repeating
+    // tile within the cell), same as classic Wolfenstein-style texturing.
     const wallX = side === 0 ? player.y + dist * rayDirY : player.x + dist * rayDirX;
     const wallFrac = wallX - Math.floor(wallX);
-    const variance = 0.85 + hash2(mapX, mapY) * 0.3;
-    const base = side === 0 ? level.wallHigh : level.wallLow;
-    let r = base[0] * variance, g = base[1] * variance, b = base[2] * variance;
-    if (wallFrac < 0.05 || wallFrac > 0.95) { r *= 0.55; g *= 0.55; b *= 0.55; }
+    const tex = level.wallTexImg;
+    const texReady = tex && tex.complete && tex.naturalWidth > 0;
+    if (texReady && lineHeight > 0 && drawEnd > drawStart) {
+      const texSize = tex.naturalWidth;
+      let texX = Math.floor(wallFrac * texSize);
+      if (texX < 0) texX = 0; else if (texX >= texSize) texX = texSize - 1;
+      // The source V range has to be clamped the same way drawStart/drawEnd
+      // clamp the destination: a wall much taller than the screen (close up)
+      // only shows its middle portion, and sampling the *whole* texture into
+      // that visible slice would squash it instead of continuing to extend
+      // off-screen at the correct scale.
+      const unclippedTop = -lineHeight / 2 + horizon;
+      const vTop = (drawStart - unclippedTop) / lineHeight;
+      const vBottom = (drawEnd - unclippedTop) / lineHeight;
+      const srcY = vTop * texSize;
+      const srcH = Math.max(0.01, (vBottom - vTop) * texSize);
+      ctx.drawImage(tex, texX, srcY, 1, srcH, x, drawStart, 1, drawEnd - drawStart);
+    } else if (drawEnd > drawStart) {
+      // Texture not decoded yet (first frame or two after a level loads, or
+      // it failed to load) - flat fallback fill so there's never a hole.
+      const base = side === 0 ? level.wallHigh : level.wallLow;
+      ctx.fillStyle = `rgb(${base[0] | 0}, ${base[1] | 0}, ${base[2] | 0})`;
+      ctx.fillRect(x, drawStart, 1, drawEnd - drawStart);
+    }
 
-    const shade = Math.max(0.12, 1 - dist / activeFogDensity);
-    r *= shade; g *= shade; b *= shade;
+    // Shading overlay on top of the sampled texture: a subtle per-cell
+    // brightness variance (the texture itself now carries most of the
+    // surface detail, so this just keeps adjacent tiled cells from reading
+    // as identical), a fixed darkening for one ray orientation (the classic
+    // raycaster depth cue that makes corners read as corners), and distance
+    // falloff - all folded into one alpha-blended black overlay, since
+    // canvas can't cheaply read sampled texture pixels back out in JS to do
+    // real per-channel multiply math against them at this resolution.
+    if (drawEnd > drawStart) {
+      const variance = 0.94 + hash2(mapX, mapY) * 0.1;
+      const sideMult = side === 1 ? 0.78 : 1.0;
+      const shade = Math.max(0.12, 1 - dist / activeFogDensity);
+      const darkenAlpha = Math.min(0.94, Math.max(0, 1 - variance * sideMult * shade));
+      if (darkenAlpha > 0.01) {
+        ctx.fillStyle = `rgba(0,0,0,${darkenAlpha})`;
+        ctx.fillRect(x, drawStart, 1, drawEnd - drawStart);
+      }
 
-    // Fog blend: distant walls fade toward the sector's atmosphere color.
-    const fogT = Math.min(1, Math.max(0, (dist - activeFogDensity * 0.55) / (activeFogDensity * 0.9)));
-    r += (level.fogColor[0] - r) * fogT;
-    g += (level.fogColor[1] - g) * fogT;
-    b += (level.fogColor[2] - b) * fogT;
-
-    ctx.fillStyle = `rgb(${r | 0}, ${g | 0}, ${b | 0})`;
-    ctx.fillRect(x, drawStart, 1, drawEnd - drawStart);
+      // Fog blend: distant walls fade toward the sector's atmosphere color.
+      const fogT = Math.min(1, Math.max(0, (dist - activeFogDensity * 0.55) / (activeFogDensity * 0.9)));
+      if (fogT > 0.01) {
+        ctx.fillStyle = `rgba(${level.fogColor[0] | 0}, ${level.fogColor[1] | 0}, ${level.fogColor[2] | 0}, ${fogT})`;
+        ctx.fillRect(x, drawStart, 1, drawEnd - drawStart);
+      }
+    }
   }
 
   renderSprites();
