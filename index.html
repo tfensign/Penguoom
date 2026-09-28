@@ -241,6 +241,29 @@
   }
   #restartBtnMobile { top: 14px; }
   #pauseBtnMobile { top: 58px; }
+  /* Save-point indicators, in the same left-edge column as Restart/Pause but
+     with a bigger gap under the Pause/Play chip so it doesn't read as part
+     of that button group. Grayed out until that sector's been cleared at
+     least once (see updateCheckpointUI), then lit green to match the game's
+     existing "achievement" color (best-score banner, level-clear text). */
+  #checkpointIndicators {
+    position: absolute; left: 2px; top: 140px; display: flex; flex-direction: column; gap: 6px;
+  }
+  /* Same 34px width as the dots below it (monospace font, so even a short
+     word can spill past a narrow letterbox strip at normal sizing) - broken
+     across two short lines instead of one long label that runs wider than
+     the dots and off the edge of the black ribbon. */
+  #checkpointLabel {
+    width: 34px; color: rgba(207,239,255,0.65); font-family: var(--font-ui); font-size: 0.5rem;
+    line-height: 1.25; text-align: center; text-transform: uppercase; margin-bottom: 3px;
+  }
+  .checkpointDot {
+    width: 30px; height: 30px; border-radius: 50%; box-sizing: border-box;
+    background: rgba(20,40,55,0.5); border: 2px solid rgba(150,190,210,0.3); color: rgba(200,225,240,0.4);
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-ui); font-size: 0.8rem; font-weight: bold;
+  }
+  .checkpointDot.achieved { background: rgba(40,120,90,0.7); border-color: #7fffb0; color: #eafcff; }
   #rotatePrompt {
     position: fixed; inset: 0; z-index: 20; display: none; align-items: center; justify-content: center;
     flex-direction: column; text-align: center; background: #030a12; color: #eafcff;
@@ -304,6 +327,7 @@
        Fish Blaster, Harpoon Cannon, and Flamethrower.</p>
     <p id="bestStats"></p>
     <button id="startBtn">ENTER THE ICE</button>
+    <button id="restartFromOneBtn" class="secondary hidden">Start from Sector 1</button>
     <button id="installBtn" class="secondary hidden">&#128241; Install App</button>
     <p id="installHint" class="hidden"></p>
   </div>
@@ -320,6 +344,12 @@
   </div>
   <div id="restartBtnMobile" class="touchBtn">&#8635; Restart</div>
   <div id="pauseBtnMobile" class="touchBtn hidden">&#9208; Pause</div>
+  <div id="checkpointIndicators">
+    <div id="checkpointLabel">Save<br>Points</div>
+    <div class="checkpointDot" data-sector="3" title="Save point: Sector 3">3</div>
+    <div class="checkpointDot" data-sector="6" title="Save point: Sector 6">6</div>
+    <div class="checkpointDot" data-sector="9" title="Save point: Sector 9">9</div>
+  </div>
 </div>
 <div id="rotatePrompt">
   <div class="spin">&#8635;</div>
@@ -1382,6 +1412,7 @@ const scoreEl = document.getElementById("score");
 const overlay = document.getElementById("overlay");
 const bestStatsEl = document.getElementById("bestStats");
 const startBtn = document.getElementById("startBtn");
+const restartFromOneBtnEl = document.getElementById("restartFromOneBtn");
 const wrapEl = document.getElementById("wrap");
 const hintEl = document.getElementById("hint");
 const crosshairEl = document.getElementById("crosshair");
@@ -1395,6 +1426,7 @@ const pauseBtnMobileEl = document.getElementById("pauseBtnMobile");
 const pauseBtnDesktopEl = document.getElementById("pauseBtnDesktop");
 const musicBtnEl = document.getElementById("musicBtn");
 const sfxBtnEl = document.getElementById("sfxBtn");
+const checkpointDotEls = Array.from(document.querySelectorAll(".checkpointDot"));
 const rotatePromptEl = document.getElementById("rotatePrompt");
 
 // ---------------------------------------------------------------------------
@@ -2248,6 +2280,7 @@ let lastShotTime = { blaster: 0, harpoon: 0 };
 let levelIndex = 0;
 let levelTransition = false;
 let levelTransitionTimer = 0;
+let justReachedCheckpoint = false;
 let ambientParticles = [];
 let ambientSpawnAccum = 0;
 let levelProps = [];
@@ -2299,6 +2332,44 @@ function bestStatsText() {
   return text;
 }
 
+// ---------------------------------------------------------------------------
+// Save points: clearing sector 3, 6, or 9 permanently unlocks resuming a run
+// at sector 4, 7, or 10, so dying later doesn't send the player all the way
+// back to Sector 1. Stored as the (1-indexed) sector number just cleared —
+// which, conveniently, is exactly the 0-indexed levelIndex to resume at
+// (clearing sector 3 means starting back up at levelIndex 3 = Sector 4).
+// Restarting after a death always resumes here; the start screen additionally
+// offers an explicit "Start from Sector 1" so a checkpoint is never a one-way
+// door away from replaying the earlier sectors.
+// ---------------------------------------------------------------------------
+const CHECKPOINT_KEY = "penguoom_checkpoint_v1";
+const CHECKPOINT_SECTORS = [3, 6, 9];
+function loadCheckpoint() {
+  try {
+    const n = parseInt(localStorage.getItem(CHECKPOINT_KEY), 10);
+    if (CHECKPOINT_SECTORS.includes(n)) return n;
+  } catch (err) { /* corrupt or unavailable storage — fall back to no checkpoint */ }
+  return 0;
+}
+let checkpointSector = loadCheckpoint();
+function saveCheckpoint() {
+  try { localStorage.setItem(CHECKPOINT_KEY, String(checkpointSector)); } catch (err) { /* storage unavailable — checkpoint just won't persist */ }
+}
+function updateCheckpointUI() {
+  for (const el of checkpointDotEls) {
+    el.classList.toggle("achieved", checkpointSector >= parseInt(el.dataset.sector, 10));
+  }
+}
+function updateStartScreenForCheckpoint() {
+  if (checkpointSector > 0) {
+    startBtn.textContent = "CONTINUE FROM SECTOR " + (checkpointSector + 1);
+    restartFromOneBtnEl.classList.remove("hidden");
+  } else {
+    startBtn.textContent = "ENTER THE ICE";
+    restartFromOneBtnEl.classList.add("hidden");
+  }
+}
+
 function distance(x1, y1, x2, y2) { return Math.hypot(x2 - x1, y2 - y1); }
 
 function isOpen(x, y) {
@@ -2307,7 +2378,12 @@ function isOpen(x, y) {
   return MAP[mapIdx(mx, my)] === 0;
 }
 
-function newGame() {
+// startIndex: which sector (0-indexed) to begin at. Defaults to the highest
+// unlocked save point (0 if none yet) so every restart-after-death path
+// (R key, both platforms' Restart button) picks it up automatically without
+// having to know about checkpoints itself — only the explicit "Start from
+// Sector 1" button overrides it by passing 0.
+function newGame(startIndex) {
   ensureAudio();
   player = { x: 0, y: 0, dirX: 1, dirY: 0, planeX: 0, planeY: FOV_PLANE, hp: 100 };
 
@@ -2342,7 +2418,7 @@ function newGame() {
   levelTransitionTimer = 0;
   joyReset();
   weaponBtnEls.forEach(b => b.classList.toggle("selected", b.dataset.weapon === "blaster"));
-  startLevel(0);
+  startLevel(startIndex !== undefined ? startIndex : checkpointSector);
 }
 
 // Rolls the base roster type for a regular (non-walrus) spawn: a chance of
@@ -2505,6 +2581,11 @@ canvas.addEventListener("wheel", e => {
 startBtn.addEventListener("click", () => {
   overlay.style.display = "none";
   newGame();
+  tryPointerLock();
+});
+restartFromOneBtnEl.addEventListener("click", () => {
+  overlay.style.display = "none";
+  newGame(0);
   tryPointerLock();
 });
 
@@ -2810,6 +2891,14 @@ function killIfDead(e) {
         levelTransition = true;
         levelTransitionTimer = 2.4;
         sfxLevelClear();
+        const clearedSector = levelIndex + 1;
+        justReachedCheckpoint = CHECKPOINT_SECTORS.includes(clearedSector) && clearedSector > checkpointSector;
+        if (justReachedCheckpoint) {
+          checkpointSector = clearedSector;
+          saveCheckpoint();
+          updateCheckpointUI();
+          updateStartScreenForCheckpoint();
+        }
       } else {
         won = true;
         recordRunEnd(true);
@@ -2882,11 +2971,37 @@ function tickFlamethrower(dt) {
   updateHud();
 }
 
+// Walks every grid cell the segment from (x0,y0) to (x1,y1) actually crosses
+// (the same DDA technique the wall raycaster in render() uses), instead of
+// sampling at N evenly-spaced points along it. Point-sampling used a fixed
+// "4 samples per world unit" density, which is fine at long range but falls
+// apart at short range: an enemy pressed up against its attackRange (as
+// little as 0.5 units) only got 1-3 interior samples on that check, easily
+// missing a wall cell the segment clips near a corner — which read as
+// enemies attacking (and pathing toward) the player straight through a wall.
+// Walking cell-by-cell can't skip a wall no matter how shallow the angle.
 function hasLineOfSight(x0, y0, x1, y1) {
-  const steps = Math.ceil(distance(x0, y0, x1, y1) * 4);
-  for (let i = 1; i < steps; i++) {
-    const t = i / steps;
-    if (!isOpen(x0 + (x1 - x0) * t, y0 + (y1 - y0) * t)) return false;
+  const dx = x1 - x0, dy = y1 - y0;
+  const rayDist = Math.hypot(dx, dy);
+  if (rayDist < 1e-9) return true;
+  const dirX = dx / rayDist, dirY = dy / rayDist;
+  let mapX = Math.floor(x0), mapY = Math.floor(y0);
+  const deltaDistX = dirX === 0 ? 1e30 : Math.abs(1 / dirX);
+  const deltaDistY = dirY === 0 ? 1e30 : Math.abs(1 / dirY);
+  let stepX, sideDistX, stepY, sideDistY;
+  if (dirX < 0) { stepX = -1; sideDistX = (x0 - mapX) * deltaDistX; }
+  else { stepX = 1; sideDistX = (mapX + 1 - x0) * deltaDistX; }
+  if (dirY < 0) { stepY = -1; sideDistY = (y0 - mapY) * deltaDistY; }
+  else { stepY = 1; sideDistY = (mapY + 1 - y0) * deltaDistY; }
+
+  let traveled = 0, guard = 0;
+  while (traveled < rayDist && guard < 256) {
+    guard++;
+    if (sideDistX < sideDistY) { traveled = sideDistX; sideDistX += deltaDistX; mapX += stepX; }
+    else { traveled = sideDistY; sideDistY += deltaDistY; mapY += stepY; }
+    if (mapX < 0 || mapY < 0 || mapX >= MAP_SIZE || mapY >= MAP_SIZE) return false;
+    if (traveled >= rayDist) break; // reached the target's own cell before hitting a wall
+    if (MAP[mapIdx(mapX, mapY)] === 1) return false;
   }
   return true;
 }
@@ -2899,9 +3014,8 @@ function hasLineOfSight(x0, y0, x1, y1) {
 // instead of lunging straight at the player's (x, y) and wedging itself into
 // a corner whenever the direct line clips a wall. `hasLineOfSight` above is
 // still used only to decide whether an enemy has *spotted* the player
-// (`aware`), not to steer movement, since a raycast sampled at discrete
-// points can bleed through the exact corner of a wall cell in a way a body
-// actually walking the grid cannot.
+// (`aware`) — movement always goes through the flow field instead, since it
+// naturally handles routing around a wall (not just detecting one).
 // ---------------------------------------------------------------------------
 function computeFlowField(originX, originY) {
   const size = MAP_SIZE;
@@ -4361,6 +4475,11 @@ function renderLevelTransition() {
   ctx.font = `20px ${FONT_UI}`;
   ctx.fillStyle = "#eafcff";
   ctx.fillText("Entering " + LEVELS[levelIndex + 1].name, SCREEN_W / 2, SCREEN_H / 2 + 22);
+  if (justReachedCheckpoint) {
+    ctx.font = `16px ${FONT_UI}`;
+    ctx.fillStyle = "#ffe27f";
+    ctx.fillText("⚑ SAVE POINT REACHED", SCREEN_W / 2, SCREEN_H / 2 + 50);
+  }
   ctx.textAlign = "left";
 }
 
@@ -4441,6 +4560,8 @@ function frame(now) {
 }
 bestStatsEl.textContent = bestStatsText();
 applyMuteState();
+updateCheckpointUI();
+updateStartScreenForCheckpoint();
 requestAnimationFrame(frame);
 
 // ---------------------------------------------------------------------------
