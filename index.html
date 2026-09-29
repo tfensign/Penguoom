@@ -2115,6 +2115,105 @@ const LEVELS = [
       ],
       variation: { step: 95, degree: 4 },
       stepMs: 833, padWave: "sine", filterBase: 1000, timbre: "bell",
+      // Once the player's cleared half this sector's roster (see
+      // triggerMusicSurge in killIfDead), the somber dirge above jumps into
+      // this instead - Rossini's William Tell Overture (1829, public
+      // domain), the Finale ("March of the Swiss Soldiers" / the famous
+      // galop), key E major, 2/4, quarter=160. Transcribed note-for-note
+      // from a monophonic lead-line reference (william_tell_finale_gallop
+      // .txt/.abc) rather than the earlier attempt's confident-recall guess,
+      // which turned out wrong - unit here is a sixteenth note, 8 per bar.
+      // Degree 0 is D#4 (a semitone below cfg.root's E4), the one note the
+      // tune dips below tonic for as a passing/leading tone; everything
+      // else is plain E major above that. Form follows the source's own
+      // suggested order (fanfare, theme A, theme B, link, coda) with each
+      // played once - our engine's own fuller-second-pass repeat already
+      // covers the "play the theme twice" the real performance practice
+      // calls for. Much faster than the base track on purpose (a real
+      // "explosion of energy" jump, not a gradual accelerando like The
+      // Frozen Throne's), paired with the ambientRateBoost bump in
+      // triggerMusicSurge so the blizzard itself visibly picks up too.
+      surge: {
+        root: 329.63, scale: scaleFrom(329.63, [-1, 0, 2, 4, 5, 7, 9, 11, 12, 14, 16, 17, 19, 21, 23, 24, 26, 28, 29, 31]),
+        chordStepLen: 8, chordProgression: [0, 0, 4, 4],
+        pattern: [
+          // Fanfare
+          8, null, 8, null, 8, null, 8, null,
+          8, null, null, null, 6, null, 8, null,
+          10, null, 8, null, 6, null, 8, null,
+          5, null, null, null, null, null, null, null,
+          5, null, 5, null, 5, null, 5, null,
+          5, null, null, null, 3, null, 5, null,
+          8, null, 5, null, 3, null, 5, null,
+          1, null, null, null, null, null, null, null,
+          // Theme A (first statement)
+          3, null, 5, 3, 1, null, 1, null,
+          2, null, 3, null, 4, null, 2, null,
+          3, null, 5, 3, 1, null, 1, null,
+          0, null, 1, null, 2, null, null, null,
+          3, null, 5, 3, 1, null, 1, null,
+          2, null, 3, null, 4, null, 6, null,
+          5, null, 4, null, 3, null, 2, null,
+          1, null, null, null, null, null, null, null,
+          // Theme A (higher close)
+          3, null, 5, 3, 1, null, 1, null,
+          2, null, 3, null, 4, null, 2, null,
+          3, null, 5, 3, 1, null, 1, null,
+          0, null, 1, null, 2, null, null, null,
+          3, null, 5, 3, 8, null, 8, null,
+          9, null, 10, null, 11, null, 13, null,
+          12, null, 11, null, 10, null, 9, null,
+          8, null, null, null, null, null, null, null,
+          // Theme B (contrasting strain)
+          10, null, 9, null, 8, null, 7, null,
+          6, null, 5, null, 4, null, 3, null,
+          2, null, 3, null, 4, null, 5, null,
+          6, null, 7, null, 8, null, null, null,
+          10, null, 9, null, 8, null, 7, null,
+          6, null, 8, null, 7, null, 6, null,
+          5, null, 4, null, 3, null, 2, null,
+          1, null, null, null, null, null, null, null,
+          // Theme B (higher close)
+          12, null, 11, null, 10, null, 9, null,
+          8, null, 7, null, 6, null, 5, null,
+          4, null, 3, null, 2, null, 1, null,
+          0, null, 1, null, 2, null, null, null,
+          10, null, 12, 10, 8, null, 8, null,
+          9, null, 10, null, 11, null, 13, null,
+          12, null, 11, null, 10, null, 9, null,
+          8, null, null, null, null, null, null, null,
+          // Link (fanfare fragment back toward A)
+          8, null, 8, null, 8, null, 8, null,
+          8, null, null, null, 5, null, 3, null,
+          1, null, 3, null, 5, null, 8, null,
+          5, null, null, null, null, null, null, null,
+          5, null, 5, null, 5, null, 5, null,
+          5, null, null, null, 2, null, 0, null,
+          1, null, 3, null, 5, null, 8, null,
+          1, null, null, null, null, null, null, null,
+          // Coda (final charge)
+          8, null, 8, 7, 8, null, 10, null,
+          12, null, 10, null, 8, null, 5, null,
+          11, null, 11, 10, 11, null, 13, null,
+          12, null, 11, null, 10, null, 9, null,
+          8, null, 8, 7, 8, null, 10, null,
+          12, null, 15, null, 10, null, 12, null,
+          11, null, 10, null, 9, null, 8, null,
+          7, null, 8, null, 9, null, null, null,
+          8, 9, 10, 11, 12, 13, 14, 15,
+          16, null, 15, null, 14, null, 13, null,
+          12, null, 11, null, 10, null, 9, null,
+          8, null, 10, null, 12, null, 15, null,
+          10, null, 12, null, 15, null, 17, null,
+          19, null, null, null, 17, null, 15, null,
+          12, null, null, null, 8, null, null, null,
+          8, null, null, null, 8, null, null, null,
+          8, null, null, null, null, null, null, null,
+          1, null, null, null, null, null, null, null,
+          null, null, null, null, null, null, null, null,
+        ],
+        stepMs: 94, timbre: "bell",
+      },
     },
   },
   {
@@ -3249,6 +3348,12 @@ function playBassPulse(freq) {
 let musicNodes = [];
 let musicIntervalId = null;
 let sleighShakeTimeoutId = null;
+// Set true by triggerMusicSurge() (see killIfDead) when a level defines
+// music.surge and its half-enemies-defeated threshold is crossed - the
+// running playStep loop in startMusicForLevel checks this every step and
+// switches over to the surge config, and startLevel resets it back to
+// false for every fresh sector.
+let musicSurgeActive = false;
 
 // Continuous sleigh-bell shimmer: a quick, quiet, metallic noise tick with
 // a touch of pitch content, on its own steady fast pulse independent of the
@@ -3516,14 +3621,25 @@ function startMusicForLevel(level) {
   // alternate note, so even the repeat isn't bit-for-bit identical.
   let step = 0;
   let currentStepMs = cfg.stepMs;
-  const chordLen = cfg.chordStepLen || 8;
-  const chordProg = cfg.chordProgression || [0];
+  // usingSurge latches true the first time playStep notices
+  // musicSurgeActive (set by triggerMusicSurge in killIfDead) - step resets
+  // to 0 on that same transition so the surge pattern starts clean from its
+  // own beginning rather than mid-index into a differently-sized array.
+  let usingSurge = false;
   const playStep = () => {
-    const idx = step % cfg.pattern.length;
-    const pass = Math.floor(step / cfg.pattern.length);
+    if (!usingSurge && musicSurgeActive && cfg.surge) {
+      usingSurge = true;
+      step = 0;
+      currentStepMs = cfg.surge.stepMs;
+    }
+    const active = usingSurge ? cfg.surge : cfg;
+    const chordLen = active.chordStepLen || 8;
+    const chordProg = active.chordProgression || [0];
+    const idx = step % active.pattern.length;
+    const pass = Math.floor(step / active.pattern.length);
     const chordPos = step % chordLen;
     const chordIdx = Math.floor(step / chordLen) % chordProg.length;
-    const chord = chordTones(cfg.root, chordProg[chordIdx]);
+    const chord = chordTones(active.root, chordProg[chordIdx]);
     const fullerPass = pass % 2 === 1;
     if (chordPos === 0) {
       const t = audioCtx.currentTime;
@@ -3545,27 +3661,25 @@ function startMusicForLevel(level) {
       // through the chord.
       playBassPulse(chord.third / 2);
     }
-    let degree = cfg.pattern[idx];
-    if (cfg.variation && idx === cfg.variation.step && pass % 2 === 1) degree = cfg.variation.degree;
+    let degree = active.pattern[idx];
+    if (active.variation && idx === active.variation.step && pass % 2 === 1) degree = active.variation.degree;
     step++;
-    if (degree !== null) playMelodyNote(cfg.scale, degree, cfg.timbre, fullerPass, chord);
+    if (degree !== null) playMelodyNote(active.scale, degree, active.timbre, fullerPass, chord);
     // cfg.accelerate (The Frozen Throne's "In the Hall of the Mountain King"
     // only, so far): the source material explicitly calls for speeding up
     // each loop for the classic effect - a fixed setInterval can't do that,
     // so a completed pattern pass instead shrinks the step duration for a
     // self-rescheduling setTimeout chain below, floored so it never becomes
-    // an unplayable blur.
-    if (cfg.accelerate && idx === cfg.pattern.length - 1) {
-      currentStepMs = Math.max(cfg.accelerate.minStepMs, currentStepMs * cfg.accelerate.factor);
+    // an unplayable blur. Always using that self-rescheduling chain (rather
+    // than a plain setInterval for the common case) is what also lets a
+    // music.surge swap currentStepMs to a new tempo mid-run.
+    if (active.accelerate && idx === active.pattern.length - 1) {
+      currentStepMs = Math.max(active.accelerate.minStepMs, currentStepMs * active.accelerate.factor);
     }
   };
   playStep();
-  if (cfg.accelerate) {
-    const tick = () => { playStep(); musicIntervalId = setTimeout(tick, currentStepMs); };
-    musicIntervalId = setTimeout(tick, currentStepMs);
-  } else {
-    musicIntervalId = setInterval(playStep, cfg.stepMs);
-  }
+  const tick = () => { playStep(); musicIntervalId = setTimeout(tick, currentStepMs); };
+  musicIntervalId = setTimeout(tick, currentStepMs);
 }
 
 function ensureAudio() {
@@ -3617,6 +3731,10 @@ let levelTransition = false;
 let levelTransitionTimer = 0;
 let ambientParticles = [];
 let ambientSpawnAccum = 0;
+// Multiplies level.ambientRate for the rest of a run once triggerMusicSurge()
+// fires (see killIfDead) - "the blizzard picks up noticeably" alongside the
+// music surge, reset to 1 for every fresh sector in startLevel.
+let ambientRateBoost = 1;
 let levelProps = [];
 let pickups = [];
 
@@ -4031,6 +4149,8 @@ function startLevel(idx) {
   const level = LEVELS[idx];
   buildLevel(level);
   scheduleHintHide();
+  musicSurgeActive = false;
+  ambientRateBoost = 1;
   const startCell = openCells[0];
   player.x = startCell[0] + 0.5;
   player.y = startCell[1] + 0.5;
@@ -4566,10 +4686,24 @@ function flameCatchesEnemy(e, stats, invDet, halfWidth, range) {
   return proj;
 }
 
+// Levels can define music.surge (so far just Blizzard Wastes) for a
+// mid-run jump into a faster, more energetic piece once the player's
+// halfway through the roster - see the check in killIfDead below. Fires
+// once per run; musicSurgeActive is reset per sector in startLevel.
+function triggerMusicSurge() {
+  if (musicSurgeActive || !LEVELS[levelIndex].music.surge) return;
+  musicSurgeActive = true;
+  ambientRateBoost = 2.2;
+}
+
 function killIfDead(e) {
   if (e.hp <= 0 && e.alive) {
     e.alive = false;
     addShake(0.08 + ENEMY_TYPES[e.type].hp * 0.012);
+    if (LEVELS[levelIndex].music.surge && !musicSurgeActive) {
+      const aliveCount = enemies.filter(x => x.alive).length;
+      if (aliveCount <= enemies.length / 2) triggerMusicSurge();
+    }
     if (enemies.every(x => !x.alive)) {
       recordSectorCleared(levelIndex);
       // Both branches below stop play for the rest of the run/transition,
@@ -5048,7 +5182,7 @@ function makeAmbientParticle(level) {
 
 function updateAmbient(dt) {
   const level = LEVELS[levelIndex];
-  ambientSpawnAccum += dt * level.ambientRate;
+  ambientSpawnAccum += dt * level.ambientRate * ambientRateBoost;
   while (ambientSpawnAccum >= 1) {
     ambientSpawnAccum -= 1;
     ambientParticles.push(makeAmbientParticle(level));
